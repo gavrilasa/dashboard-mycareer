@@ -1,332 +1,363 @@
+// prisma/schema.prisma
+
+// Generator untuk Prisma Client, yang akan memungkinkan Anda berinteraksi dengan database.
 generator client {
   provider = "prisma-client-js"
 }
 
+// Konfigurasi datasource untuk database Anda.
+// Provider diatur ke 'postgresql' untuk Supabase.
+// URL koneksi diambil dari variabel lingkungan.
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
+// Model User: Merepresentasikan pengguna sistem (karyawan, HR, HD).
 model User {
-  nomorIndukKaryawan String    @id @unique @db.VarChar(10)
-  password           String
-  role               String    @db.VarChar(10)
-  branch             String
-  dept               String
-  name               String
-  email              String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime? @updatedAt
+  employeeId   String    @id @unique @db.VarChar(10)
+  password     String
+  role         String    @db.VarChar(10)
+  branchId     String
+  departmentId String
+  name         String
+  email        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime? @updatedAt
 
-  DataKaryawan DataKaryawan?
+  employee Employee?
 }
 
-model DataKaryawan {
-  nomorIndukKaryawan String   @id(map: "PK_DataKaryawan") @unique @db.VarChar(10)
-  namaKaryawan       String   @db.VarChar(100)
-  tanggalLahir       DateTime @db.Date
-  tanggalMasukKerja  DateTime @db.Date
-  gender             String   @db.VarChar(10)
-  personnelArea      String   @db.VarChar(10)
-  position           Int
-  personnelSubarea   String   @db.VarChar(10)
-  levelPosition      String   @db.VarChar(10)
-  age                Float
-  lengthOfService    Float
-  pend               String?  @db.VarChar(5)
-  namaSekolah        String?  @db.VarChar(100)
-  namaJurusan        String?  @db.VarChar(100)
+// Model Employee: Merepresentasikan data detail karyawan.
+model Employee {
+  employeeId      String   @id @unique @db.VarChar(10)
+  name            String   @db.VarChar(100)
+  dateOfBirth     DateTime @db.Date
+  hireDate        DateTime @db.Date
+  gender          String   @db.VarChar(10)
+  personnelAreaId String   @db.VarChar(10)
+  positionId      Int
+  departmentId    String   @db.VarChar(10)
+  levelId         String   @db.VarChar(10)
+  age             Float
+  lengthOfService Float
+  educationDegree String?  @db.VarChar(5)
+  schoolName      String?  @db.VarChar(100)
+  majorName       String?  @db.VarChar(100)
 
-  BestEmployee Int?
+  bestEmployeeScore   Int?
+  formFilledStatus    Int
+  questionnaireStatus Int
+  createdAt           DateTime
+  lastUpdatedAt       DateTime?
 
-  formFilled    Int
-  questionnaire Int
-  createdAt     DateTime
-  lastUpdatedAt DateTime?
+  branch     Branch?     @relation(fields: [personnelAreaId], references: [id], onDelete: NoAction)
+  level      Level?      @relation(fields: [levelId], references: [id], onDelete: NoAction)
+  position   Position?   @relation(fields: [positionId], references: [id], onDelete: NoAction)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  DataBranch     DataBranch      @relation(fields: [personnelArea], references: [idBranch], map: "FK_DataKaryawan_DataBranch", onDelete: NoAction)
-  DataLevel      DataLevel       @relation(fields: [levelPosition], references: [idLevel], map: "FK_DataKaryawan_DataLevel", onDelete: NoAction)
-  DataPosition   DataPosition    @relation(fields: [position], references: [idPosition], map: "FK_DataKaryawan_DataPosition", onDelete: NoAction)
-  DataDepartment DataDepartment? @relation(fields: [personnelSubarea], references: [idDepartment], map: "FK_DataKaryawan_DataDepartment", onDelete: NoAction, onUpdate: NoAction)
+  user User @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 
-  DataRiwayatKarir              DataRiwayatKarir[]
-  DataRiwayatKepanitiaan        DataRiwayatKepanitiaan[]
-  DataRiwayatOrganisasiInternal DataRiwayatOrganisasiInternal[]
-  DataRiwayatProject            DataRiwayatProject[]
-  DataTrainingWanted            DataTrainingWanted[]
-  DataCareerPlan                DataCareerPlan?
-  DataMentorWanted              DataMentorWanted?
-  EmpCareerChoice               EmpCareerChoice?                @relation(map: "FK_EmpCareerChoice_DataKaryawan")
-  DataRiwayatGKM                DataRiwayatGKM?
-
-  user User @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade)
-
-  Responses Responses[] @relation(map: "FK_Responses_DataKaryawan")
-
-  JobInterest JobInterest[] @relation(map: "FK_JobInterest_DataKaryawan")
-
-  Reasons Reasons[] @relation(map: "FK_Reasons_DataKaryawan")
+  careerHistories       CareerHistory[]
+  committeeHistories    CommitteeHistory[]
+  organizationHistories OrganizationHistory[]
+  projectHistories      ProjectHistory[]
+  trainingPreferences   TrainingPreference[]
+  careerPlan            CareerPlan?
+  mentorPreferences     MentorPreference?
+  employeeCareerChoice  EmployeeCareerChoice?
+  gkmHistory            GkmHistory?
+  responses             Response[]
+  jobInterests          JobInterest[]
+  reasons               Reason[]
 }
 
-model DataBranch {
-  idBranch        String            @id(map: "PK_DataBranch") @db.VarChar(10)
-  namaBranch      String            @db.VarChar(100)
-  alamat          String?
-  DataKaryawan    DataKaryawan[]
-  DataSupervisors DataSupervisors[] @relation(map: "FK_DataSupervisors_DataBranch")
-  JobVacancy      JobVacancy[]      @relation(map: "FK_JobVacancy_DataBranch")
+// Model Branch: Merepresentasikan data cabang perusahaan.
+model Branch {
+  id           String       @id @db.VarChar(10)
+  name         String       @db.VarChar(100)
+  address      String?
+  employees    Employee[]
+  supervisors  Supervisor[]
+  jobVacancies JobVacancy[]
 }
 
-model DataDepartment {
-  idDepartment   String         @id(map: "PK_DataDepartment") @db.VarChar(10)
-  namaDepartment String         @db.VarChar(100)
-  DataPosition   DataPosition[]
-  InvolvedDept   InvolvedDept[]
-  DataKaryawan   DataKaryawan[] @relation(map: "FK_DataKaryawan_DataDepartment")
+// Model Department: Merepresentasikan data departemen perusahaan.
+model Department {
+  id                  String                   @id @db.VarChar(10)
+  name                String                   @db.VarChar(100)
+  positions           Position[]
+  involvedDepartments FormInvolvedDepartment[]
+  employees           Employee[]
 }
 
-model DataPosition {
-  idPosition          Int                @id(map: "PK_DataPosition") @default(autoincrement())
-  namaPosition        String             @db.VarChar(100)
-  dept                String             @db.VarChar(10)
-  DataKaryawan        DataKaryawan[]
-  DataDepartment      DataDepartment     @relation(fields: [dept], references: [idDepartment], map: "FK_DataPosition_DataDepartment")
-  InvolvedPosition    InvolvedPosition[] @relation(map: "FK_InvolvedPosition_DataPosition")
-  existingCareerPaths CareerPath[]       @relation("ExistingPosition")
-  futureCareerPaths   CareerPath[]       @relation("FuturePosition")
-  DataSupervisors     DataSupervisors[]  @relation(map: "FK_DataSupervisors_DataPosition")
-  JobVacancy          JobVacancy[]       @relation(map: "FK_JobVacancy_DataPosition")
+// Model Position: Merepresentasikan data posisi pekerjaan.
+model Position {
+  id                  Int                          @id @default(autoincrement())
+  name                String                       @db.VarChar(100)
+  departmentId        String                       @db.VarChar(10)
+  employees           Employee[]
+  department          Department                   @relation(fields: [departmentId], references: [id])
+  involvedPositions   AssessmentInvolvedPosition[]
+  existingCareerPaths CareerPath[]                 @relation("ExistingPosition")
+  futureCareerPaths   CareerPath[]                 @relation("FuturePosition")
+  supervisors         Supervisor[]
+  jobVacancies        JobVacancy[]
 }
 
-model DataLevel {
-  idLevel         String            @id(map: "PK_DataLevel") @db.VarChar(10)
-  namaLevel       String            @db.VarChar(50)
-  DataKaryawan    DataKaryawan[]
-  DataSupervisors DataSupervisors[] @relation(map: "FK_DataSupervisors_DataLevel")
-  JobVacancy      JobVacancy[]      @relation(map: "FK_JobVacancy_DataLevel")
-  InvolvedLevel   InvolvedLevel[]   @relation(map: "FK_InvolvedLevel_DataLevel")
+// Model Level: Merepresentasikan data tingkatan posisi karyawan.
+model Level {
+  id             String              @id @db.VarChar(10)
+  name           String              @db.VarChar(50)
+  employees      Employee[]
+  supervisors    Supervisor[]
+  jobVacancies   JobVacancy[]
+  involvedLevels FormInvolvedLevel[]
 }
 
-model EmpCareerChoice {
-  nomorIndukKaryawan String       @id @db.VarChar(10)
-  careerDevWill      Boolean
-  rotationWill       Boolean?
-  crossDeptWill      Boolean?
-  DataKaryawan       DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, map: "FK_EmpCareerChoice_DataKaryawan")
+// Model EmployeeCareerChoice: Preferensi pengembangan karier karyawan.
+model EmployeeCareerChoice {
+  employeeId                   String   @id @db.VarChar(10)
+  careerDevelopmentWillingness Boolean
+  rotationWillingness          Boolean?
+  crossDepartmentWillingness   Boolean?
+  employee                     Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 }
 
-model Reasons {
-  nomorIndukKaryawan String       @id @db.VarChar(10)
-  rotunwillReason    String?
-  DataKaryawan       DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, map: "FK_Reasons_DataKaryawan")
+// Model Reason: Alasan ketidakbersediaan rotasi.
+model Reason {
+  employeeId              String   @id @db.VarChar(10)
+  rotationUnwillingReason String?
+  employee                Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 }
 
-model DataCareerPlan {
-  nomorIndukKaryawan  String       @id @db.VarChar(10)
-  positionShortTerm   String
-  positionLongTerm    String
-  DataKaryawan        DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, map: "FK_DataCareerPlan_DataKaryawan")
-  shortTermCareerPath CareerPath?  @relation("ShortTermCareerPath", fields: [positionShortTerm], references: [idCP], onUpdate: NoAction, onDelete: NoAction)
-  longTermCareerPath  CareerPath?  @relation("LongTermCareerPath", fields: [positionLongTerm], references: [idCP], onUpdate: NoAction, onDelete: NoAction)
+// Model CareerPlan: Rencana karier jangka pendek dan panjang karyawan.
+model CareerPlan {
+  employeeId          String      @id @db.VarChar(10)
+  shortTermPosition   String
+  longTermPosition    String
+  employee            Employee    @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
+  shortTermCareerPath CareerPath? @relation("ShortTermCareerPath", fields: [shortTermPosition], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  longTermCareerPath  CareerPath? @relation("LongTermCareerPath", fields: [longTermPosition], references: [id], onUpdate: NoAction, onDelete: NoAction)
 }
 
-model DataMentorWanted {
-  nomorIndukKaryawan String       @id @db.VarChar(10)
-  namaMentor         String?      @db.VarChar(100)
-  posisiMentor       String?      @db.VarChar(100)
-  cabangMentor       String?      @db.VarChar(100)
-  DataKaryawan       DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, map: "FK_DataMentorWanted_DataKaryawan")
+// Model MentorPreference: Preferensi mentor yang diinginkan karyawan.
+model MentorPreference {
+  employeeId     String   @id @db.VarChar(10)
+  mentorName     String?  @db.VarChar(100)
+  mentorPosition String?  @db.VarChar(100)
+  mentorBranch   String?  @db.VarChar(100)
+  employee       Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 }
 
-model DataRiwayatGKM {
-  nomorIndukKaryawan  String       @id @db.VarChar(10)
-  banyakKeikutsertaan Int?
-  posisiTertinggi     String?      @db.VarChar(50)
-  DataKaryawan        DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, onUpdate: Cascade, map: "FK_DataRiwayatGKM_DataKaryawan")
+// Model GkmHistory: Riwayat partisipasi GKM karyawan.
+model GkmHistory {
+  employeeId         String   @id @db.VarChar(10)
+  participationCount Int?
+  highestPosition    String?  @db.VarChar(50)
+  employee           Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade, onUpdate: Cascade)
 }
 
-model DataRiwayatKarir {
-  idCareerHistory    String       @id @default(cuid())
-  nomorIndukKaryawan String       @db.VarChar(10)
-  position           Int
-  levelPosition      String       @db.VarChar(10)
-  personnelArea      String       @db.VarChar(10)
-  tanggalMulai       DateTime?    @db.Date
-  tanggalBerakhir    DateTime?    @db.Date
-  status             Int
-  personnelSubarea   String       @db.VarChar(10)
-  DataKaryawan       DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, map: "FK_DataRiwayatKarir_DataKaryawan")
+// Model CareerHistory: Riwayat karier karyawan.
+model CareerHistory {
+  id              String    @id @default(cuid())
+  employeeId      String    @db.VarChar(10)
+  positionId      Int
+  levelId         String    @db.VarChar(10)
+  personnelAreaId String    @db.VarChar(10)
+  startDate       DateTime? @db.Date
+  endDate         DateTime? @db.Date
+  status          Int
+  departmentId    String    @db.VarChar(10)
+  employee        Employee  @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 
-  @@index([nomorIndukKaryawan])
+  @@index([employeeId])
 }
 
-model DataRiwayatKepanitiaan {
-  idRiwayatKepanitiaan String       @id(map: "PK_DataKepanitiaan") @default(cuid())
-  nomorIndukKaryawan   String       @db.VarChar(10)
-  namaAcara            String       @db.VarChar(100)
-  namaPosisi           String       @db.VarChar(100)
-  tahunPelaksanaan     Int
-  DataKaryawan         DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, map: "FK_DataRiwayatKepanitiaan_DataKaryawan")
+// Model CommitteeHistory: Riwayat kepanitiaan karyawan.
+model CommitteeHistory {
+  id           String   @id @default(cuid())
+  employeeId   String   @db.VarChar(10)
+  eventName    String   @db.VarChar(100)
+  positionName String   @db.VarChar(100)
+  year         Int
+  employee     Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 
-  @@index([nomorIndukKaryawan])
+  @@index([employeeId])
 }
 
-model DataRiwayatOrganisasiInternal {
-  idRiwayatOrganisasiInternal String       @id(map: "PK_DataRiwayatOrganisasiInternal") @default(cuid())
-  namaOrganisasi              String       @db.VarChar(100)
-  namaPosisi                  String       @db.VarChar(100)
-  tahunMulai                  Int
-  tahunSelesai                Int?
-  nomorIndukKaryawan          String       @db.VarChar(10)
-  DataKaryawan                DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, map: "FK_DataRiwayatOrganisasiInternal_DataKaryawan")
+// Model OrganizationHistory: Riwayat organisasi internal karyawan.
+model OrganizationHistory {
+  id               String   @id @default(cuid())
+  organizationName String   @db.VarChar(100)
+  positionName     String   @db.VarChar(100)
+  startDate        Int
+  endDate          Int?
+  employeeId       String   @db.VarChar(10)
+  employee         Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 
-  @@index([nomorIndukKaryawan])
+  @@index([employeeId])
 }
 
-model DataRiwayatProject {
-  idRiwayatProject   String       @id(map: "PK_DataRiwayatProject") @default(cuid())
-  judulProject       String       @db.VarChar(100)
-  namaPosisi         String       @db.VarChar(100)
-  lamaKolaborasi     Int
-  shortDesc          String
-  nomorIndukKaryawan String       @db.VarChar(10)
-  DataKaryawan       DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, map: "FK_DataRiwayatProject_DataKaryawan")
+// Model ProjectHistory: Riwayat proyek karyawan.
+model ProjectHistory {
+  id                    String   @id @default(cuid())
+  title                 String   @db.VarChar(100)
+  positionName          String   @db.VarChar(100)
+  collaborationDuration Int
+  shortDescription      String
+  employeeId            String   @db.VarChar(10)
+  employee              Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 
-  @@index([nomorIndukKaryawan])
+  @@index([employeeId])
 }
 
-model DataTrainingWanted {
-  idTraining         String       @id(map: "PK_Table1") @default(cuid())
-  nomorIndukKaryawan String       @db.VarChar(10)
-  topikTraining      String       @db.VarChar(100)
-  DataKaryawan       DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], onDelete: Cascade, map: "FK_DataTrainingWanted_DataKaryawan")
+// Model TrainingPreference: Preferensi pelatihan yang diinginkan karyawan.
+model TrainingPreference {
+  id         String   @id @default(cuid())
+  employeeId String   @db.VarChar(10)
+  topic      String   @db.VarChar(100)
+  employee   Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 
-  @@index([nomorIndukKaryawan])
+  @@index([employeeId])
 }
 
+// Model AssessmentType: Jenis penilaian dalam kuesioner.
 model AssessmentType {
-  idAssessmentType String             @id(map: "PK_AssessmentType") @default(cuid())
-  titleAT          String
-  descAT           String
-  typeAT           String             @db.VarChar(50)
-  idForm           String
-  Forms            Forms              @relation(fields: [idForm], references: [idForm], onDelete: Cascade, map: "FK_AssessmentType_Forms")
-  InvolvedPosition InvolvedPosition[]
-  Questions        Questions[]
+  id                String                       @id @default(cuid())
+  title             String
+  description       String
+  type              String                       @db.VarChar(50)
+  formId            String
+  form              Form                         @relation(fields: [formId], references: [id], onDelete: Cascade)
+  involvedPositions AssessmentInvolvedPosition[]
+  questions         Question[]
 }
 
-model Forms {
-  idForm         String           @id(map: "PK_Forms") @default(cuid())
-  titleForm      String
-  descForm       String
-  AssessmentType AssessmentType[]
-  InvolvedDept   InvolvedDept[]
-  Responses      Responses[]      @relation(map: "FK_Responses_Forms")
-  InvolvedLevel  InvolvedLevel[]  @relation(map: "FK_InvolvedLevel_Forms")
+// Model Form: Formulir kuesioner.
+model Form {
+  id                  String                   @id @default(cuid())
+  title               String
+  description         String
+  assessmentTypes     AssessmentType[]
+  involvedDepartments FormInvolvedDepartment[]
+  responses           Response[]
+  involvedLevels      FormInvolvedLevel[]
 }
 
-model InvolvedLevel {
-  idIL      String    @id(map: "PK_InvolvedLevel") @default(cuid())
-  idForm    String
-  idLevel   String    @db.VarChar(10)
-  Forms     Forms     @relation(fields: [idForm], references: [idForm], onDelete: Cascade, map: "FK_InvolvedLevel_Forms")
-  DataLevel DataLevel @relation(fields: [idLevel], references: [idLevel], onDelete: Cascade, map: "FK_InvolvedLevel_DataLevel")
+// Model FormInvolvedLevel: Tingkat yang terlibat dalam suatu formulir.
+model FormInvolvedLevel {
+  id      String @id @default(cuid())
+  formId  String
+  levelId String @db.VarChar(10)
+  form    Form   @relation(fields: [formId], references: [id], onDelete: Cascade)
+  level   Level  @relation(fields: [levelId], references: [id], onDelete: Cascade)
 }
 
-model InvolvedDept {
-  idID           String         @id(map: "PK_InvolvedDept") @default(cuid())
-  idForm         String
-  idDepartment   String         @db.VarChar(10)
-  DataDepartment DataDepartment @relation(fields: [idDepartment], references: [idDepartment], onDelete: Cascade, map: "FK_InvolvedDept_DataDepartment")
-  Forms          Forms          @relation(fields: [idForm], references: [idForm], onDelete: Cascade, map: "FK_InvolvedDept_Forms")
+// Model FormInvolvedDepartment: Departemen yang terlibat dalam suatu formulir.
+model FormInvolvedDepartment {
+  id           String     @id @default(cuid())
+  formId       String
+  departmentId String     @db.VarChar(10)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  form         Form       @relation(fields: [formId], references: [id], onDelete: Cascade)
 }
 
-model InvolvedPosition {
-  idIP             String         @id(map: "PK_InvolvedPosition") @default(cuid())
-  idAssessmentType String
-  idPosition       Int
-  AssessmentType   AssessmentType @relation(fields: [idAssessmentType], references: [idAssessmentType], onDelete: Cascade, map: "FK_InvolvedPosition_AssessmentType")
-  DataPosition     DataPosition   @relation(fields: [idPosition], references: [idPosition], onDelete: Cascade, map: "FK_InvolvedPosition_DataPosition")
+// Model AssessmentInvolvedPosition: Posisi yang terlibat dalam suatu jenis penilaian.
+model AssessmentInvolvedPosition {
+  id               String         @id @default(cuid())
+  assessmentTypeId String
+  positionId       Int
+  assessmentType   AssessmentType @relation(fields: [assessmentTypeId], references: [id], onDelete: Cascade)
+  position         Position       @relation(fields: [positionId], references: [id], onDelete: Cascade)
 }
 
-model Questions {
-  idQuestion     String         @id(map: "PK_Questions") @default(cuid())
-  titleQue       String
-  Question       String
-  idAT           String
-  AssessmentType AssessmentType @relation(fields: [idAT], references: [idAssessmentType], onDelete: Cascade, map: "FK_Questions_AssessmentType")
+// Model Question: Pertanyaan dalam kuesioner.
+model Question {
+  id               String         @id @default(cuid())
+  title            String
+  questionText     String
+  assessmentTypeId String
+  assessmentType   AssessmentType @relation(fields: [assessmentTypeId], references: [id], onDelete: Cascade)
 }
 
-model Responses {
-  idResp             String       @id(map: "PK_Responses") @default(cuid())
-  id_form            String
-  nomorIndukKaryawan String       @db.VarChar(10)
-  created_at         DateTime     @default(now())
-  Forms              Forms        @relation(fields: [id_form], references: [idForm], map: "FK_Responses_Forms")
-  DataKaryawan       DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], map: "FK_Responses_DataKaryawan")
-  Answers            Answers[]    @relation(map: "FK_Responses_Questions_Responses")
+// Model Response: Respons kuesioner dari seorang karyawan.
+model Response {
+  id         String   @id @default(cuid())
+  formId     String
+  employeeId String   @db.VarChar(10)
+  createdAt  DateTime @default(now())
+  form       Form     @relation(fields: [formId], references: [id])
+  employee   Employee @relation(fields: [employeeId], references: [employeeId])
+  answers    Answer[]
 }
 
-model Answers {
-  idAnswer   String    @id(map: "PK_Responses_Questions") @default(cuid())
-  idResp     String
-  idAssess   String
-  idQuestion String
-  answer     Int
-  Responses  Responses @relation(fields: [idResp], references: [idResp], onDelete: Cascade, map: "FK_Responses_Questions_Responses")
+// Model Answer: Jawaban spesifik untuk pertanyaan dalam kuesioner.
+model Answer {
+  id           String   @id @default(cuid())
+  responseId   String
+  assessmentId String
+  questionId   String
+  answerValue  Int
+  response     Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
 }
 
+// Model CareerPath: Jalur karier yang mungkin.
 model CareerPath {
-  idCP                String           @id(map: "PK_CareerPath") @default(cuid())
-  existing            Int
-  future              Int
-  startCareer         DataPosition     @relation("ExistingPosition", fields: [existing], references: [idPosition], onUpdate: NoAction, onDelete: NoAction)
-  desCareer           DataPosition     @relation("FuturePosition", fields: [future], references: [idPosition], onUpdate: NoAction, onDelete: NoAction)
-  DataCareerPlanShort DataCareerPlan[] @relation("ShortTermCareerPath")
-  DataCareerPlanLong  DataCareerPlan[] @relation("LongTermCareerPath")
+  id                   String       @id @default(cuid())
+  existingPositionId   Int
+  futurePositionId     Int
+  existingPosition     Position     @relation("ExistingPosition", fields: [existingPositionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  futurePosition       Position     @relation("FuturePosition", fields: [futurePositionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  shortTermCareerPlans CareerPlan[] @relation("ShortTermCareerPath")
+  longTermCareerPlans  CareerPlan[] @relation("LongTermCareerPath")
 }
 
-model DataSupervisors {
-  idSV               String       @id(map: "PK_DataSupervisors") @default(cuid())
-  personnelArea      String       @db.VarChar(10)
-  nomorIndukKaryawan String       @unique @db.VarChar(10)
-  namaKaryawan       String       @db.VarChar(100)
-  personnelSubarea   String       @db.VarChar(10)
-  position           Int
-  levelPosition      String       @db.VarChar(10)
-  tanggalMasukKerja  DateTime     @db.Date
-  tanggalLahir       DateTime     @db.Date
-  gender             String       @db.VarChar(10)
-  age                Float
-  tahunPensiun       DateTime
-  lengthOfService    Float
-  DataBranch         DataBranch   @relation(fields: [personnelArea], references: [idBranch], map: "FK_DataSupervisors_DataBranch", onDelete: NoAction)
-  DataLevel          DataLevel    @relation(fields: [levelPosition], references: [idLevel], map: "FK_DataSupervisors_DataLevel", onDelete: NoAction)
-  DataPosition       DataPosition @relation(fields: [position], references: [idPosition], map: "FK_DataSupervisors_DataPosition", onDelete: NoAction)
+// Model Supervisor: Data supervisor.
+model Supervisor {
+  id              String   @id @default(cuid())
+  personnelAreaId String   @db.VarChar(10)
+  employeeId      String   @unique @db.VarChar(10)
+  name            String   @db.VarChar(100)
+  positionId      Int
+  departmentId    String   @db.VarChar(10)
+  levelId         String   @db.VarChar(10)
+  hireDate        DateTime @db.Date
+  dateOfBirth     DateTime @db.Date
+  gender          String   @db.VarChar(10)
+  age             Float
+  retirementDate  DateTime
+  lengthOfService Float
+
+  branch   Branch   @relation(fields: [personnelAreaId], references: [id], onDelete: NoAction)
+  level    Level    @relation(fields: [levelId], references: [id], onDelete: NoAction)
+  position Position @relation(fields: [positionId], references: [id], onDelete: NoAction)
 }
 
+// Model JobVacancy: Lowongan kerja.
 model JobVacancy {
-  idJV             String        @id(map: "PK_JobVacancy") @default(cuid())
-  personnelArea    String        @db.VarChar(10)
-  personnelSubarea String        @db.VarChar(10)
-  position         Int
-  levelPosition    String        @db.VarChar(10)
-  available        DateTime
-  JobSummary       String?
-  JobDescription   String?
-  published        Int           @default(1)
-  DataBranch       DataBranch    @relation(fields: [personnelArea], references: [idBranch], map: "FK_JobVacancy_DataBranch", onDelete: NoAction)
-  DataLevel        DataLevel?    @relation(fields: [levelPosition], references: [idLevel], map: "FK_JobVacancy_DataLevel", onDelete: NoAction)
-  DataPosition     DataPosition  @relation(fields: [position], references: [idPosition], map: "FK_JobVacancy_DataPosition", onDelete: NoAction)
-  JobInterest      JobInterest[] @relation(map: "FK_JobInterest_JobVacancy")
+  id              String        @id @default(cuid())
+  personnelAreaId String        @db.VarChar(10)
+  departmentId    String        @db.VarChar(10)
+  positionId      Int
+  levelId         String        @db.VarChar(10)
+  availableDate   DateTime
+  jobSummary      String?
+  jobDescription  String?
+  published       Int           @default(1)
+  branch          Branch        @relation(fields: [personnelAreaId], references: [id], onDelete: NoAction)
+  level           Level?        @relation(fields: [levelId], references: [id], onDelete: NoAction)
+  position        Position      @relation(fields: [positionId], references: [id], onDelete: NoAction)
+  jobInterests    JobInterest[]
 }
 
+// Model JobInterest: Minat karyawan pada lowongan kerja.
 model JobInterest {
-  idJI               String       @id(map: "PK_JobInterest") @default(cuid())
-  nomorIndukKaryawan String       @db.VarChar(10)
-  idJV               String
-  createdAt          DateTime     @default(now())
-  karyawan           DataKaryawan @relation(fields: [nomorIndukKaryawan], references: [nomorIndukKaryawan], map: "FK_JobInterest_DataKaryawan", onDelete: Cascade)
-  jobVacancy         JobVacancy   @relation(fields: [idJV], references: [idJV], map: "FK_JobInterest_JobVacancy", onDelete: NoAction, onUpdate: NoAction)
+  id           String     @id @default(cuid())
+  employeeId   String     @db.VarChar(10)
+  jobVacancyId String
+  createdAt    DateTime   @default(now())
+  employee     Employee   @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
+  jobVacancy   JobVacancy @relation(fields: [jobVacancyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 }

@@ -1,1114 +1,344 @@
-import { prisma } from "@/lib/prisma";
+// prisma/seed.ts
+
+// Mengimpor instance Prisma Client dari lokasi baru yang direkomendasikan.
+// Pastikan path ini benar setelah Anda memindahkan file.
+import { prisma } from "@/app/lib/prisma";
 
 async function main() {
-	// Seed data contoh untuk tabel cabang
-	const Cabang = [
-		// atau personel area
-		{ idBranch: "N001", namaBranch: "ICBP-Noodle Head Office" },
-		{ idBranch: "N002", namaBranch: "ICBP-Noodle DKI" },
-		{ idBranch: "N003", namaBranch: "ICBP-Noodle Cibitung" },
-		{ idBranch: "N004", namaBranch: "ICBP-Noodle Tangerang" },
-		{ idBranch: "N005", namaBranch: "ICBP-Noodle Bandung" },
-		{ idBranch: "N006", namaBranch: "ICBP-Noodle Semarang" },
-		{ idBranch: "N007", namaBranch: "ICBP-Noodle Surabaya" },
-		{ idBranch: "N008", namaBranch: "ICBP-Noodle Medan" },
-		{ idBranch: "N009", namaBranch: "ICBP-Noodle Cirebon" },
-		{ idBranch: "P001", namaBranch: "ICBP-Noodle Pekanbaru" },
-		{ idBranch: "P002", namaBranch: "ICBP-Noodle Palembang" },
-		{ idBranch: "P003", namaBranch: "ICBP-Noodle Lampung" },
-		{ idBranch: "P004", namaBranch: "ICBP-Noodle Banjarmasin" },
-		{ idBranch: "P005", namaBranch: "ICBP-Noodle Pontianak" },
-		{ idBranch: "P006", namaBranch: "ICBP-Noodle Manado" },
-		{ idBranch: "P007", namaBranch: "ICBP-Noodle Makassar" },
-		{ idBranch: "P008", namaBranch: "ICBP-Noodle Jambi" },
-		{ idBranch: "P009", namaBranch: "ICBP-Noodle Tj. Api Api" },
+	console.log("Memulai seeding database...");
+
+	// Seed data untuk tabel Branch (sebelumnya DataBranch)
+	const branches = [
+		{ id: "N001", name: "ICBP-Noodle Head Office" },
+		{ id: "N002", name: "ICBP-Noodle DKI" },
+		{ id: "N003", name: "ICBP-Noodle Cibitung" },
+		{ id: "N004", name: "ICBP-Noodle Tangerang" },
+		{ id: "N005", name: "ICBP-Noodle Bandung" },
+		{ id: "N006", name: "ICBP-Noodle Semarang" },
+		{ id: "N007", name: "ICBP-Noodle Surabaya" },
+		{ id: "N008", name: "ICBP-Noodle Medan" },
+		{ id: "N009", name: "ICBP-Noodle Cirebon" },
+		{ id: "P001", name: "ICBP-Noodle Pekanbaru" },
+		{ id: "P002", name: "ICBP-Noodle Palembang" },
+		{ id: "P003", name: "ICBP-Noodle Lampung" },
+		{ id: "P004", name: "ICBP-Noodle Banjarmasin" },
+		{ id: "P005", name: "ICBP-Noodle Pontianak" },
+		{ id: "P006", name: "ICBP-Noodle Manado" },
+		{ id: "P007", name: "ICBP-Noodle Makassar" },
+		{ id: "P008", name: "ICBP-Noodle Jambi" },
+		{ id: "P009", name: "ICBP-Noodle Tj. Api Api" },
 	];
-	for (let i = 0; i < Cabang.length; i++) {
-		await prisma.dataBranch.upsert({
-			where: { idBranch: Cabang[i]["idBranch"] },
+	for (const branch of branches) {
+		await prisma.branch.upsert({
+			// Menggunakan nama model 'branch'
+			where: { id: branch.id }, // Menggunakan nama field 'id'
 			update: {},
 			create: {
-				idBranch: Cabang[i]["idBranch"],
-				namaBranch: Cabang[i]["namaBranch"],
+				id: branch.id,
+				name: branch.name, // Menggunakan nama field 'name'
 			},
 		});
 	}
+	console.log(`Seeded ${branches.length} branches.`);
 
-	const Department = [
-		// atau pers subarea
-		{ idDepartment: "ADM-FA", namaDepartment: "ADM Fin.& Acct." },
-		{ idDepartment: "ADM-GM", namaDepartment: "ADM Gen.Mgt" },
-		{ idDepartment: "ADM-HR", namaDepartment: "ADM HR" },
-		{ idDepartment: "MFG-MFT", namaDepartment: "MFG Manufactur" },
-		{ idDepartment: "MFG-PPIC", namaDepartment: "MFG PPIC" },
-		{ idDepartment: "MFG-PROD", namaDepartment: "MFG Production" },
-		{ idDepartment: "MFG-PURC", namaDepartment: "MFG Purchasing" },
-		{ idDepartment: "MFG-TECH", namaDepartment: "MFG Technical" },
-		{ idDepartment: "MFG-WRH", namaDepartment: "MFG Warehouse" },
-		{ idDepartment: "MKT-MKT", namaDepartment: "MKT Marketing" },
-		{ idDepartment: "MKT-SD", namaDepartment: "MKT Sales&Distr" },
-		{ idDepartment: "RND-QCA", namaDepartment: "R&D QC/QA" },
-		{ idDepartment: "RND-RD", namaDepartment: "R&D Resrch.Dev." },
+	// Seed data untuk tabel Department (sebelumnya DataDepartment)
+	const departments = [
+		{ id: "ADM-FA", name: "ADM Fin.& Acct." },
+		{ id: "ADM-GM", name: "ADM Gen.Mgt" },
+		{ id: "ADM-HR", name: "ADM HR" },
+		{ id: "MFG-MFT", name: "MFG Manufactur" },
+		{ id: "MFG-PPIC", name: "MFG PPIC" },
+		{ id: "MFG-PROD", name: "MFG Production" },
+		{ id: "MFG-PURC", name: "MFG Purchasing" },
+		{ id: "MFG-TECH", name: "MFG Technical" },
+		{ id: "MFG-WRH", name: "MFG Warehouse" },
+		{ id: "MKT-MKT", name: "MKT Marketing" },
+		{ id: "MKT-SD", name: "MKT Sales&Distr" },
+		{ id: "RND-QCA", name: "R&D QC/QA" },
+		{ id: "RND-RD", name: "R&D Resrch.Dev." },
 	];
-	for (let i = 0; i < Department.length; i++) {
-		await prisma.dataDepartment.upsert({
-			where: { idDepartment: Department[i]["idDepartment"] },
+	for (const department of departments) {
+		await prisma.department.upsert({
+			// Menggunakan nama model 'department'
+			where: { id: department.id }, // Menggunakan nama field 'id'
 			update: {},
 			create: {
-				idDepartment: Department[i]["idDepartment"],
-				namaDepartment: Department[i]["namaDepartment"],
+				id: department.id,
+				name: department.name, // Menggunakan nama field 'name'
 			},
 		});
 	}
+	console.log(`Seeded ${departments.length} departments.`);
 
-	const levelPosition = [
-		{ idLevel: "opr", namaLevel: "Operational" },
-		{ idLevel: "staff", namaLevel: "Staff" },
-		{ idLevel: "spv", namaLevel: "Supervisor" },
-		{ idLevel: "mgr", namaLevel: "Manager" },
+	// Seed data untuk tabel Level (sebelumnya DataLevel)
+	const levels = [
+		{ id: "opr", name: "Operational" },
+		{ id: "staff", name: "Staff" },
+		{ id: "spv", name: "Supervisor" },
+		{ id: "mgr", name: "Manager" },
 	];
-	for (let i = 0; i < levelPosition.length; i++) {
-		await prisma.dataLevel.upsert({
-			where: { idLevel: levelPosition[i]["idLevel"] },
+	for (const level of levels) {
+		await prisma.level.upsert({
+			// Menggunakan nama model 'level'
+			where: { id: level.id }, // Menggunakan nama field 'id'
 			update: {},
 			create: {
-				idLevel: levelPosition[i]["idLevel"],
-				namaLevel: levelPosition[i]["namaLevel"],
+				id: level.id,
+				name: level.name, // Menggunakan nama field 'name'
 			},
 		});
 	}
+	console.log(`Seeded ${levels.length} levels.`);
 
-	const Position = [
-		{
-			idPosition: 1,
-			namaPosition: "A & P Admin",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 2,
-			namaPosition: "A & P Coord",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 3,
-			namaPosition: "A & P Spv",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 4,
-			namaPosition: "A & P Staff",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 5,
-			namaPosition: "Acct Spv",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 6,
-			namaPosition: "Acct Staff",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 7,
-			namaPosition: "Admin to ASPM",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 8,
-			namaPosition: "Admin to BHRM",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 9,
-			namaPosition: "Admin to BPDQC Mgr",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 10,
-			namaPosition: "Admin to Fin & Acct Mgr",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 11,
-			namaPosition: "Admin to FM",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 12,
-			namaPosition: "Admin to PM",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 13,
-			namaPosition: "Admin to Whs Mgr",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 14,
-			namaPosition: "Area Sales & Promotion Mgr, Act",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 15,
-			namaPosition: "Area Sales & Promotion Repr",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 16,
-			namaPosition: "Area Sales & Promotion Repr, Act",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 17,
-			namaPosition: "Area Sales & Promotion Spv",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 18,
-			namaPosition: "Area Sales & Promotion Spv, Act",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 19,
-			namaPosition: "Assistant BM Indomie",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 20,
-			namaPosition: "Bag Noodle Dev Spv",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 21,
-			namaPosition: "BPDQC Mgr, Act",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 22,
-			namaPosition: "BPDQC Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 23,
-			namaPosition: "Branch HR Mgr, Act",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 24,
-			namaPosition: "Branch HR Officer",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 25,
-			namaPosition: "Budget & Controller Spv",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 26,
-			namaPosition: "Budget & Controller Spv, Act",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 27,
-			namaPosition: "Buyer",
-			personnelSubarea: "MFG-PURC",
-		},
-		{
-			idPosition: 28,
-			namaPosition: "Cashier",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 29,
-			namaPosition: "Category Management Specialist",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 30,
-			namaPosition: "Central Doc Control Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 31,
-			namaPosition: "Chemical Analyst",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 32,
-			namaPosition: "Comben Assistant",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 33,
-			namaPosition: "Comben Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 34,
-			namaPosition: "Comben Spv, Act",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 35,
-			namaPosition: "Comben Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 36,
-			namaPosition: "Continous Improvement Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 37,
-			namaPosition: "Coord Ingr. & Alkali",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 38,
-			namaPosition: "Cost & Finance Spv",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 39,
-			namaPosition: "Cost Acct Spv",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 40,
-			namaPosition: "Cost Acct Staff",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 41,
-			namaPosition: "CQA & CQC Admin",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 42,
-			namaPosition: "Cup Noodle & RM Dev Spv",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 43,
-			namaPosition: "Distribution Admin",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 44,
-			namaPosition: "Distribution Assistant",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 45,
-			namaPosition: "Distribution Officer",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 46,
-			namaPosition: "Distribution Officer, Act",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 47,
-			namaPosition: "Distribution Staff",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 48,
-			namaPosition: "Doc Controller Spv",
-			personnelSubarea: "ADM-GM",
-		},
-		{
-			idPosition: 49,
-			namaPosition: "Doc Controller Staff",
-			personnelSubarea: "ADM-GM",
-		},
-		{
-			idPosition: 50,
-			namaPosition: "Draft & Design Sect Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 51,
-			namaPosition: "Electrical Technical Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 52,
-			namaPosition: "Employee Service Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 53,
-			namaPosition: "Fin & Acct Mgr, Act",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 54,
-			namaPosition: "Finance Spv",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 55,
-			namaPosition: "Finance Staff",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 56,
-			namaPosition: "Flavour Dev Technician",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 57,
-			namaPosition: "Flavour Engineering & Dev Spv",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 58,
-			namaPosition: "Food Services Spv",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 59,
-			namaPosition: "GAS Assistant",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 60,
-			namaPosition: "GAS Coord",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 61,
-			namaPosition: "GAS Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 62,
-			namaPosition: "GAS Spv, Act",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 63,
-			namaPosition: "GAS Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 64,
-			namaPosition: "General Acct Spv",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 65,
-			namaPosition: "General Acct Staff",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 66,
-			namaPosition: "Halal Coord & Customer Complain Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 67,
-			namaPosition: "HCO EDP Spv",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 68,
-			namaPosition: "HCO Spv",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 69,
-			namaPosition: "HR Admin",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 70,
-			namaPosition: "HR Admin Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 71,
-			namaPosition: "HR EDP Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 72,
-			namaPosition: "HRIS & Comben Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 73,
-			namaPosition: "HRIS Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 74,
-			namaPosition: "Indomie Brand Admin",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 75,
-			namaPosition: "Instrument Analyst",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 76,
-			namaPosition: "IR & PR Asst",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 77,
-			namaPosition: "IR & PR Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 78,
-			namaPosition: "IR & PR Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 79,
-			namaPosition: "IR Assistant",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 80,
-			namaPosition: "IR Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 81,
-			namaPosition: "IR Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 82,
-			namaPosition: "Key Account Spv",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 83,
-			namaPosition: "Key Account Spv E-Commerce",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 84,
-			namaPosition: "Key Account Spv Modern Food Service",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 85,
-			namaPosition: "Key Account Spv MTKA",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 86,
-			namaPosition: "Lab Chemistry Coordinator",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 87,
-			namaPosition: "Lab Microbiology Coordinator",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 88,
-			namaPosition: "Management EDP Spv",
-			personnelSubarea: "ADM-GM",
-		},
-		{
-			idPosition: 89,
-			namaPosition: "Management EDP Spv, Act",
-			personnelSubarea: "ADM-GM",
-		},
-		{
-			idPosition: 90,
-			namaPosition: "Management EDP Staff",
-			personnelSubarea: "ADM-GM",
-		},
-		{
-			idPosition: 91,
-			namaPosition: "Manpower Productivity Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 92,
-			namaPosition: "Marketing Admin",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 93,
-			namaPosition: "Marketing EDP Spv",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 94,
-			namaPosition: "Marketing EDP Spv",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 95,
-			namaPosition: "Marketing EDP Spv, Act",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 96,
-			namaPosition: "Marketing EDP Staff",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 97,
-			namaPosition: "Microbiology Analyst",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 98,
-			namaPosition: "Modern Trade Promotion Analyst & Support",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 99,
-			namaPosition: "MT Acct",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 100,
-			namaPosition: "MT HR",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 101,
-			namaPosition: "MT MFG",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 102,
-			namaPosition: "MT PPIC",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 103,
-			namaPosition: "MT Sales",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 104,
-			namaPosition: "Nd Others, Shelf Life & Regulatory Staff",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 105,
-			namaPosition: "NPL Project & Shelf Life Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 106,
-			namaPosition: "OD & PD Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 107,
-			namaPosition: "Operation Dev Spv",
-			personnelSubarea: "MFG-MFT",
-		},
-		{
-			idPosition: 108,
-			namaPosition: "Org Dev Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 109,
-			namaPosition: "Org Dev Spv, Act",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 110,
-			namaPosition: "Org Dev Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 111,
-			namaPosition: "Panel Dev Staff",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 112,
-			namaPosition: "Panelis Dev Coordinator",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 113,
-			namaPosition: "People Dev Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 114,
-			namaPosition: "PPIC Assistant",
-			personnelSubarea: "MFG-PPIC",
-		},
-		{
-			idPosition: 115,
-			namaPosition: "PPIC RM Planning Assistant",
-			personnelSubarea: "MFG-PPIC",
-		},
-		{
-			idPosition: 116,
-			namaPosition: "PPIC RM Planning Staff",
-			personnelSubarea: "MFG-PPIC",
-		},
-		{
-			idPosition: 117,
-			namaPosition: "PPIC Spv",
-			personnelSubarea: "MFG-PPIC",
-		},
-		{
-			idPosition: 118,
-			namaPosition: "PPIC Spv, Act",
-			personnelSubarea: "MFG-PPIC",
-		},
-		{
-			idPosition: 119,
-			namaPosition: "PPIC Staff",
-			personnelSubarea: "MFG-PPIC",
-		},
-		{
-			idPosition: 120,
-			namaPosition: "PR Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 121,
-			namaPosition: "Prod EPS Section Spv",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 122,
-			namaPosition: "Prod EPS Spv",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 123,
-			namaPosition: "Prod Section SILO",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 124,
-			namaPosition: "Prod Section Spv",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 125,
-			namaPosition: "Prod Section Spv, Act",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 126,
-			namaPosition: "Prod Shift Spv",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 127,
-			namaPosition: "Prod Shift Spv, Act",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 128,
-			namaPosition: "Product Dev Technician",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 129,
-			namaPosition: "Production Mgr, Act",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 130,
-			namaPosition: "Production Spv",
-			personnelSubarea: "MFG-PROD",
-		},
-		{
-			idPosition: 131,
-			namaPosition: "Prototype Technician",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 132,
-			namaPosition: "Proximat Analyst",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 133,
-			namaPosition: "Purchasing Admin",
-			personnelSubarea: "MFG-PURC",
-		},
-		{
-			idPosition: 134,
-			namaPosition: "Purchasing Assistant",
-			personnelSubarea: "MFG-PURC",
-		},
-		{
-			idPosition: 135,
-			namaPosition: "Purchasing Officer",
-			personnelSubarea: "MFG-PURC",
-		},
-		{
-			idPosition: 136,
-			namaPosition: "Purchasing Staff",
-			personnelSubarea: "MFG-PURC",
-		},
-		{
-			idPosition: 137,
-			namaPosition: "QC Auditor Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 138,
-			namaPosition: "QC FG Section Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 139,
-			namaPosition: "QC FG Section Spv, Act",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 140,
-			namaPosition: "QC PD Section Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 141,
-			namaPosition: "QC PD Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 142,
-			namaPosition: "QC Process Section Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 143,
-			namaPosition: "QC Process Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 144,
-			namaPosition: "QC Process Spv, Act",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 145,
-			namaPosition: "QC RM & FG Section Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 146,
-			namaPosition: "QC RM & FG Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 147,
-			namaPosition: "QC RM & FG Spv, Act",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 148,
-			namaPosition: "QC RM Section Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 149,
-			namaPosition: "QC Section Spv",
-			personnelSubarea: "RND-QCA",
-		},
-		{
-			idPosition: 150,
-			namaPosition: "Sales EDP Spv",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 151,
-			namaPosition: "Sales Trainee",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 152,
-			namaPosition: "Sales Trainee - ASPR, Act",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 153,
-			namaPosition: "Sarimi Brand Admin",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 154,
-			namaPosition: "Secretary to BM",
-			personnelSubarea: "ADM-GM",
-		},
-		{
-			idPosition: 155,
-			namaPosition: "Secretary to Div. Head",
-			personnelSubarea: "ADM-GM",
-		},
-		{
-			idPosition: 156,
-			namaPosition: "Secretary to GM",
-			personnelSubarea: "ADM-GM",
-		},
-		{
-			idPosition: 157,
-			namaPosition: "Secretary to GM Fin & Acct",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 158,
-			namaPosition: "Secretary to GM HR",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 159,
-			namaPosition: "Secretary to GM Marketing",
-			personnelSubarea: "MKT-MKT",
-		},
-		{
-			idPosition: 160,
-			namaPosition: "Secretary to GM Mfg",
-			personnelSubarea: "MFG-MFT",
-		},
-		{
-			idPosition: 161,
-			namaPosition: "Secretary to GM Sales",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 162,
-			namaPosition: "Section Whs Spare Part",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 163,
-			namaPosition: "Security Chief",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 164,
-			namaPosition: "Security Grp Leader",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 165,
-			namaPosition: "SHE Assistant",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 166,
-			namaPosition: "SHE Spv",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 167,
-			namaPosition: "SHE Staff",
-			personnelSubarea: "ADM-HR",
-		},
-		{
-			idPosition: 168,
-			namaPosition: "System Analyst Spv",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 169,
-			namaPosition: "Targeted Flavour Dev Spv",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 170,
-			namaPosition: "Targeted Flavour Dev Staff",
-			personnelSubarea: "RND-RD",
-		},
-		{
-			idPosition: 171,
-			namaPosition: "Tax & Acct Spv",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 172,
-			namaPosition: "Tax Officer",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 173,
-			namaPosition: "Tax Staff",
-			personnelSubarea: "ADM-FA",
-		},
-		{
-			idPosition: 174,
-			namaPosition: "Tech Building & General Sec",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 175,
-			namaPosition: "Tech EPS Section Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 176,
-			namaPosition: "Tech PM Section Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 177,
-			namaPosition: "Tech Process Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 178,
-			namaPosition: "Tech Prod EPS Section Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 179,
-			namaPosition: "Tech Prod Section Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 180,
-			namaPosition: "Tech Prod Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 181,
-			namaPosition: "Tech Utility Section Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 182,
-			namaPosition: "Tech Utility Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 183,
-			namaPosition: "Tech Workshop Section",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 184,
-			namaPosition: "Tech Workshop Section Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 185,
-			namaPosition: "Technical Mgr, Act",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 186,
-			namaPosition: "Technical Spv",
-			personnelSubarea: "MFG-TECH",
-		},
-		{
-			idPosition: 187,
-			namaPosition: "Trade Marketing Spv GT",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 188,
-			namaPosition: "Trade Marketing Spv MTI",
-			personnelSubarea: "MKT-SD",
-		},
-		{
-			idPosition: 189,
-			namaPosition: "Warehouse FG Spv",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 190,
-			namaPosition: "Warehouse Mgr, Act",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 191,
-			namaPosition: "Warehouse Spv",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 192,
-			namaPosition: "Whs FG Section Spv",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 193,
-			namaPosition: "Whs FG Spv",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 194,
-			namaPosition: "Whs RM Admin",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 195,
-			namaPosition: "Whs RM Section Spv",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 196,
-			namaPosition: "Whs RM Section Spv, Act",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 197,
-			namaPosition: "Whs RM Spv",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 198,
-			namaPosition: "Whs RM Spv, Act",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 199,
-			namaPosition: "Whs SP & A&P Section Spv",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 200,
-			namaPosition: "Whs SP Section Spv",
-			personnelSubarea: "MFG-WRH",
-		},
-		{
-			idPosition: 201,
-			namaPosition: "Workshop Supervisor",
-			personnelSubarea: "MFG-TECH",
-		},
+	// Seed data untuk tabel Position (sebelumnya DataPosition)
+	const positions = [
+		{ id: 1, name: "A & P Admin", departmentId: "MKT-MKT" },
+		{ id: 2, name: "A & P Coord", departmentId: "MKT-MKT" },
+		{ id: 3, name: "A & P Spv", departmentId: "MKT-MKT" },
+		{ id: 4, name: "A & P Staff", departmentId: "MKT-MKT" },
+		{ id: 5, name: "Acct Spv", departmentId: "ADM-FA" },
+		{ id: 6, name: "Acct Staff", departmentId: "ADM-FA" },
+		{ id: 7, name: "Admin to ASPM", departmentId: "MKT-MKT" },
+		{ id: 8, name: "Admin to BHRM", departmentId: "ADM-HR" },
+		{ id: 9, name: "Admin to BPDQC Mgr", departmentId: "RND-QCA" },
+		{ id: 10, name: "Admin to Fin & Acct Mgr", departmentId: "ADM-FA" },
+		{ id: 11, name: "Admin to FM", departmentId: "MFG-PROD" },
+		{ id: 12, name: "Admin to PM", departmentId: "MFG-PROD" },
+		{ id: 13, name: "Admin to Whs Mgr", departmentId: "MFG-WRH" },
+		{ id: 14, name: "Area Sales & Promotion Mgr, Act", departmentId: "MKT-SD" },
+		{ id: 15, name: "Area Sales & Promotion Repr", departmentId: "MKT-SD" },
+		{
+			id: 16,
+			name: "Area Sales & Promotion Repr, Act",
+			departmentId: "MKT-SD",
+		},
+		{ id: 17, name: "Area Sales & Promotion Spv", departmentId: "MKT-SD" },
+		{ id: 18, name: "Area Sales & Promotion Spv, Act", departmentId: "MKT-SD" },
+		{ id: 19, name: "Assistant BM Indomie", departmentId: "MKT-MKT" },
+		{ id: 20, name: "Bag Noodle Dev Spv", departmentId: "RND-RD" },
+		{ id: 21, name: "BPDQC Mgr, Act", departmentId: "RND-QCA" },
+		{ id: 22, name: "BPDQC Spv", departmentId: "RND-QCA" },
+		{ id: 23, name: "Branch HR Mgr, Act", departmentId: "ADM-HR" },
+		{ id: 24, name: "Branch HR Officer", departmentId: "ADM-HR" },
+		{ id: 25, name: "Budget & Controller Spv", departmentId: "ADM-FA" },
+		{ id: 26, name: "Budget & Controller Spv, Act", departmentId: "ADM-FA" },
+		{ id: 27, name: "Buyer", departmentId: "MFG-PURC" },
+		{ id: 28, name: "Cashier", departmentId: "ADM-FA" },
+		{ id: 29, name: "Category Management Specialist", departmentId: "MKT-SD" },
+		{ id: 30, name: "Central Doc Control Spv", departmentId: "RND-QCA" },
+		{ id: 31, name: "Chemical Analyst", departmentId: "RND-QCA" },
+		{ id: 32, name: "Comben Assistant", departmentId: "ADM-HR" },
+		{ id: 33, name: "Comben Spv", departmentId: "ADM-HR" },
+		{ id: 34, name: "Comben Spv, Act", departmentId: "ADM-HR" },
+		{ id: 35, name: "Comben Staff", departmentId: "ADM-HR" },
+		{ id: 36, name: "Continous Improvement Spv", departmentId: "ADM-HR" },
+		{ id: 37, name: "Coord Ingr. & Alkali", departmentId: "MFG-PROD" },
+		{ id: 38, name: "Cost & Finance Spv", departmentId: "ADM-FA" },
+		{ id: 39, name: "Cost Acct Spv", departmentId: "ADM-FA" },
+		{ id: 40, name: "Cost Acct Staff", departmentId: "ADM-FA" },
+		{ id: 41, name: "CQA & CQC Admin", departmentId: "RND-QCA" },
+		{ id: 42, name: "Cup Noodle & RM Dev Spv", departmentId: "RND-RD" },
+		{ id: 43, name: "Distribution Admin", departmentId: "MKT-SD" },
+		{ id: 44, name: "Distribution Assistant", departmentId: "MKT-SD" },
+		{ id: 45, name: "Distribution Officer", departmentId: "MKT-SD" },
+		{ id: 46, name: "Distribution Officer, Act", departmentId: "MKT-SD" },
+		{ id: 47, name: "Distribution Staff", departmentId: "MKT-SD" },
+		{ id: 48, name: "Doc Controller Spv", departmentId: "ADM-GM" },
+		{ id: 49, name: "Doc Controller Staff", departmentId: "ADM-GM" },
+		{ id: 50, name: "Draft & Design Sect Spv", departmentId: "MFG-TECH" },
+		{ id: 51, name: "Electrical Technical Spv", departmentId: "MFG-TECH" },
+		{ id: 52, name: "Employee Service Staff", departmentId: "ADM-HR" },
+		{ id: 53, name: "Fin & Acct Mgr, Act", departmentId: "ADM-FA" },
+		{ id: 54, name: "Finance Spv", departmentId: "ADM-FA" },
+		{ id: 55, name: "Finance Staff", departmentId: "ADM-FA" },
+		{ id: 56, name: "Flavour Dev Technician", departmentId: "RND-RD" },
+		{ id: 57, name: "Flavour Engineering & Dev Spv", departmentId: "RND-RD" },
+		{ id: 58, name: "Food Services Spv", departmentId: "MKT-SD" },
+		{ id: 59, name: "GAS Assistant", departmentId: "ADM-HR" },
+		{ id: 60, name: "GAS Coord", departmentId: "ADM-HR" },
+		{ id: 61, name: "GAS Spv", departmentId: "ADM-HR" },
+		{ id: 62, name: "GAS Spv, Act", departmentId: "ADM-HR" },
+		{ id: 63, name: "GAS Staff", departmentId: "ADM-HR" },
+		{ id: 64, name: "General Acct Spv", departmentId: "ADM-FA" },
+		{ id: 65, name: "General Acct Staff", departmentId: "ADM-FA" },
+		{
+			id: 66,
+			name: "Halal Coord & Customer Complain Spv",
+			departmentId: "ADM-HR",
+		},
+		{ id: 67, name: "HCO EDP Spv", departmentId: "MKT-SD" },
+		{ id: 68, name: "HCO Spv", departmentId: "MKT-SD" },
+		{ id: 69, name: "HR Admin", departmentId: "ADM-HR" },
+		{ id: 70, name: "HR Admin Spv", departmentId: "ADM-HR" },
+		{ id: 71, name: "HR EDP Staff", departmentId: "ADM-HR" },
+		{ id: 72, name: "HRIS & Comben Spv", departmentId: "ADM-HR" },
+		{ id: 73, name: "HRIS Spv", departmentId: "ADM-HR" },
+		{ id: 74, name: "Indomie Brand Admin", departmentId: "MKT-MKT" },
+		{ id: 75, name: "Instrument Analyst", departmentId: "RND-QCA" },
+		{ id: 76, name: "IR & PR Asst", departmentId: "ADM-HR" },
+		{ id: 77, name: "IR & PR Spv", departmentId: "ADM-HR" },
+		{ id: 78, name: "IR & PR Staff", departmentId: "ADM-HR" },
+		{ id: 79, name: "IR Assistant", departmentId: "ADM-HR" },
+		{ id: 80, name: "IR Spv", departmentId: "ADM-HR" },
+		{ id: 81, name: "IR Staff", departmentId: "ADM-HR" },
+		{ id: 82, name: "Key Account Spv", departmentId: "MKT-SD" },
+		{ id: 83, name: "Key Account Spv E-Commerce", departmentId: "MKT-SD" },
+		{
+			id: 84,
+			name: "Key Account Spv Modern Food Service",
+			departmentId: "MKT-SD",
+		},
+		{ id: 85, name: "Key Account Spv MTKA", departmentId: "MKT-SD" },
+		{ id: 86, name: "Lab Chemistry Coordinator", departmentId: "RND-QCA" },
+		{ id: 87, name: "Lab Microbiology Coordinator", departmentId: "RND-QCA" },
+		{ id: 88, name: "Management EDP Spv", departmentId: "ADM-GM" },
+		{ id: 89, name: "Management EDP Spv, Act", departmentId: "ADM-GM" },
+		{ id: 90, name: "Management EDP Staff", departmentId: "ADM-GM" },
+		{ id: 91, name: "Manpower Productivity Spv", departmentId: "ADM-HR" },
+		{ id: 92, name: "Marketing Admin", departmentId: "MKT-MKT" },
+		{ id: 93, name: "Marketing EDP Spv", departmentId: "MKT-SD" },
+		{ id: 94, name: "Marketing EDP Spv", departmentId: "MKT-MKT" },
+		{ id: 95, name: "Marketing EDP Spv, Act", departmentId: "MKT-MKT" },
+		{ id: 96, name: "Marketing EDP Staff", departmentId: "MKT-MKT" },
+		{ id: 97, name: "Microbiology Analyst", departmentId: "RND-QCA" },
+		{
+			id: 98,
+			name: "Modern Trade Promotion Analyst & Support",
+			departmentId: "MKT-SD",
+		},
+		{ id: 99, name: "MT Acct", departmentId: "ADM-HR" },
+		{ id: 100, name: "MT HR", departmentId: "ADM-HR" },
+		{ id: 101, name: "MT MFG", departmentId: "ADM-HR" },
+		{ id: 102, name: "MT PPIC", departmentId: "ADM-HR" },
+		{ id: 103, name: "MT Sales", departmentId: "ADM-HR" },
+		{
+			id: 104,
+			name: "Nd Others, Shelf Life & Regulatory Staff",
+			departmentId: "RND-RD",
+		},
+		{ id: 105, name: "NPL Project & Shelf Life Spv", departmentId: "RND-QCA" },
+		{ id: 106, name: "OD & PD Staff", departmentId: "ADM-HR" },
+		{ id: 107, name: "Operation Dev Spv", departmentId: "MFG-MFT" },
+		{ id: 108, name: "Org Dev Spv", departmentId: "ADM-HR" },
+		{ id: 109, name: "Org Dev Spv, Act", departmentId: "ADM-HR" },
+		{ id: 110, name: "Org Dev Staff", departmentId: "ADM-HR" },
+		{ id: 111, name: "Panel Dev Staff", departmentId: "RND-RD" },
+		{ id: 112, name: "Panelis Dev Coordinator", departmentId: "RND-RD" },
+		{ id: 113, name: "People Dev Staff", departmentId: "ADM-HR" },
+		{ id: 114, name: "PPIC Assistant", departmentId: "MFG-PPIC" },
+		{ id: 115, name: "PPIC RM Planning Assistant", departmentId: "MFG-PPIC" },
+		{ id: 116, name: "PPIC RM Planning Staff", departmentId: "MFG-PPIC" },
+		{ id: 117, name: "PPIC Spv", departmentId: "MFG-PPIC" },
+		{ id: 118, name: "PPIC Spv, Act", departmentId: "MFG-PPIC" },
+		{ id: 119, name: "PPIC Staff", departmentId: "MFG-PPIC" },
+		{ id: 120, name: "PR Staff", departmentId: "ADM-HR" },
+		{ id: 121, name: "Prod EPS Section Spv", departmentId: "MFG-PROD" },
+		{ id: 122, name: "Prod EPS Spv", departmentId: "MFG-PROD" },
+		{ id: 123, name: "Prod Section SILO", departmentId: "MFG-PROD" },
+		{ id: 124, name: "Prod Section Spv", departmentId: "MFG-PROD" },
+		{ id: 125, name: "Prod Section Spv, Act", departmentId: "MFG-PROD" },
+		{ id: 126, name: "Prod Shift Spv", departmentId: "MFG-PROD" },
+		{ id: 127, name: "Prod Shift Spv, Act", departmentId: "MFG-PROD" },
+		{ id: 128, name: "Product Dev Technician", departmentId: "RND-RD" },
+		{ id: 129, name: "Production Mgr, Act", departmentId: "MFG-PROD" },
+		{ id: 130, name: "Production Spv", departmentId: "MFG-PROD" },
+		{ id: 131, name: "Prototype Technician", departmentId: "RND-RD" },
+		{ id: 132, name: "Proximat Analyst", departmentId: "RND-QCA" },
+		{ id: 133, name: "Purchasing Admin", departmentId: "MFG-PURC" },
+		{ id: 134, name: "Purchasing Assistant", departmentId: "MFG-PURC" },
+		{ id: 135, name: "Purchasing Officer", departmentId: "MFG-PURC" },
+		{ id: 136, name: "Purchasing Staff", departmentId: "MFG-PURC" },
+		{ id: 137, name: "QC Auditor Spv", departmentId: "RND-QCA" },
+		{ id: 138, name: "QC FG Section Spv", departmentId: "RND-QCA" },
+		{ id: 139, name: "QC FG Section Spv, Act", departmentId: "RND-QCA" },
+		{ id: 140, name: "QC PD Section Spv", departmentId: "RND-QCA" },
+		{ id: 141, name: "QC PD Spv", departmentId: "RND-QCA" },
+		{ id: 142, name: "QC Process Section Spv", departmentId: "RND-QCA" },
+		{ id: 143, name: "QC Process Spv", departmentId: "RND-QCA" },
+		{ id: 144, name: "QC Process Spv, Act", departmentId: "RND-QCA" },
+		{ id: 145, name: "QC RM & FG Section Spv", departmentId: "RND-QCA" },
+		{ id: 146, name: "QC RM & FG Spv", departmentId: "RND-QCA" },
+		{ id: 147, name: "QC RM & FG Spv, Act", departmentId: "RND-QCA" },
+		{ id: 148, name: "QC RM Section Spv", departmentId: "RND-QCA" },
+		{ id: 149, name: "QC Section Spv", departmentId: "RND-QCA" },
+		{ id: 150, name: "Sales EDP Spv", departmentId: "MKT-SD" },
+		{ id: 151, name: "Sales Trainee", departmentId: "ADM-HR" },
+		{ id: 152, name: "Sales Trainee - ASPR, Act", departmentId: "ADM-HR" },
+		{ id: 153, name: "Sarimi Brand Admin", departmentId: "MKT-MKT" },
+		{ id: 154, name: "Secretary to BM", departmentId: "ADM-GM" },
+		{ id: 155, name: "Secretary to Div. Head", departmentId: "ADM-GM" },
+		{ id: 156, name: "Secretary to GM", departmentId: "ADM-GM" },
+		{ id: 157, name: "Secretary to GM Fin & Acct", departmentId: "ADM-FA" },
+		{ id: 158, name: "Secretary to GM HR", departmentId: "ADM-HR" },
+		{ id: 159, name: "Secretary to GM Marketing", departmentId: "MKT-MKT" },
+		{ id: 160, name: "Secretary to GM Mfg", departmentId: "MFG-MFT" },
+		{ id: 161, name: "Secretary to GM Sales", departmentId: "MKT-SD" },
+		{ id: 162, name: "Section Whs Spare Part", departmentId: "MFG-TECH" },
+		{ id: 163, name: "Security Chief", departmentId: "ADM-HR" },
+		{ id: 164, name: "Security Grp Leader", departmentId: "ADM-HR" },
+		{ id: 165, name: "SHE Assistant", departmentId: "ADM-HR" },
+		{ id: 166, name: "SHE Spv", departmentId: "ADM-HR" },
+		{ id: 167, name: "SHE Staff", departmentId: "ADM-HR" },
+		{ id: 168, name: "System Analyst Spv", departmentId: "ADM-FA" },
+		{ id: 169, name: "Targeted Flavour Dev Spv", departmentId: "RND-RD" },
+		{ id: 170, name: "Targeted Flavour Dev Staff", departmentId: "RND-RD" },
+		{ id: 171, name: "Tax & Acct Spv", departmentId: "ADM-FA" },
+		{ id: 172, name: "Tax Officer", departmentId: "ADM-FA" },
+		{ id: 173, name: "Tax Staff", departmentId: "ADM-FA" },
+		{ id: 174, name: "Tech Building & General Sec", departmentId: "MFG-TECH" },
+		{ id: 175, name: "Tech EPS Section Spv", departmentId: "MFG-TECH" },
+		{ id: 176, name: "Tech PM Section Spv", departmentId: "MFG-TECH" },
+		{ id: 177, name: "Tech Process Spv", departmentId: "MFG-TECH" },
+		{ id: 178, name: "Tech Prod EPS Section Spv", departmentId: "MFG-TECH" },
+		{ id: 179, name: "Tech Prod Section Spv", departmentId: "MFG-TECH" },
+		{ id: 180, name: "Tech Prod Spv", departmentId: "MFG-TECH" },
+		{ id: 181, name: "Tech Utility Section Spv", departmentId: "MFG-TECH" },
+		{ id: 182, name: "Tech Utility Spv", departmentId: "MFG-TECH" },
+		{ id: 183, name: "Tech Workshop Section", departmentId: "MFG-TECH" },
+		{ id: 184, name: "Tech Workshop Section Spv", departmentId: "MFG-TECH" },
+		{ id: 185, name: "Technical Mgr, Act", departmentId: "MFG-TECH" },
+		{ id: 186, name: "Technical Spv", departmentId: "MFG-TECH" },
+		{ id: 187, name: "Trade Marketing Spv GT", departmentId: "MKT-SD" },
+		{ id: 188, name: "Trade Marketing Spv MTI", departmentId: "MKT-SD" },
+		{ id: 189, name: "Warehouse FG Spv", departmentId: "MFG-WRH" },
+		{ id: 190, name: "Warehouse Mgr, Act", departmentId: "MFG-WRH" },
+		{ id: 191, name: "Warehouse Spv", departmentId: "MFG-WRH" },
+		{ id: 192, name: "Whs FG Section Spv", departmentId: "MFG-WRH" },
+		{ id: 193, name: "Whs FG Spv", departmentId: "MFG-WRH" },
+		{ id: 194, name: "Whs RM Admin", departmentId: "MFG-WRH" },
+		{ id: 195, name: "Whs RM Section Spv", departmentId: "MFG-WRH" },
+		{ id: 196, name: "Whs RM Section Spv, Act", departmentId: "MFG-WRH" },
+		{ id: 197, name: "Whs RM Spv", departmentId: "MFG-WRH" },
+		{ id: 198, name: "Whs RM Spv, Act", departmentId: "MFG-WRH" },
+		{ id: 199, name: "Whs SP & A&P Section Spv", departmentId: "MFG-WRH" },
+		{ id: 200, name: "Whs SP Section Spv", departmentId: "MFG-WRH" },
+		{ id: 201, name: "Workshop Supervisor", departmentId: "MFG-TECH" },
 	];
-	for (let index = 0; index < Position.length; index++) {
-		await prisma.dataPosition.upsert({
-			where: {
-				idPosition: Position[index].idPosition,
-			},
+	for (const position of positions) {
+		await prisma.position.upsert({
+			// Menggunakan nama model 'position'
+			where: { id: position.id }, // Menggunakan nama field 'id'
 			update: {
-				namaPosition: Position[index].namaPosition,
-				dept: Position[index].personnelSubarea,
+				name: position.name, // Menggunakan nama field 'name'
+				departmentId: position.departmentId, // Menggunakan nama field 'departmentId'
 			},
 			create: {
-				namaPosition: Position[index].namaPosition,
-				dept: Position[index].personnelSubarea,
+				id: position.id,
+				name: position.name,
+				departmentId: position.departmentId,
 			},
 		});
 	}
+	console.log(`Seeded ${positions.length} positions.`);
 
-	console.log("Done seeding!");
+	console.log("Seeding database selesai!");
 }
 
 main()
 	.catch((e) => {
-		console.error(e);
+		console.error("Error selama seeding:", e);
 		process.exit(1);
 	})
 	.finally(async () => {
-		return null;
+		await prisma.$disconnect(); // Pastikan koneksi Prisma terputus
 	});
