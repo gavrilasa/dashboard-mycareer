@@ -7,13 +7,12 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
-		"seed": "ts-node prisma/seed.ts"
+		"seed": "tsx prisma/seed.ts",
+		"seed-test-users": "tsx prisma/seed-test-users.ts"
 	},
 	"dependencies": {
 		"@prisma/client": "^6.12.0",
-		"bcryptjs": "^3.0.2",
 		"next": "15.4.4",
-		"next-auth": "^4.24.11",
 		"react": "19.1.0",
 		"react-dom": "19.1.0"
 	},
@@ -27,7 +26,7 @@
 		"eslint-config-next": "15.4.4",
 		"prisma": "^6.12.0",
 		"tailwindcss": "^4",
-		"ts-node": "^10.9.2",
+		"tsx": "^4.20.3",
 		"typescript": "^5"
 	}
 }
