@@ -1,9 +1,11 @@
-// prisma/seed-test-users.ts
-
-import { PrismaClient } from "@prisma/client";
+import {
+	PrismaClient,
+	Gender,
+	UserRole,
+	EducationDegree,
+} from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 
-// Inisialisasi Prisma Client
 const prisma = new PrismaClient();
 
 async function generatePassword(
@@ -33,241 +35,123 @@ function calculateYearsDifference(startDate: Date): number {
 		years--;
 	}
 	const fraction = ((monthDifference + 12) % 12) / 12;
-	return years + fraction;
+	return parseFloat((years + fraction).toFixed(2));
 }
 
 async function main() {
 	console.log("Memulai seeding test users...");
 
-	// 1. Admin User
-	const adminEmployeeId = "ADM001";
-	const adminDob = "01011990";
-	const adminPassword = await generatePassword(adminEmployeeId, adminDob);
+	// --- Data Pengguna untuk Seeding ---
 
-	await prisma.user.upsert({
-		where: { employeeId: adminEmployeeId },
-		update: {},
-		create: {
-			employeeId: adminEmployeeId,
-			password: adminPassword,
-			role: "admin",
+	const usersToSeed = [
+		// 1 HR User
+		{
+			employeeId: "HRH001",
+			name: "HR Head Office",
+			dob: "05051992",
+			hireDate: "05052018",
+			gender: Gender.FEMALE,
 			branchId: "N001",
 			departmentId: "ADM-HR",
-			name: "Admin User",
-			email: "admin@example.com",
+			positionId: 72,
+			levelId: "spv",
+			education: EducationDegree.S1,
+			role: UserRole.HR,
 		},
-	});
-	console.log(`Seeded Admin user: ${adminEmployeeId}`);
-
-	// 2. HR User (Head Office)
-	const hrHoEmployeeId = "HRH001";
-	const hrHoDob = "05051992";
-	const hrHoHireDate = "05052018";
-	const hrHoPassword = await generatePassword(hrHoEmployeeId, hrHoDob);
-	const hrHoDateOfBirth = getDate(hrHoDob);
-	const hrHoHireDateObj = getDate(hrHoHireDate);
-
-	await prisma.user.upsert({
-		where: { employeeId: hrHoEmployeeId },
-		update: {},
-		create: {
-			employeeId: hrHoEmployeeId,
-			password: hrHoPassword,
-			role: "hr",
-			branchId: "N001",
-			departmentId: "ADM-HR",
-			name: "HR Head Office",
-			email: "hrho@example.com",
-		},
-	});
-	await prisma.employee.upsert({
-		where: { employeeId: hrHoEmployeeId },
-		update: {},
-		create: {
-			employeeId: hrHoEmployeeId,
-			name: "HR Head Office",
-			dateOfBirth: hrHoDateOfBirth,
-			hireDate: hrHoHireDateObj,
-			gender: "L",
-			personnelAreaId: "N001",
-			positionId: 8,
-			departmentId: "ADM-HR",
-			levelId: "staff",
-			age: calculateYearsDifference(hrHoDateOfBirth),
-			lengthOfService: calculateYearsDifference(hrHoHireDateObj),
-			educationDegree: "S1",
-			schoolName: "Universitas Contoh A",
-			majorName: "Manajemen SDM",
-			bestEmployeeScore: 90,
-			formFilledStatus: 1,
-			questionnaireStatus: 1,
-			createdAt: new Date(),
-			lastUpdatedAt: new Date(),
-		},
-	});
-	console.log(`Seeded HR Head Office user: ${hrHoEmployeeId}`);
-
-	// 3. HR User (Branch Office - N002 DKI)
-	const hrBranchEmployeeId = "HRB001";
-	const hrBranchDob = "10101993";
-	const hrBranchHireDate = "10102019";
-	const hrBranchPassword = await generatePassword(
-		hrBranchEmployeeId,
-		hrBranchDob
-	);
-	const hrBranchDateOfBirth = getDate(hrBranchDob);
-	const hrBranchHireDateObj = getDate(hrBranchHireDate);
-
-	await prisma.user.upsert({
-		where: { employeeId: hrBranchEmployeeId },
-		update: {},
-		create: {
-			employeeId: hrBranchEmployeeId,
-			password: hrBranchPassword,
-			role: "hr",
-			branchId: "N002",
-			departmentId: "ADM-HR",
-			name: "HR Branch DKI",
-			email: "hrb@example.com",
-		},
-	});
-	await prisma.employee.upsert({
-		where: { employeeId: hrBranchEmployeeId },
-		update: {},
-		create: {
-			employeeId: hrBranchEmployeeId,
-			name: "HR Branch DKI",
-			dateOfBirth: hrBranchDateOfBirth,
-			hireDate: hrBranchHireDateObj,
-			gender: "P",
-			personnelAreaId: "N002",
-			positionId: 24,
-			departmentId: "ADM-HR",
-			levelId: "staff",
-			age: calculateYearsDifference(hrBranchDateOfBirth),
-			lengthOfService: calculateYearsDifference(hrBranchHireDateObj),
-			educationDegree: "S1",
-			schoolName: "Universitas Contoh B",
-			majorName: "Administrasi",
-			bestEmployeeScore: 88,
-			formFilledStatus: 1,
-			questionnaireStatus: 1,
-			createdAt: new Date(),
-			lastUpdatedAt: new Date(),
-		},
-	});
-	console.log(`Seeded HR Branch DKI user: ${hrBranchEmployeeId}`);
-
-	// 4. HD User (Head Office - ADM-FA department)
-	const hdHoEmployeeId = "HDH001";
-	const hdHoDob = "15031991";
-	const hdHoHireDate = "15032016";
-	const hdHoPassword = await generatePassword(hdHoEmployeeId, hdHoDob);
-	const hdHoDateOfBirth = getDate(hdHoDob);
-	const hdHoHireDateObj = getDate(hdHoHireDate);
-
-	await prisma.user.upsert({
-		where: { employeeId: hdHoEmployeeId },
-		update: {},
-		create: {
-			employeeId: hdHoEmployeeId,
-			password: hdHoPassword,
-			role: "hd",
+		// 1 HD User
+		{
+			employeeId: "HDH001",
+			name: "HD Head Office",
+			dob: "15031991",
+			hireDate: "15032016",
+			gender: Gender.MALE,
 			branchId: "N001",
 			departmentId: "ADM-FA",
-			name: "HD Head Office",
-			email: "hdho@example.com",
-		},
-	});
-	await prisma.employee.upsert({
-		where: { employeeId: hdHoEmployeeId },
-		update: {},
-		create: {
-			employeeId: hdHoEmployeeId,
-			name: "HD Head Office",
-			dateOfBirth: hdHoDateOfBirth,
-			hireDate: hdHoHireDateObj,
-			gender: "L",
-			personnelAreaId: "N001",
 			positionId: 10,
-			departmentId: "ADM-FA",
-			levelId: "staff",
-			age: calculateYearsDifference(hdHoDateOfBirth),
-			lengthOfService: calculateYearsDifference(hdHoHireDateObj),
-			educationDegree: "S2",
-			schoolName: "Universitas Contoh C",
-			majorName: "Keuangan",
-			bestEmployeeScore: 92,
-			formFilledStatus: 1,
-			questionnaireStatus: 1,
-			createdAt: new Date(),
-			lastUpdatedAt: new Date(),
+			levelId: "mgr",
+			education: EducationDegree.S2,
+			role: UserRole.HD,
 		},
-	});
-	console.log(`Seeded HD Head Office user: ${hdHoEmployeeId}`);
-
-	// 5. Employee User
-	const employeeId = "EMP001";
-	const employeeDob = "20071995";
-	const employeeHireDate = "20072020";
-	const employeePassword = await generatePassword(employeeId, employeeDob);
-	const employeeDateOfBirth = getDate(employeeDob);
-	const employeeHireDateObj = getDate(employeeHireDate);
-
-	await prisma.user.upsert({
-		where: { employeeId: employeeId },
-		update: {},
-		create: {
-			employeeId: employeeId,
-			password: employeePassword,
-			role: "employee",
+		// 2 Employee Users
+		{
+			employeeId: "EMP001",
+			name: "Employee Test Satu",
+			dob: "20071995",
+			hireDate: "20072020",
+			gender: Gender.MALE,
 			branchId: "N002",
 			departmentId: "MFG-PROD",
-			name: "Employee Test",
-			email: "employee@example.com",
-		},
-	});
-	await prisma.employee.upsert({
-		where: { employeeId: employeeId },
-		update: {},
-		create: {
-			employeeId: employeeId,
-			name: "Employee Test",
-			dateOfBirth: employeeDateOfBirth,
-			hireDate: employeeHireDateObj,
-			gender: "L",
-			personnelAreaId: "N002",
-			positionId: 126,
-			departmentId: "MFG-PROD",
-			levelId: "spv",
-			age: calculateYearsDifference(employeeDateOfBirth),
-			lengthOfService: calculateYearsDifference(employeeHireDateObj),
-			educationDegree: "D3",
-			schoolName: "Politeknik Manufaktur",
-			majorName: "Teknik Produksi",
-			bestEmployeeScore: 85,
-			formFilledStatus: 0,
-			questionnaireStatus: 0,
-			createdAt: new Date(),
-			lastUpdatedAt: new Date(),
-		},
-	});
-	await prisma.careerHistory.upsert({
-		where: { id: `${employeeId}-initial-career` },
-		update: {},
-		create: {
-			id: `${employeeId}-initial-career`,
-			employeeId: employeeId,
 			positionId: 126,
 			levelId: "spv",
-			personnelAreaId: "N002",
-			departmentId: "MFG-PROD",
-			startDate: employeeHireDateObj,
-			status: 1,
-			endDate: null,
+			education: EducationDegree.D3,
+			role: UserRole.EMPLOYEE,
 		},
-	});
-	console.log(`Seeded Employee user: ${employeeId}`);
+		{
+			employeeId: "EMP002",
+			name: "Employee Test Dua",
+			dob: "21081996",
+			hireDate: "21082021",
+			gender: Gender.FEMALE,
+			branchId: "N004",
+			departmentId: "MFG-WRH",
+			positionId: 191,
+			levelId: "spv",
+			education: EducationDegree.D4,
+			role: UserRole.EMPLOYEE,
+		},
+	];
+
+	for (const userData of usersToSeed) {
+		const password = await generatePassword(userData.employeeId, userData.dob);
+		const dateOfBirth = getDate(userData.dob);
+		const hireDateObj = getDate(userData.hireDate);
+
+		// PERBAIKAN: Membuat User terlebih dahulu, lalu menyertakan data Employee di dalamnya.
+		await prisma.user.upsert({
+			where: { employeeId: userData.employeeId },
+			update: {},
+			create: {
+				employeeId: userData.employeeId,
+				password: password,
+				role: userData.role,
+				email: `${userData.employeeId.toLowerCase()}@example.com`,
+				// Nested write untuk membuat Employee yang berelasi
+				employee: {
+					create: {
+						name: userData.name,
+						dateOfBirth: dateOfBirth,
+						hireDate: hireDateObj,
+						gender: userData.gender,
+						personnelAreaId: userData.branchId,
+						positionId: userData.positionId,
+						departmentId: userData.departmentId,
+						levelId: userData.levelId,
+						age: calculateYearsDifference(dateOfBirth),
+						lengthOfService: calculateYearsDifference(hireDateObj),
+						educationDegree: userData.education,
+						schoolName: "Universitas Seeding",
+						majorName: "Jurusan Seeding",
+						bestEmployeeScore: Math.floor(Math.random() * (95 - 85 + 1) + 85), // Random score 85-95
+						formFilledStatus: 1,
+						questionnaireStatus: 1,
+						createdAt: new Date(),
+						// Nested write untuk membuat CareerHistory yang berelasi
+						careerHistories: {
+							create: {
+								positionId: userData.positionId,
+								levelId: userData.levelId,
+								personnelAreaId: userData.branchId,
+								departmentId: userData.departmentId,
+								startDate: hireDateObj,
+								status: 1,
+							},
+						},
+					},
+				},
+			},
+		});
+		console.log(`Seeded ${userData.role} user: ${userData.employeeId}`);
+	}
 
 	console.log("Seeding test users selesai!");
 }

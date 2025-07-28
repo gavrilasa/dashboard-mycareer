@@ -72,7 +72,6 @@ async function main() {
 
 	// Seed data untuk tabel Level (sebelumnya DataLevel)
 	const levels = [
-		{ id: "opr", name: "Operational" },
 		{ id: "staff", name: "Staff" },
 		{ id: "spv", name: "Supervisor" },
 		{ id: "mgr", name: "Manager" },

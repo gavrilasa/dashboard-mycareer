@@ -1,64 +1,68 @@
-// prisma/schema.prisma
-
-// Generator untuk Prisma Client, yang akan memungkinkan Anda berinteraksi dengan database.
 generator client {
   provider = "prisma-client-js"
 }
 
-// Konfigurasi datasource untuk database Anda.
-// Provider diatur ke 'postgresql' untuk Supabase.
-// URL koneksi diambil dari variabel lingkungan.
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
-// Model User: Merepresentasikan pengguna sistem (karyawan, HR, HD).
-model User {
-  employeeId   String    @id @unique @db.VarChar(10)
-  password     String
-  role         String    @db.VarChar(10)
-  branchId     String
-  departmentId String
-  name         String
-  email        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime? @updatedAt
-
-  employee Employee?
+enum Gender {
+  MALE
+  FEMALE
 }
 
-// Model Employee: Merepresentasikan data detail karyawan.
+enum UserRole {
+  EMPLOYEE
+  HD
+  HR
+}
+
+enum EducationDegree {
+  SMA_SMK
+  D3
+  D4
+  S1
+  S2
+  S3
+}
+
+model User {
+  employeeId String    @id @db.VarChar(10)
+  password   String
+  role       UserRole
+  email      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime? @updatedAt
+  employee   Employee?
+}
+
 model Employee {
-  employeeId      String   @id @unique @db.VarChar(10)
-  name            String   @db.VarChar(100)
-  dateOfBirth     DateTime @db.Date
-  hireDate        DateTime @db.Date
-  gender          String   @db.VarChar(10)
-  personnelAreaId String   @db.VarChar(10)
-  positionId      Int
-  departmentId    String   @db.VarChar(10)
-  levelId         String   @db.VarChar(10)
-  age             Float
-  lengthOfService Float
-  educationDegree String?  @db.VarChar(5)
-  schoolName      String?  @db.VarChar(100)
-  majorName       String?  @db.VarChar(100)
-
-  bestEmployeeScore   Int?
-  formFilledStatus    Int
-  questionnaireStatus Int
-  createdAt           DateTime
-  lastUpdatedAt       DateTime?
-
-  branch     Branch?     @relation(fields: [personnelAreaId], references: [id], onDelete: NoAction)
-  level      Level?      @relation(fields: [levelId], references: [id], onDelete: NoAction)
-  position   Position?   @relation(fields: [positionId], references: [id], onDelete: NoAction)
-  department Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  user User @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
-
+  employeeId            String                @id @db.VarChar(10)
+  name                  String                @db.VarChar(100)
+  dateOfBirth           DateTime              @db.Date
+  hireDate              DateTime              @db.Date
+  gender                Gender
+  personnelAreaId       String                @db.VarChar(10)
+  positionId            Int
+  departmentId          String                @db.VarChar(10)
+  levelId               String                @db.VarChar(10)
+  age                   Float
+  lengthOfService       Float
+  educationDegree       EducationDegree?
+  schoolName            String?               @db.VarChar(100)
+  majorName             String?               @db.VarChar(100)
+  bestEmployeeScore     Int?
+  formFilledStatus      Int
+  questionnaireStatus   Int
+  createdAt             DateTime
+  lastUpdatedAt         DateTime?
+  branch                Branch?               @relation(fields: [personnelAreaId], references: [id], onDelete: NoAction)
+  level                 Level?                @relation(fields: [levelId], references: [id], onDelete: NoAction)
+  position              Position?             @relation(fields: [positionId], references: [id], onDelete: NoAction)
+  department            Department?           @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user                  User?                 @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
   careerHistories       CareerHistory[]
   committeeHistories    CommitteeHistory[]
   organizationHistories OrganizationHistory[]
@@ -71,19 +75,22 @@ model Employee {
   responses             Response[]
   jobInterests          JobInterest[]
   reasons               Reason[]
+  supervisorInfo        Supervisor?
+
+  @@index([personnelAreaId])
+  @@index([positionId])
+  @@index([departmentId])
+  @@index([levelId])
 }
 
-// Model Branch: Merepresentasikan data cabang perusahaan.
 model Branch {
   id           String       @id @db.VarChar(10)
   name         String       @db.VarChar(100)
   address      String?
   employees    Employee[]
-  supervisors  Supervisor[]
   jobVacancies JobVacancy[]
 }
 
-// Model Department: Merepresentasikan data departemen perusahaan.
 model Department {
   id                  String                   @id @db.VarChar(10)
   name                String                   @db.VarChar(100)
@@ -92,7 +99,6 @@ model Department {
   employees           Employee[]
 }
 
-// Model Position: Merepresentasikan data posisi pekerjaan.
 model Position {
   id                  Int                          @id @default(autoincrement())
   name                String                       @db.VarChar(100)
@@ -102,21 +108,19 @@ model Position {
   involvedPositions   AssessmentInvolvedPosition[]
   existingCareerPaths CareerPath[]                 @relation("ExistingPosition")
   futureCareerPaths   CareerPath[]                 @relation("FuturePosition")
-  supervisors         Supervisor[]
   jobVacancies        JobVacancy[]
+
+  @@index([departmentId])
 }
 
-// Model Level: Merepresentasikan data tingkatan posisi karyawan.
 model Level {
   id             String              @id @db.VarChar(10)
   name           String              @db.VarChar(50)
   employees      Employee[]
-  supervisors    Supervisor[]
   jobVacancies   JobVacancy[]
   involvedLevels FormInvolvedLevel[]
 }
 
-// Model EmployeeCareerChoice: Preferensi pengembangan karier karyawan.
 model EmployeeCareerChoice {
   employeeId                   String   @id @db.VarChar(10)
   careerDevelopmentWillingness Boolean
@@ -125,24 +129,24 @@ model EmployeeCareerChoice {
   employee                     Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 }
 
-// Model Reason: Alasan ketidakbersediaan rotasi.
 model Reason {
   employeeId              String   @id @db.VarChar(10)
   rotationUnwillingReason String?
   employee                Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 }
 
-// Model CareerPlan: Rencana karier jangka pendek dan panjang karyawan.
 model CareerPlan {
-  employeeId          String      @id @db.VarChar(10)
-  shortTermPosition   String
-  longTermPosition    String
-  employee            Employee    @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
-  shortTermCareerPath CareerPath? @relation("ShortTermCareerPath", fields: [shortTermPosition], references: [id], onUpdate: NoAction, onDelete: NoAction)
-  longTermCareerPath  CareerPath? @relation("LongTermCareerPath", fields: [longTermPosition], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  employeeId            String      @id @db.VarChar(10)
+  shortTermCareerPathId String
+  longTermCareerPathId  String
+  employee              Employee    @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
+  shortTermCareerPath   CareerPath? @relation("ShortTermCareerPath", fields: [shortTermCareerPathId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  longTermCareerPath    CareerPath? @relation("LongTermCareerPath", fields: [longTermCareerPathId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  @@index([shortTermCareerPathId])
+  @@index([longTermCareerPathId])
 }
 
-// Model MentorPreference: Preferensi mentor yang diinginkan karyawan.
 model MentorPreference {
   employeeId     String   @id @db.VarChar(10)
   mentorName     String?  @db.VarChar(100)
@@ -151,7 +155,6 @@ model MentorPreference {
   employee       Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 }
 
-// Model GkmHistory: Riwayat partisipasi GKM karyawan.
 model GkmHistory {
   employeeId         String   @id @db.VarChar(10)
   participationCount Int?
@@ -159,7 +162,6 @@ model GkmHistory {
   employee           Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade, onUpdate: Cascade)
 }
 
-// Model CareerHistory: Riwayat karier karyawan.
 model CareerHistory {
   id              String    @id @default(cuid())
   employeeId      String    @db.VarChar(10)
@@ -175,7 +177,6 @@ model CareerHistory {
   @@index([employeeId])
 }
 
-// Model CommitteeHistory: Riwayat kepanitiaan karyawan.
 model CommitteeHistory {
   id           String   @id @default(cuid())
   employeeId   String   @db.VarChar(10)
@@ -187,7 +188,6 @@ model CommitteeHistory {
   @@index([employeeId])
 }
 
-// Model OrganizationHistory: Riwayat organisasi internal karyawan.
 model OrganizationHistory {
   id               String   @id @default(cuid())
   organizationName String   @db.VarChar(100)
@@ -200,7 +200,6 @@ model OrganizationHistory {
   @@index([employeeId])
 }
 
-// Model ProjectHistory: Riwayat proyek karyawan.
 model ProjectHistory {
   id                    String   @id @default(cuid())
   title                 String   @db.VarChar(100)
@@ -213,7 +212,6 @@ model ProjectHistory {
   @@index([employeeId])
 }
 
-// Model TrainingPreference: Preferensi pelatihan yang diinginkan karyawan.
 model TrainingPreference {
   id         String   @id @default(cuid())
   employeeId String   @db.VarChar(10)
@@ -223,7 +221,6 @@ model TrainingPreference {
   @@index([employeeId])
 }
 
-// Model AssessmentType: Jenis penilaian dalam kuesioner.
 model AssessmentType {
   id                String                       @id @default(cuid())
   title             String
@@ -233,9 +230,10 @@ model AssessmentType {
   form              Form                         @relation(fields: [formId], references: [id], onDelete: Cascade)
   involvedPositions AssessmentInvolvedPosition[]
   questions         Question[]
+
+  @@index([formId])
 }
 
-// Model Form: Formulir kuesioner.
 model Form {
   id                  String                   @id @default(cuid())
   title               String
@@ -246,43 +244,49 @@ model Form {
   involvedLevels      FormInvolvedLevel[]
 }
 
-// Model FormInvolvedLevel: Tingkat yang terlibat dalam suatu formulir.
 model FormInvolvedLevel {
   id      String @id @default(cuid())
   formId  String
   levelId String @db.VarChar(10)
   form    Form   @relation(fields: [formId], references: [id], onDelete: Cascade)
   level   Level  @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+  @@index([levelId])
 }
 
-// Model FormInvolvedDepartment: Departemen yang terlibat dalam suatu formulir.
 model FormInvolvedDepartment {
   id           String     @id @default(cuid())
   formId       String
   departmentId String     @db.VarChar(10)
   department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
   form         Form       @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId])
+  @@index([departmentId])
 }
 
-// Model AssessmentInvolvedPosition: Posisi yang terlibat dalam suatu jenis penilaian.
 model AssessmentInvolvedPosition {
   id               String         @id @default(cuid())
   assessmentTypeId String
   positionId       Int
   assessmentType   AssessmentType @relation(fields: [assessmentTypeId], references: [id], onDelete: Cascade)
   position         Position       @relation(fields: [positionId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentTypeId])
+  @@index([positionId])
 }
 
-// Model Question: Pertanyaan dalam kuesioner.
 model Question {
   id               String         @id @default(cuid())
   title            String
   questionText     String
   assessmentTypeId String
   assessmentType   AssessmentType @relation(fields: [assessmentTypeId], references: [id], onDelete: Cascade)
+
+  @@index([assessmentTypeId])
 }
 
-// Model Response: Respons kuesioner dari seorang karyawan.
 model Response {
   id         String   @id @default(cuid())
   formId     String
@@ -291,9 +295,11 @@ model Response {
   form       Form     @relation(fields: [formId], references: [id])
   employee   Employee @relation(fields: [employeeId], references: [employeeId])
   answers    Answer[]
+
+  @@index([formId])
+  @@index([employeeId])
 }
 
-// Model Answer: Jawaban spesifik untuk pertanyaan dalam kuesioner.
 model Answer {
   id           String   @id @default(cuid())
   responseId   String
@@ -301,9 +307,10 @@ model Answer {
   questionId   String
   answerValue  Int
   response     Response @relation(fields: [responseId], references: [id], onDelete: Cascade)
+
+  @@index([responseId])
 }
 
-// Model CareerPath: Jalur karier yang mungkin.
 model CareerPath {
   id                   String       @id @default(cuid())
   existingPositionId   Int
@@ -312,30 +319,17 @@ model CareerPath {
   futurePosition       Position     @relation("FuturePosition", fields: [futurePositionId], references: [id], onUpdate: NoAction, onDelete: NoAction)
   shortTermCareerPlans CareerPlan[] @relation("ShortTermCareerPath")
   longTermCareerPlans  CareerPlan[] @relation("LongTermCareerPath")
+
+  @@index([existingPositionId])
+  @@index([futurePositionId])
 }
 
-// Model Supervisor: Data supervisor.
 model Supervisor {
-  id              String   @id @default(cuid())
-  personnelAreaId String   @db.VarChar(10)
-  employeeId      String   @unique @db.VarChar(10)
-  name            String   @db.VarChar(100)
-  positionId      Int
-  departmentId    String   @db.VarChar(10)
-  levelId         String   @db.VarChar(10)
-  hireDate        DateTime @db.Date
-  dateOfBirth     DateTime @db.Date
-  gender          String   @db.VarChar(10)
-  age             Float
-  retirementDate  DateTime
-  lengthOfService Float
-
-  branch   Branch   @relation(fields: [personnelAreaId], references: [id], onDelete: NoAction)
-  level    Level    @relation(fields: [levelId], references: [id], onDelete: NoAction)
-  position Position @relation(fields: [positionId], references: [id], onDelete: NoAction)
+  id         String   @id @default(cuid())
+  employeeId String   @unique @db.VarChar(10)
+  employee   Employee @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
 }
 
-// Model JobVacancy: Lowongan kerja.
 model JobVacancy {
   id              String        @id @default(cuid())
   personnelAreaId String        @db.VarChar(10)
@@ -350,9 +344,13 @@ model JobVacancy {
   level           Level?        @relation(fields: [levelId], references: [id], onDelete: NoAction)
   position        Position      @relation(fields: [positionId], references: [id], onDelete: NoAction)
   jobInterests    JobInterest[]
+
+  @@index([personnelAreaId])
+  @@index([departmentId])
+  @@index([positionId])
+  @@index([levelId])
 }
 
-// Model JobInterest: Minat karyawan pada lowongan kerja.
 model JobInterest {
   id           String     @id @default(cuid())
   employeeId   String     @db.VarChar(10)
@@ -360,4 +358,7 @@ model JobInterest {
   createdAt    DateTime   @default(now())
   employee     Employee   @relation(fields: [employeeId], references: [employeeId], onDelete: Cascade)
   jobVacancy   JobVacancy @relation(fields: [jobVacancyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([employeeId])
+  @@index([jobVacancyId])
 }
