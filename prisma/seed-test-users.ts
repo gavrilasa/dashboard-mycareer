@@ -21,7 +21,7 @@ function getDate(dateString: string): Date {
 	const day = parseInt(dateString.substring(0, 2), 10);
 	const month = parseInt(dateString.substring(2, 4), 10) - 1; // Bulan di JS dimulai dari 0
 	const year = parseInt(dateString.substring(4, 8), 10);
-	return new Date(year, month, day);
+	return new Date(Date.UTC(year, month, day));
 }
 
 function calculateYearsDifference(startDate: Date): number {
@@ -106,7 +106,6 @@ async function main() {
 		const dateOfBirth = getDate(userData.dob);
 		const hireDateObj = getDate(userData.hireDate);
 
-		// PERBAIKAN: Membuat User terlebih dahulu, lalu menyertakan data Employee di dalamnya.
 		await prisma.user.upsert({
 			where: { employeeId: userData.employeeId },
 			update: {},
@@ -115,7 +114,6 @@ async function main() {
 				password: password,
 				role: userData.role,
 				email: `${userData.employeeId.toLowerCase()}@example.com`,
-				// Nested write untuk membuat Employee yang berelasi
 				employee: {
 					create: {
 						name: userData.name,
@@ -131,11 +129,10 @@ async function main() {
 						educationDegree: userData.education,
 						schoolName: "Universitas Seeding",
 						majorName: "Jurusan Seeding",
-						bestEmployeeScore: Math.floor(Math.random() * (95 - 85 + 1) + 85), // Random score 85-95
+						bestEmployeeScore: Math.floor(Math.random() * (95 - 85 + 1) + 85),
 						formFilledStatus: 1,
 						questionnaireStatus: 1,
 						createdAt: new Date(),
-						// Nested write untuk membuat CareerHistory yang berelasi
 						careerHistories: {
 							create: {
 								positionId: userData.positionId,

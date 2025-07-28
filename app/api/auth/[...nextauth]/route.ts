@@ -1,4 +1,3 @@
-// app/api/auth/[...nextauth]/route.ts
 import NextAuth, { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
@@ -19,44 +18,37 @@ export const authOptions: NextAuthOptions = {
 					return null;
 				}
 
-				// 1. Cari pengguna berdasarkan ID Karyawan (username)
 				const user = await prisma.user.findUnique({
 					where: { employeeId: credentials.employeeId },
+					include: { employee: true },
 				});
 
-				if (!user) {
-					return null; // Pengguna tidak ditemukan
+				if (!user || !user.employee) {
+					return null;
 				}
 
-				// 2. Bandingkan password yang dikirim dari klien SECARA LANGSUNG
-				//    (format: ID + Tanggal Lahir) dengan hash di database.
 				const isPasswordValid = await bcrypt.compare(
-					credentials.password, // Gunakan password dari input langsung
+					credentials.password,
 					user.password
 				);
 
 				if (!isPasswordValid) {
-					return null; // Password tidak cocok
+					return null;
 				}
 
-				// 3. Jika validasi berhasil, kembalikan objek pengguna
 				return {
 					id: user.employeeId,
-					employeeId: user.employeeId,
-					name: user.name,
+					name: user.employee.name,
 					email: user.email,
 					role: user.role,
-					branchId: user.branchId,
-					departmentId: user.departmentId,
+					branchId: user.employee.personnelAreaId,
+					departmentId: user.employee.departmentId,
 				};
 			},
 		}),
 	],
 	session: {
 		strategy: "jwt",
-		maxAge: 24 * 60 * 60,
-	},
-	jwt: {
 		maxAge: 24 * 60 * 60,
 	},
 	callbacks: {
@@ -80,6 +72,9 @@ export const authOptions: NextAuthOptions = {
 		},
 	},
 	secret: process.env.NEXTAUTH_SECRET,
+	pages: {
+		signIn: "/login",
+	},
 };
 
 const handler = NextAuth(authOptions);
