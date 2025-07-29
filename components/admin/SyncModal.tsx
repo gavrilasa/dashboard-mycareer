@@ -83,7 +83,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 		formData.append("file", selectedFile);
 
 		try {
-			const response = await fetch("/api/employees/sync/analyze", {
+			const response = await fetch("/api/admin/employees/sync/analyze", {
 				method: "POST",
 				body: formData,
 			});
@@ -127,7 +127,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 		if (!analysis) return;
 		setIsExecuting(true);
 		try {
-			const response = await fetch("/api/employees/sync/execute", {
+			const response = await fetch("/api/admin/employees/sync/execute", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				// The execute API doesn't need the 'changes' detail, so we send the original analysis object

@@ -57,7 +57,7 @@ export default function EmployeesPage() {
 				limit: limit.toString(),
 				search: debouncedSearchTerm,
 			});
-			const response = await fetch(`/api/employees?${params.toString()}`);
+			const response = await fetch(`/api/admin/employees?${params.toString()}`);
 			const result: PaginatedEmployees = await response.json();
 			setData(result.data);
 			setMeta(result.meta);
