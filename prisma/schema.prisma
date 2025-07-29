@@ -23,6 +23,8 @@ enum EducationDegree {
   SMP
   SMA
   SMK
+  D1
+  D2
   D3
   D4
   S1
