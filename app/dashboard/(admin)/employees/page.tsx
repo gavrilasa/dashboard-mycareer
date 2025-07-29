@@ -4,11 +4,28 @@ import { useState, useEffect, useCallback } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CrudTable } from "@/components/common/CrudTable";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2 } from "lucide-react";
-// import { EmployeeFormModal } from "./components/EmployeeFormModal";
-// import { DeleteConfirmationModal } from "./components/DeleteConfirmationModal";
+import { Edit, RefreshCcw, Trash2 } from "lucide-react";
+import { SyncModal } from "@/components/admin/SyncModal";
 
-// --- Tipe Data ---
+// --- Updated Type Definitions ---
+interface ChangeDetail {
+	field: string;
+	from: string | null;
+	to: string | null;
+}
+
+interface EmployeeUpdate {
+	employeeId: string;
+	name: string;
+	changes: ChangeDetail[];
+}
+
+interface SyncAnalysis {
+	toCreate: { employeeId: string; name: string }[];
+	toUpdate: EmployeeUpdate[];
+	toDelete: { employeeId: string; name: string }[];
+}
+
 interface Employee {
 	employeeId: string;
 	name: string;
@@ -16,6 +33,7 @@ interface Employee {
 	department: { name: string } | null;
 	branch: { name: string } | null;
 }
+
 interface PaginatedEmployees {
 	data: Employee[];
 	meta: { totalRecords: number; totalPages: number };
@@ -25,18 +43,11 @@ export default function EmployeesPage() {
 	const [data, setData] = useState<Employee[]>([]);
 	const [meta, setMeta] = useState({ totalRecords: 0, totalPages: 1 });
 	const [loading, setLoading] = useState(true);
-
 	const [limit, setLimit] = useState(10);
 	const [page, setPage] = useState(1);
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
-
-	// State for modals
-	const [isModalOpen, setIsModalOpen] = useState(false);
-	const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-		null
-	);
-	const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+	const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
 
 	const fetchEmployees = useCallback(async () => {
 		setLoading(true);
@@ -64,29 +75,16 @@ export default function EmployeesPage() {
 		setPage(1);
 	}, [limit, debouncedSearchTerm]);
 
-	const handleCreate = () => {
-		setSelectedEmployee(null);
-		setIsModalOpen(true);
-		console.log("Open create modal");
-	};
-
-	const handleEdit = (employee: Employee) => {
-		setSelectedEmployee(employee);
-		setIsModalOpen(true);
+	const handleCreate = () => console.log("Open create modal");
+	const handleEdit = (employee: Employee) =>
 		console.log("Open edit modal for:", employee.employeeId);
-	};
-
-	const handleDelete = (employee: Employee) => {
-		setSelectedEmployee(employee);
-		setIsDeleteModalOpen(true);
+	const handleDelete = (employee: Employee) =>
 		console.log("Open delete modal for:", employee.employeeId);
-	};
 
-	// PERBAIKAN: Definisi kolom diperbarui sesuai permintaan
 	const columns = [
 		{
 			header: "ID",
-			className: "w-[15%]",
+			className: "w-[10%]",
 			accessor: (item: Employee) => item.employeeId,
 		},
 		{
@@ -101,7 +99,7 @@ export default function EmployeesPage() {
 		},
 		{
 			header: "Dept",
-			className: "w-15%]",
+			className: "w-[20%]",
 			accessor: (item: Employee) => item.department?.name || "-",
 		},
 		{
@@ -118,7 +116,7 @@ export default function EmployeesPage() {
 						onClick={() => handleEdit(item)}
 						variant="ghost"
 						size="icon"
-						className="h-8 w-8 text-gray-500 hover:text-blue-600"
+						className="h-6 w-6 text-gray-500 hover:text-blue-600"
 					>
 						<Edit size={16} />
 					</Button>
@@ -126,7 +124,7 @@ export default function EmployeesPage() {
 						onClick={() => handleDelete(item)}
 						variant="ghost"
 						size="icon"
-						className="h-8 w-8 text-gray-500 hover:text-red-600"
+						className="h-6 w-6 text-gray-500 hover:text-red-600"
 					>
 						<Trash2 size={16} />
 					</Button>
@@ -137,8 +135,16 @@ export default function EmployeesPage() {
 
 	return (
 		<>
+			<div className="flex items-center justify-between mb-4">
+				<h1 className="text-2xl font-bold text-gray-800">Data Karyawan</h1>
+				<Button variant="default" onClick={() => setIsSyncModalOpen(true)}>
+					<RefreshCcw className="mr-2 h-4 w-4" />
+					Synchronize Data
+				</Button>
+			</div>
+
 			<CrudTable
-				title="Data Karyawan"
+				title=""
 				columns={columns}
 				data={data}
 				loading={loading}
@@ -155,21 +161,14 @@ export default function EmployeesPage() {
 				}}
 			/>
 
-			{/* Modals for CRUD operations will be rendered here.
-        They are conditionally rendered based on the state managed in this page.
-      */}
-			{/* <EmployeeFormModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        employee={selectedEmployee}
-        onSuccess={fetchEmployees} // Refresh data on success
-      />
-      <DeleteConfirmationModal
-        isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
-        employee={selectedEmployee}
-        onSuccess={fetchEmployees} // Refresh data on success
-      /> */}
+			<SyncModal
+				isOpen={isSyncModalOpen}
+				onClose={() => setIsSyncModalOpen(false)}
+				onSuccess={() => {
+					fetchEmployees();
+					setIsSyncModalOpen(false);
+				}}
+			/>
 		</>
 	);
 }

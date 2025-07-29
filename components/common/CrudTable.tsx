@@ -17,9 +17,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Search, PlusCircle } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { Pagination } from "./Pagination";
-import { Button } from "../ui/button";
 
 // Generic types for reusability
 interface Column<T> {
@@ -54,7 +53,6 @@ interface CrudTableProps<T> {
 type DataItem = { id?: string; employeeId?: string };
 
 export function CrudTable<T extends DataItem>({
-	title,
 	columns,
 	data,
 	loading,
@@ -62,7 +60,6 @@ export function CrudTable<T extends DataItem>({
 	onLimitChange,
 	searchTerm,
 	onSearchChange,
-	onCreate,
 	pagination,
 }: CrudTableProps<T>) {
 	const { currentPage, totalPages, totalRecords, onPageChange } = pagination;
@@ -89,13 +86,6 @@ export function CrudTable<T extends DataItem>({
 
 	return (
 		<div>
-			<div className="flex items-center justify-between mb-6">
-				<h1 className="text-2xl font-bold text-gray-800">{title}</h1>
-				<Button onClick={onCreate}>
-					<PlusCircle className="mr-2 h-4 w-4" />
-					Tambah Data
-				</Button>
-			</div>
 			<div className="px-6 pt-6 pb-5 bg-white border border-gray-200 rounded-lg shadow-md">
 				<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
 					<div className="flex items-center gap-2">
@@ -163,7 +153,6 @@ export function CrudTable<T extends DataItem>({
 											const titleText = getCellTextContent(item, col.accessor);
 											return (
 												<TableCell key={col.header} className="py-3">
-													{/* PERBAIKAN: Wrapper div untuk ellipsis dan tooltip */}
 													<div className="truncate" title={titleText}>
 														{cellContent}
 													</div>
