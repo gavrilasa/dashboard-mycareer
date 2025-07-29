@@ -47,7 +47,10 @@ interface DataTableProps<T> {
 	};
 }
 
-export function DataTable<T extends { id: any }>({
+// The unique identifier for each row must be 'id' of type string or number
+type DataItem = { id: string | number };
+
+export function DataTable<T extends DataItem>({
 	columns,
 	data,
 	loading,
@@ -58,8 +61,25 @@ export function DataTable<T extends { id: any }>({
 	pagination,
 }: DataTableProps<T>) {
 	const { currentPage, totalPages, totalRecords, onPageChange } = pagination;
-	const startEntry = (currentPage - 1) * limit + 1;
+	const startEntry = totalRecords > 0 ? (currentPage - 1) * limit + 1 : 0;
 	const endEntry = Math.min(currentPage * limit, totalRecords);
+
+	// Helper function to get raw text content for the tooltip (title attribute)
+	const getCellTextContent = (
+		item: T,
+		accessor: Column<T>["accessor"]
+	): string => {
+		const value = accessor(item);
+		if (React.isValidElement(value)) {
+			// Safely access props with a more specific type
+			const props = value.props as { children?: React.ReactNode };
+			if (props && props.children) {
+				return React.Children.toArray(props.children).join("");
+			}
+			return "";
+		}
+		return String(value ?? "");
+	};
 
 	return (
 		<div className="px-6 pt-6 pb-5 bg-white border border-gray-200 rounded-lg shadow-md">
@@ -120,11 +140,21 @@ export function DataTable<T extends { id: any }>({
 						) : data.length > 0 ? (
 							data.map((item) => (
 								<TableRow key={item.id} className="border-b border-gray-200">
-									{columns.map((col) => (
-										<TableCell key={col.header} className="py-3">
-											{col.accessor(item)}
-										</TableCell>
-									))}
+									{columns.map((col) => {
+										const cellContent = col.accessor(item);
+										const titleText = getCellTextContent(item, col.accessor);
+										return (
+											<TableCell
+												key={col.header}
+												className="py-3 whitespace-nowrap overflow-hidden text-ellipsis"
+											>
+												{/* The div with 'truncate' is essential for ellipsis to work correctly */}
+												<div className="truncate" title={titleText}>
+													{cellContent}
+												</div>
+											</TableCell>
+										);
+									})}
 								</TableRow>
 							))
 						) : (
