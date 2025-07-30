@@ -1,47 +1,68 @@
 // prisma/seed.ts
 
-// Mengimpor instance Prisma Client dari lokasi baru yang direkomendasikan.
-// Pastikan path ini benar setelah Anda memindahkan file.
-import { prisma } from "@/app/lib/prisma";
+import { PrismaClient, PositionLevel } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+function getPositionLevel(name: string): PositionLevel {
+	const lowerCaseName = name.toLowerCase();
+	if (lowerCaseName.includes("mgr") || lowerCaseName.includes("manager")) {
+		return PositionLevel.MANAGER;
+	}
+	if (
+		lowerCaseName.includes("spv") ||
+		lowerCaseName.includes("supervisor") ||
+		lowerCaseName.includes("coord")
+	) {
+		return PositionLevel.SUPERVISOR;
+	}
+	return PositionLevel.STAFF;
+}
 
 async function main() {
-	console.log("Memulai seeding database...");
+	console.log("🚀 Memulai proses seeding database...");
 
-	// Seed data untuk tabel Branch (sebelumnya DataBranch)
+	// --- 1. Seed Branches ---
 	const branches = [
-		{ id: "N001", name: "ICBP-Noodle Head Office" },
-		{ id: "N002", name: "ICBP-Noodle DKI" },
-		{ id: "N003", name: "ICBP-Noodle Cibitung" },
-		{ id: "N004", name: "ICBP-Noodle Tangerang" },
-		{ id: "N005", name: "ICBP-Noodle Bandung" },
-		{ id: "N006", name: "ICBP-Noodle Semarang" },
-		{ id: "N007", name: "ICBP-Noodle Surabaya" },
-		{ id: "N008", name: "ICBP-Noodle Medan" },
-		{ id: "N009", name: "ICBP-Noodle Cirebon" },
-		{ id: "P001", name: "ICBP-Noodle Pekanbaru" },
-		{ id: "P002", name: "ICBP-Noodle Palembang" },
-		{ id: "P003", name: "ICBP-Noodle Lampung" },
-		{ id: "P004", name: "ICBP-Noodle Banjarmasin" },
-		{ id: "P005", name: "ICBP-Noodle Pontianak" },
-		{ id: "P006", name: "ICBP-Noodle Manado" },
-		{ id: "P007", name: "ICBP-Noodle Makassar" },
-		{ id: "P008", name: "ICBP-Noodle Jambi" },
-		{ id: "P009", name: "ICBP-Noodle Tj. Api Api" },
+		{ id: "N001", name: "ICBP-Noodle Head Office", isHeadOffice: true },
+		{ id: "N002", name: "ICBP-Noodle DKI", isHeadOffice: false },
+		{ id: "N003", name: "ICBP-Noodle Cibitung", isHeadOffice: false },
+		{ id: "N004", name: "ICBP-Noodle Tangerang", isHeadOffice: false },
+		{ id: "N005", name: "ICBP-Noodle Bandung", isHeadOffice: false },
+		{ id: "N006", name: "ICBP-Noodle Semarang", isHeadOffice: false },
+		{ id: "N007", name: "ICBP-Noodle Surabaya", isHeadOffice: false },
+		{ id: "N008", name: "ICBP-Noodle Medan", isHeadOffice: false },
+		{ id: "N009", name: "ICBP-Noodle Cirebon", isHeadOffice: false },
+		{ id: "P001", name: "ICBP-Noodle Pekanbaru", isHeadOffice: false },
+		{ id: "P002", name: "ICBP-Noodle Palembang", isHeadOffice: false },
+		{ id: "P003", name: "ICBP-Noodle Lampung", isHeadOffice: false },
+		{ id: "P004", name: "ICBP-Noodle Banjarmasin", isHeadOffice: false },
+		{ id: "P005", name: "ICBP-Noodle Pontianak", isHeadOffice: false },
+		{ id: "P006", name: "ICBP-Noodle Manado", isHeadOffice: false },
+		{ id: "P007", name: "ICBP-Noodle Makassar", isHeadOffice: false },
+		{ id: "P008", name: "ICBP-Noodle Jambi", isHeadOffice: false },
+		{ id: "P009", name: "ICBP-Noodle Tj. Api Api", isHeadOffice: false },
 	];
+
 	for (const branch of branches) {
 		await prisma.branch.upsert({
-			// Menggunakan nama model 'branch'
-			where: { id: branch.id }, // Menggunakan nama field 'id'
-			update: {},
+			where: { id: branch.id },
+			// FIX: The update object only contains fields to be updated
+			update: {
+				name: branch.name,
+				isHeadOffice: branch.isHeadOffice,
+			},
+			// FIX: The create object contains all required fields for creation
 			create: {
 				id: branch.id,
-				name: branch.name, // Menggunakan nama field 'name'
+				name: branch.name,
+				isHeadOffice: branch.isHeadOffice,
 			},
 		});
 	}
-	console.log(`Seeded ${branches.length} branches.`);
+	console.log(`✅ Berhasil seeding ${branches.length} cabang.`);
 
-	// Seed data untuk tabel Department (sebelumnya DataDepartment)
+	// --- 2. Seed Departments ---
 	const departments = [
 		{ id: "ADM-FA", name: "ADM Fin.& Acct." },
 		{ id: "ADM-GM", name: "ADM Gen.Mgt" },
@@ -57,40 +78,18 @@ async function main() {
 		{ id: "RND-QCA", name: "R&D QC/QA" },
 		{ id: "RND-RD", name: "R&D Resrch.Dev." },
 	];
-	for (const department of departments) {
+
+	for (const dept of departments) {
 		await prisma.department.upsert({
-			// Menggunakan nama model 'department'
-			where: { id: department.id }, // Menggunakan nama field 'id'
-			update: {},
-			create: {
-				id: department.id,
-				name: department.name, // Menggunakan nama field 'name'
-			},
+			where: { id: dept.id },
+			update: { name: dept.name },
+			create: { id: dept.id, name: dept.name },
 		});
 	}
-	console.log(`Seeded ${departments.length} departments.`);
+	console.log(`✅ Berhasil seeding ${departments.length} departemen.`);
 
-	// Seed data untuk tabel Level (sebelumnya DataLevel)
-	const levels = [
-		{ id: "staff", name: "Staff" },
-		{ id: "spv", name: "Supervisor" },
-		{ id: "mgr", name: "Manager" },
-	];
-	for (const level of levels) {
-		await prisma.level.upsert({
-			// Menggunakan nama model 'level'
-			where: { id: level.id }, // Menggunakan nama field 'id'
-			update: {},
-			create: {
-				id: level.id,
-				name: level.name, // Menggunakan nama field 'name'
-			},
-		});
-	}
-	console.log(`Seeded ${levels.length} levels.`);
-
-	// Seed data untuk tabel Position (sebelumnya DataPosition)
-	const positions = [
+	// --- 3. Seed Positions ---
+	const positionsData = [
 		{ id: 1, name: "A & P Admin", departmentId: "MKT-MKT" },
 		{ id: 2, name: "A & P Coord", departmentId: "MKT-MKT" },
 		{ id: 3, name: "A & P Spv", departmentId: "MKT-MKT" },
@@ -217,7 +216,7 @@ async function main() {
 		},
 		{ id: 105, name: "NPL Project & Shelf Life Spv", departmentId: "RND-QCA" },
 		{ id: 106, name: "OD & PD Staff", departmentId: "ADM-HR" },
-		{ id: 107, name: "Operation Dev Spv", departmentId: "MFG-MFT" },
+		{ id: 107, name: "Operation Dev Spv", departmentId: "MFG-MFG" },
 		{ id: 108, name: "Org Dev Spv", departmentId: "ADM-HR" },
 		{ id: 109, name: "Org Dev Spv, Act", departmentId: "ADM-HR" },
 		{ id: 110, name: "Org Dev Staff", departmentId: "ADM-HR" },
@@ -270,7 +269,7 @@ async function main() {
 		{ id: 157, name: "Secretary to GM Fin & Acct", departmentId: "ADM-FA" },
 		{ id: 158, name: "Secretary to GM HR", departmentId: "ADM-HR" },
 		{ id: 159, name: "Secretary to GM Marketing", departmentId: "MKT-MKT" },
-		{ id: 160, name: "Secretary to GM Mfg", departmentId: "MFG-MFT" },
+		{ id: 160, name: "Secretary to GM Mfg", departmentId: "MFG-MFG" },
 		{ id: 161, name: "Secretary to GM Sales", departmentId: "MKT-SD" },
 		{ id: 162, name: "Section Whs Spare Part", departmentId: "MFG-TECH" },
 		{ id: 163, name: "Security Chief", departmentId: "ADM-HR" },
@@ -313,31 +312,36 @@ async function main() {
 		{ id: 200, name: "Whs SP Section Spv", departmentId: "MFG-WRH" },
 		{ id: 201, name: "Workshop Supervisor", departmentId: "MFG-TECH" },
 	];
-	for (const position of positions) {
+
+	for (const pos of positionsData) {
+		// FIX: Using 'connect' to establish relation instead of setting foreign key directly.
+		const data = {
+			id: String(pos.id),
+			name: pos.name,
+			level: getPositionLevel(pos.name),
+			department: {
+				connect: {
+					id: pos.departmentId,
+				},
+			},
+		};
+
 		await prisma.position.upsert({
-			// Menggunakan nama model 'position'
-			where: { id: position.id }, // Menggunakan nama field 'id'
-			update: {
-				name: position.name, // Menggunakan nama field 'name'
-				departmentId: position.departmentId, // Menggunakan nama field 'departmentId'
-			},
-			create: {
-				id: position.id,
-				name: position.name,
-				departmentId: position.departmentId,
-			},
+			where: { id: String(pos.id) },
+			update: data,
+			create: data,
 		});
 	}
-	console.log(`Seeded ${positions.length} positions.`);
+	console.log(`✅ Berhasil seeding ${positionsData.length} posisi.`);
 
-	console.log("Seeding database selesai!");
+	console.log("🎉 Seeding database telah selesai sepenuhnya!");
 }
 
 main()
 	.catch((e) => {
-		console.error("Error selama seeding:", e);
+		console.error("❌ Terjadi error selama proses seeding:", e);
 		process.exit(1);
 	})
 	.finally(async () => {
-		await prisma.$disconnect(); // Pastikan koneksi Prisma terputus
+		await prisma.$disconnect();
 	});

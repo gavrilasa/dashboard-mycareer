@@ -1,163 +1,137 @@
-import {
-	PrismaClient,
-	Gender,
-	UserRole,
-	EducationDegree,
-} from "@prisma/client";
+// prisma/seed-test-users.ts
+
+import { PrismaClient, Gender, Role } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-async function generatePassword(
-	employeeId: string,
-	dob: string
-): Promise<string> {
-	const plainTextPassword = `${employeeId}${dob}`;
+/**
+ * Generates a hashed password from an employee's NIK and Date of Birth string.
+ * @param nik - The employee's unique identifier (username).
+ * @param dob - The date of birth in DDMMYYYY format.
+ * @returns A promise that resolves to the hashed password.
+ */
+async function generatePassword(nik: string, dob: string): Promise<string> {
+	const plainTextPassword = `${nik}${dob}`;
 	const salt = await bcrypt.genSalt(10);
 	return bcrypt.hash(plainTextPassword, salt);
 }
 
-function getDate(dateString: string): Date {
+/**
+ * Parses a DDMMYYYY string into a Date object.
+ * @param dateString - The date in DDMMYYYY format.
+ * @returns A Date object.
+ */
+function parseDate(dateString: string): Date {
 	const day = parseInt(dateString.substring(0, 2), 10);
-	const month = parseInt(dateString.substring(2, 4), 10) - 1; // Bulan di JS dimulai dari 0
+	const month = parseInt(dateString.substring(2, 4), 10) - 1; // JavaScript months are 0-indexed
 	const year = parseInt(dateString.substring(4, 8), 10);
 	return new Date(Date.UTC(year, month, day));
 }
 
-function calculateYearsDifference(startDate: Date): number {
-	const today = new Date();
-	let years = today.getFullYear() - startDate.getFullYear();
-	const monthDifference = today.getMonth() - startDate.getMonth();
-	if (
-		monthDifference < 0 ||
-		(monthDifference === 0 && today.getDate() < startDate.getDate())
-	) {
-		years--;
-	}
-	const fraction = ((monthDifference + 12) % 12) / 12;
-	return parseFloat((years + fraction).toFixed(2));
-}
-
 async function main() {
-	console.log("Memulai seeding test users...");
-
-	// --- Data Pengguna untuk Seeding ---
+	console.log(
+		"🚀 Memulai proses seeding akun mockup dengan NIK dan password..."
+	);
 
 	const usersToSeed = [
-		// 1 HR User
+		// 1. Admin / HR Head Office (Nasional)
 		{
-			employeeId: "HRH001",
-			name: "HR Head Office",
-			dob: "05051992",
-			hireDate: "05052018",
-			gender: Gender.FEMALE,
-			branchId: "N001",
+			nik: "ADMIN01",
+			name: "Admin Head Office",
+			dob: "01011990",
+			gender: Gender.MALE,
+			role: Role.ADMIN,
+			branchId: "N001", // Head Office
 			departmentId: "ADM-HR",
-			positionId: 72,
-			levelId: "spv",
-			education: EducationDegree.S1,
-			role: UserRole.HR,
+			positionId: "72", // HRIS & Comben Spv
 		},
-		// 1 HD User
+		// 2. HR Branch (Cabang DKI)
 		{
-			employeeId: "HDH001",
-			name: "HD Head Office",
-			dob: "15031991",
-			hireDate: "15032016",
-			gender: Gender.MALE,
-			branchId: "N001",
-			departmentId: "ADM-FA",
-			positionId: 10,
-			levelId: "mgr",
-			education: EducationDegree.S2,
-			role: UserRole.HD,
-		},
-		// 2 Employee Users
-		{
-			employeeId: "EMP001",
-			name: "Employee Test Satu",
-			dob: "20071995",
-			hireDate: "20072020",
-			gender: Gender.MALE,
-			branchId: "N002",
-			departmentId: "MFG-PROD",
-			positionId: 126,
-			levelId: "spv",
-			education: EducationDegree.D3,
-			role: UserRole.EMPLOYEE,
-		},
-		{
-			employeeId: "EMP002",
-			name: "Employee Test Dua",
-			dob: "21081996",
-			hireDate: "21082021",
+			nik: "HR001DKI",
+			name: "HR Cabang DKI",
+			dob: "02021992",
 			gender: Gender.FEMALE,
-			branchId: "N004",
-			departmentId: "MFG-WRH",
-			positionId: 191,
-			levelId: "spv",
-			education: EducationDegree.D4,
-			role: UserRole.EMPLOYEE,
+			role: Role.HR_BRANCH,
+			branchId: "N002", // Cabang DKI
+			departmentId: "ADM-HR",
+			positionId: "24", // Branch HR Officer
+		},
+		// 3. Head of Department (Cabang Cibitung)
+		{
+			nik: "HD001CBT",
+			name: "HD Produksi Cibitung",
+			dob: "03031988",
+			gender: Gender.MALE,
+			role: Role.HD,
+			branchId: "N003", // Cabang Cibitung
+			departmentId: "MFG-PROD",
+			positionId: "129", // Production Mgr, Act
+		},
+		// 4. Employee (Cabang Tangerang)
+		{
+			nik: "EMP001TGR",
+			name: "Karyawan Tangerang",
+			dob: "04041995",
+			gender: Gender.FEMALE,
+			role: Role.EMPLOYEE,
+			branchId: "N004", // Cabang Tangerang
+			departmentId: "RND-QCA",
+			positionId: "143", // QC Process Spv
 		},
 	];
 
 	for (const userData of usersToSeed) {
-		const password = await generatePassword(userData.employeeId, userData.dob);
-		const dateOfBirth = getDate(userData.dob);
-		const hireDateObj = getDate(userData.hireDate);
+		// Generate the hashed password from NIK and DOB
+		const hashedPassword = await generatePassword(userData.nik, userData.dob);
 
-		await prisma.user.upsert({
-			where: { employeeId: userData.employeeId },
-			update: {},
-			create: {
-				employeeId: userData.employeeId,
-				password: password,
+		// Create the User record first, which holds the login credentials
+		const user = await prisma.user.upsert({
+			where: { nik: userData.nik }, // Find user by NIK
+			update: {
+				password: hashedPassword,
 				role: userData.role,
-				email: `${userData.employeeId.toLowerCase()}@example.com`,
-				employee: {
-					create: {
-						name: userData.name,
-						dateOfBirth: dateOfBirth,
-						hireDate: hireDateObj,
-						gender: userData.gender,
-						personnelAreaId: userData.branchId,
-						positionId: userData.positionId,
-						departmentId: userData.departmentId,
-						levelId: userData.levelId,
-						age: calculateYearsDifference(dateOfBirth),
-						lengthOfService: calculateYearsDifference(hireDateObj),
-						educationDegree: userData.education,
-						schoolName: "Universitas Seeding",
-						majorName: "Jurusan Seeding",
-						bestEmployeeScore: Math.floor(Math.random() * (95 - 85 + 1) + 85),
-						formFilledStatus: 1,
-						questionnaireStatus: 1,
-						createdAt: new Date(),
-						careerHistories: {
-							create: {
-								positionId: userData.positionId,
-								levelId: userData.levelId,
-								personnelAreaId: userData.branchId,
-								departmentId: userData.departmentId,
-								startDate: hireDateObj,
-								status: 1,
-							},
-						},
-					},
-				},
+				name: userData.name,
+			},
+			create: {
+				nik: userData.nik, // Create user with NIK as the login identifier
+				name: userData.name,
+				password: hashedPassword,
+				role: userData.role,
 			},
 		});
-		console.log(`Seeded ${userData.role} user: ${userData.employeeId}`);
+
+		// Then, create the associated Employee profile and link it to the User
+		await prisma.employee.upsert({
+			where: { nik: userData.nik },
+			update: {}, // Don't update the employee profile if it already exists
+			create: {
+				id: userData.nik, // Use NIK as the primary key for the Employee record
+				nik: userData.nik,
+				dateOfBirth: parseDate(userData.dob),
+				gender: userData.gender,
+				// Establish the one-to-one relationship to the User record
+				userId: user.id,
+				// Connect to other master data
+				branchId: userData.branchId,
+				departmentId: userData.departmentId,
+				positionId: userData.positionId,
+			},
+		});
+		console.log(
+			`✅ Berhasil seeding pengguna ${userData.role}: ${userData.nik}`
+		);
 	}
 
-	console.log("Seeding test users selesai!");
+	console.log("🎉 Seeding akun mockup dengan NIK dan password telah selesai!");
 }
 
 main()
 	.catch((e) => {
-		console.error("Error selama seeding test users:", e);
+		console.error("❌ Terjadi error selama proses seeding:", e);
 		process.exit(1);
 	})
 	.finally(async () => {
+		// Ensure Prisma Client is disconnected
 		await prisma.$disconnect();
 	});
