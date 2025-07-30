@@ -17,8 +17,7 @@ export default function DashboardLayout({
 
 	// Tentukan menu items di sisi client setelah sesi tersedia
 	const userRole = session?.user?.role as UserRole;
-	const employeeId = session?.user?.employeeId || "";
-	const menuItems = userRole ? getMenuItems(userRole, employeeId) : [];
+	const menuItems = userRole ? getMenuItems(userRole) : [];
 
 	return (
 		<div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-gray-900">

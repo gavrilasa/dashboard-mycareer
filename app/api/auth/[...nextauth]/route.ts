@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/app/lib/prisma";
 import bcrypt from "bcryptjs";
+import { UserRole } from "@prisma/client";
 
 export const authOptions: NextAuthOptions = {
 	adapter: PrismaAdapter(prisma),
@@ -36,6 +37,7 @@ export const authOptions: NextAuthOptions = {
 					return null;
 				}
 
+				// The object returned here is passed to the 'jwt' callback as the `user` parameter.
 				return {
 					id: user.employeeId,
 					name: user.employee.name,
@@ -56,6 +58,7 @@ export const authOptions: NextAuthOptions = {
 			if (user) {
 				token.id = user.id;
 				token.role = user.role;
+				token.employeeId = user.id;
 				token.branchId = user.branchId;
 				token.departmentId = user.departmentId;
 			}
@@ -63,8 +66,9 @@ export const authOptions: NextAuthOptions = {
 		},
 		async session({ session, token }) {
 			if (session.user) {
-				session.user.employeeId = token.id as string;
-				session.user.role = token.role as string;
+				// Here we populate the session object from the token's data
+				session.user.employeeId = token.employeeId as string;
+				session.user.role = token.role as UserRole;
 				session.user.branchId = token.branchId as string | null;
 				session.user.departmentId = token.departmentId as string | null;
 			}

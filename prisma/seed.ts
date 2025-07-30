@@ -46,7 +46,7 @@ async function main() {
 		{ id: "ADM-FA", name: "ADM Fin.& Acct." },
 		{ id: "ADM-GM", name: "ADM Gen.Mgt" },
 		{ id: "ADM-HR", name: "ADM HR" },
-		{ id: "MFG-MFT", name: "MFG Manufactur" },
+		{ id: "MFG-MFG", name: "MFG Manufactur" },
 		{ id: "MFG-PPIC", name: "MFG PPIC" },
 		{ id: "MFG-PROD", name: "MFG Production" },
 		{ id: "MFG-PURC", name: "MFG Purchasing" },

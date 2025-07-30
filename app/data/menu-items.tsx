@@ -24,7 +24,6 @@ export type MenuGroup = {
 	items: NavItem[];
 };
 
-// Fungsi ini akan menghasilkan menu untuk admin
 const getAdminMenu = (): MenuGroup[] => [
 	{
 		title: "MENU",
@@ -90,7 +89,7 @@ const getAdminMenu = (): MenuGroup[] => [
 ];
 
 // Fungsi ini akan menghasilkan menu untuk karyawan
-const getEmployeeMenu = (employeeId: string): MenuGroup[] => [
+const getEmployeeMenu = (): MenuGroup[] => [
 	{
 		title: "MENU",
 		items: [
@@ -100,37 +99,32 @@ const getEmployeeMenu = (employeeId: string): MenuGroup[] => [
 				label: "Dashboard",
 			},
 			{
-				href: "/dashboard/job-vacant",
-				icon: <Briefcase size={18} />,
-				label: "Job Vacant",
+				href: `/dashboard/form`,
+				icon: <User size={18} />,
+				label: "Form",
 			},
 			{
 				href: "/dashboard/questionnaire",
 				icon: <ClipboardList size={18} />,
 				label: "Questionnaire",
 			},
-			// Link profil sekarang dinamis
 			{
-				href: `/dashboard/profile/${employeeId}`,
-				icon: <User size={18} />,
-				label: "Profile",
-				startsWith: true,
+				href: "/dashboard/job-vacant",
+				icon: <Briefcase size={18} />,
+				label: "Job Vacant",
 			},
 		],
 	},
 ];
 
 // Fungsi utama untuk mendapatkan menu berdasarkan peran
-export const getMenuItems = (
-	role: UserRole,
-	employeeId: string
-): MenuGroup[] => {
+export const getMenuItems = (role: UserRole): MenuGroup[] => {
 	switch (role) {
 		case UserRole.HR:
 		case UserRole.HD:
 			return getAdminMenu();
 		case UserRole.EMPLOYEE:
-			return getEmployeeMenu(employeeId);
+			return getEmployeeMenu();
 		default:
 			return [];
 	}

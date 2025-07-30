@@ -1,84 +1,41 @@
-// middleware.ts
+// File: middleware.ts
 
-import { NextResponse } from "next/server";
 import { withAuth } from "next-auth/middleware";
-import { UserRole } from "@prisma/client";
-
-// --- KONFIGURASI IZIN TERPUSAT ---
-
-interface Rule {
-	allowedRoles: UserRole[];
-	ownerCheck?: { paramIndex: number };
-}
-
-// PERBAIKAN: Gunakan URL publik sebagai kunci, bukan nama folder grup
-const permissionConfig: Record<string, Rule> = {
-	// === Rute di dalam grup (admin) ===
-	"/dashboard/employees": { allowedRoles: [UserRole.HR, UserRole.HD] },
-	"/dashboard/positions": { allowedRoles: [UserRole.HR, UserRole.HD] },
-	"/dashboard/departments": { allowedRoles: [UserRole.HR, UserRole.HD] },
-	"/dashboard/branches": { allowedRoles: [UserRole.HR, UserRole.HD] },
-
-	// === Rute di dalam grup (employee) ===
-	"/dashboard/profile": {
-		allowedRoles: [UserRole.EMPLOYEE, UserRole.HR, UserRole.HD],
-		ownerCheck: { paramIndex: 2 }, // URL: /dashboard/profile/[employeeId]
-	},
-
-	// === Rute yang bisa diakses bersama ===
-	"/dashboard": {
-		allowedRoles: [UserRole.HR, UserRole.HD, UserRole.EMPLOYEE],
-	},
-	"/api/master-data": {
-		allowedRoles: [UserRole.HR, UserRole.HD, UserRole.EMPLOYEE],
-	},
-};
+import { NextResponse } from "next/server";
 
 export default withAuth(
+	// The middleware function now has one simple job: inject user data.
 	function middleware(req) {
-		const { pathname } = req.nextUrl;
-		const token = req.nextauth.token;
+		const { token } = req.nextauth;
 
-		if (!token) {
-			return new NextResponse("Authentication required", { status: 401 });
+		// Create new headers and add the user's data.
+		const requestHeaders = new Headers(req.headers);
+		if (token?.employeeId) {
+			requestHeaders.set("x-user-employee-id", token.employeeId as string);
+		}
+		if (token?.role) {
+			requestHeaders.set("x-user-role", token.role as string);
 		}
 
-		const matchedPath = Object.keys(permissionConfig)
-			.sort((a, b) => b.length - a.length)
-			.find((path) => pathname.startsWith(path));
-
-		if (!matchedPath) {
-			const unauthorizedUrl = new URL("/unauthorized", req.url);
-			return NextResponse.rewrite(unauthorizedUrl);
-		}
-
-		const rule = permissionConfig[matchedPath];
-		const userRole = token.role as UserRole;
-
-		if (rule.allowedRoles.includes(userRole)) {
-			return NextResponse.next();
-		}
-
-		if (rule.ownerCheck) {
-			const pathSegments = pathname.split("/");
-			if (pathSegments.length > rule.ownerCheck.paramIndex) {
-				const targetEmployeeId = pathSegments[rule.ownerCheck.paramIndex];
-				if (token.id === targetEmployeeId) {
-					return NextResponse.next();
-				}
-			}
-		}
-
-		const unauthorizedUrl = new URL("/unauthorized", req.url);
-		return NextResponse.rewrite(unauthorizedUrl);
+		// Pass the request through to the correct API route or page,
+		// but with the new headers attached.
+		return NextResponse.next({
+			request: {
+				headers: requestHeaders,
+			},
+		});
 	},
 	{
 		callbacks: {
+			// This is the gatekeeper. If the user is not logged in (no token),
+			// they will be redirected to the sign-in page.
 			authorized: ({ token }) => !!token,
 		},
 	}
 );
 
+// This config ensures the middleware runs on all dashboard pages and API routes.
+// This is the only "permission" check needed at the middleware level.
 export const config = {
-	matcher: ["/dashboard/:path*"],
+	matcher: ["/dashboard/:path*", "/api/admin/:path*", "/api/employee/:path*"],
 };
