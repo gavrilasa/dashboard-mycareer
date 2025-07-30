@@ -25,25 +25,25 @@ export default function LoginPage() {
 	const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
 	const [employeeId, setEmployeeId] = useState("");
-	const [password, setPassword] = useState("");
+	const [password, setPassword] = useState(""); // This will hold the combined ID+DOB
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 
 	const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		setIsLoading(true);
-		setError(null); // Reset error state on new submission
+		setError(null);
 
 		try {
 			const res = await signIn("credentials", {
 				redirect: false,
 				employeeId,
-				password,
+				password, // Pass the combined string directly
 				callbackUrl,
 			});
 
 			if (res?.error) {
-				setError("Login Failed. Please check your Employee ID and Password.");
+				setError(res.error);
 			} else if (res?.ok) {
 				router.push(callbackUrl);
 			}
@@ -72,7 +72,7 @@ export default function LoginPage() {
 							Welcome to <br /> My Career Journey
 						</CardTitle>
 						<CardDescription>
-							Enter your Employee ID and password to sign in!
+							Enter your Employee ID and password to sign in.
 						</CardDescription>
 					</CardHeader>
 					<form onSubmit={handleSubmit}>
@@ -96,7 +96,7 @@ export default function LoginPage() {
 									<Input
 										id="password"
 										type="password"
-										placeholder="********"
+										placeholder="Enter your password (ID+DOB)"
 										required
 										value={password}
 										onChange={(e) => setPassword(e.target.value)}
@@ -107,12 +107,12 @@ export default function LoginPage() {
 								{error && (
 									<Alert variant="destructive">
 										<AlertCircle className="w-4 h-4" />
-										<AlertTitle>Error</AlertTitle>
+										<AlertTitle>Login Failed</AlertTitle>
 										<AlertDescription>{error}</AlertDescription>
 									</Alert>
 								)}
 							</CardContent>
-							<CardFooter className="p-0">
+							<CardFooter className="p-0 pt-4">
 								<Button
 									type="submit"
 									size="lg"

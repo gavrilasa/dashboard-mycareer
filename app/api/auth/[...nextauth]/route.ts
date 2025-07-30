@@ -1,83 +1,85 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
-import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { prisma } from "@/app/lib/prisma";
-import bcrypt from "bcryptjs";
-import { UserRole } from "@prisma/client";
+// app/api/auth/[...nextauth]/route.ts
 
-export const authOptions: NextAuthOptions = {
+import { prisma } from "@/app/lib/prisma";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
+import bcrypt from "bcryptjs";
+import NextAuth, { AuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+
+export const authOptions: AuthOptions = {
 	adapter: PrismaAdapter(prisma),
 	providers: [
 		CredentialsProvider({
-			name: "Credentials",
+			name: "credentials",
 			credentials: {
-				employeeId: { label: "ID Karyawan", type: "text" },
+				employeeId: { label: "Employee ID", type: "text" },
 				password: { label: "Password", type: "password" },
 			},
 			async authorize(credentials) {
 				if (!credentials?.employeeId || !credentials?.password) {
-					return null;
+					throw new Error("Please enter an Employee ID and Password.");
 				}
 
 				const user = await prisma.user.findUnique({
 					where: { employeeId: credentials.employeeId },
-					include: { employee: true },
+					include: {
+						employee: {
+							select: { fullName: true },
+						},
+					},
 				});
 
 				if (!user || !user.employee) {
-					return null;
+					throw new Error("No user found with this Employee ID.");
 				}
 
-				const isPasswordValid = await bcrypt.compare(
-					credentials.password,
+				// The provided password IS the string to be compared (e.g., "EMP001TGR04041995")
+				const plainTextPassword = credentials.password;
+
+				// Compare the provided password with the hashed password in the DB
+				const isPasswordCorrect = await bcrypt.compare(
+					plainTextPassword,
 					user.password
 				);
 
-				if (!isPasswordValid) {
-					return null;
+				if (!isPasswordCorrect) {
+					throw new Error("The password you entered is incorrect.");
 				}
 
-				// The object returned here is passed to the 'jwt' callback as the `user` parameter.
 				return {
-					id: user.employeeId,
-					name: user.employee.name,
-					email: user.email,
+					id: user.id,
+					employeeId: user.employeeId,
 					role: user.role,
-					branchId: user.employee.personnelAreaId,
-					departmentId: user.employee.departmentId,
+					name: user.employee.fullName,
+					email: null,
+					image: null,
 				};
 			},
 		}),
 	],
-	session: {
-		strategy: "jwt",
-		maxAge: 24 * 60 * 60,
-	},
 	callbacks: {
-		async jwt({ token, user }) {
-			if (user) {
-				token.id = user.id;
-				token.role = user.role;
-				token.employeeId = user.id;
-				token.branchId = user.branchId;
-				token.departmentId = user.departmentId;
-			}
-			return token;
-		},
-		async session({ session, token }) {
+		session({ session, token }) {
 			if (session.user) {
-				// Here we populate the session object from the token's data
-				session.user.employeeId = token.employeeId as string;
-				session.user.role = token.role as UserRole;
-				session.user.branchId = token.branchId as string | null;
-				session.user.departmentId = token.departmentId as string | null;
+				session.user.role = token.role;
+				session.user.employeeId = token.employeeId;
 			}
 			return session;
 		},
+		jwt({ token, user }) {
+			if (user) {
+				token.role = user.role;
+				token.employeeId = user.employeeId;
+			}
+			return token;
+		},
+	},
+	session: {
+		strategy: "jwt",
 	},
 	secret: process.env.NEXTAUTH_SECRET,
+	debug: process.env.NODE_ENV === "development",
 	pages: {
-		signIn: "/login",
+		signIn: "/login", // Use /login as the sign-in page
 	},
 };
 

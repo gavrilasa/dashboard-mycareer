@@ -1,30 +1,29 @@
+// types/next-auth.d.ts
+
+import { Role } from "@prisma/client";
 import { DefaultSession, DefaultUser } from "next-auth";
 import { DefaultJWT } from "next-auth/jwt";
-import { UserRole } from "@prisma/client"; // Impor UserRole
 
+// Extend the built-in session and user types
 declare module "next-auth" {
 	interface Session {
 		user: {
-			employeeId: string;
-			role: UserRole;
-			branchId: string | null;
-			departmentId: string | null;
-		} & DefaultSession["user"];
+			id: string;
+			role: Role;
+			employeeId: string | null;
+		} & DefaultSession["user"]; // Keep the default properties
 	}
 
 	interface User extends DefaultUser {
-		role: UserRole;
-		branchId: string | null;
-		departmentId: string | null;
+		role: Role;
+		employeeId: string | null;
 	}
 }
 
+// Extend the built-in JWT type
 declare module "next-auth/jwt" {
 	interface JWT extends DefaultJWT {
-		// 'id' akan berisi employeeId
-		id: string;
-		role: UserRole;
-		branchId: string | null;
-		departmentId: string | null;
+		role: Role;
+		employeeId: string | null;
 	}
 }
