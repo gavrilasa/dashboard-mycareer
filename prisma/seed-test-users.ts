@@ -1,129 +1,157 @@
 // prisma/seed-test-users.ts
 
-import { PrismaClient, Gender, Role } from "@prisma/client";
+import { PrismaClient, Gender, Role, EducationDegree } from "@prisma/client";
 import * as bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-/**
- * Generates a hashed password from an employee's NIK and Date of Birth string.
- * @param nik - The employee's unique identifier (username).
- * @param dob - The date of birth in DDMMYYYY format.
- * @returns A promise that resolves to the hashed password.
- */
-async function generatePassword(nik: string, dob: string): Promise<string> {
-	const plainTextPassword = `${nik}${dob}`;
+async function generatePassword(
+	employeeId: string,
+	dob: string
+): Promise<string> {
+	const plainTextPassword = `${employeeId}${dob}`;
 	const salt = await bcrypt.genSalt(10);
 	return bcrypt.hash(plainTextPassword, salt);
 }
 
-/**
- * Parses a DDMMYYYY string into a Date object.
- * @param dateString - The date in DDMMYYYY format.
- * @returns A Date object.
- */
 function parseDate(dateString: string): Date {
 	const day = parseInt(dateString.substring(0, 2), 10);
-	const month = parseInt(dateString.substring(2, 4), 10) - 1; // JavaScript months are 0-indexed
+	const month = parseInt(dateString.substring(2, 4), 10) - 1;
 	const year = parseInt(dateString.substring(4, 8), 10);
 	return new Date(Date.UTC(year, month, day));
 }
 
+async function getLevelId(
+	levelName: "STAFF" | "SUPERVISOR" | "MANAGER"
+): Promise<string> {
+	const level = await prisma.level.findUnique({ where: { name: levelName } });
+	if (!level) throw new Error(`Level ${levelName} not found.`);
+	return level.id;
+}
+
 async function main() {
-	console.log(
-		"🚀 Memulai proses seeding akun mockup dengan NIK dan password..."
-	);
+	console.log("🚀 Memulai proses seeding akun pengguna mockup...");
+
+	const supervisorLevelId = await getLevelId("SUPERVISOR");
+	const managerLevelId = await getLevelId("MANAGER");
+	const staffLevelId = await getLevelId("STAFF");
 
 	const usersToSeed = [
-		// 1. Admin / HR Head Office (Nasional)
 		{
-			nik: "ADMIN01",
-			name: "Admin Head Office",
+			employeeId: "ADMIN01",
+			fullName: "Admin Head Office",
 			dob: "01011990",
 			gender: Gender.MALE,
 			role: Role.ADMIN,
-			branchId: "N001", // Head Office
-			departmentId: "ADM-HR",
-			positionId: "72", // HRIS & Comben Spv
+			branchId: "N001",
+			departmentId: "N001-ADM-HR",
+			positionId: "N001-72",
+			levelId: supervisorLevelId,
+			lastEducationDegree: EducationDegree.S1,
+			lastEducationSchool: "Universitas Indonesia",
+			lastEducationMajor: "Manajemen",
 		},
-		// 2. HR Branch (Cabang DKI)
 		{
-			nik: "HR001DKI",
-			name: "HR Cabang DKI",
+			employeeId: "HR001DKI",
+			fullName: "HR Cabang DKI",
 			dob: "02021992",
 			gender: Gender.FEMALE,
 			role: Role.HR_BRANCH,
-			branchId: "N002", // Cabang DKI
-			departmentId: "ADM-HR",
-			positionId: "24", // Branch HR Officer
+			branchId: "N002",
+			departmentId: "N002-ADM-HR",
+			positionId: "N002-24",
+			levelId: staffLevelId,
+			lastEducationDegree: EducationDegree.S1,
+			lastEducationSchool: "Universitas Gadjah Mada",
+			lastEducationMajor: "Psikologi",
 		},
-		// 3. Head of Department (Cabang Cibitung)
 		{
-			nik: "HD001CBT",
-			name: "HD Produksi Cibitung",
+			employeeId: "HD001CBT",
+			fullName: "HD Produksi Cibitung",
 			dob: "03031988",
 			gender: Gender.MALE,
 			role: Role.HD,
-			branchId: "N003", // Cabang Cibitung
-			departmentId: "MFG-PROD",
-			positionId: "129", // Production Mgr, Act
+			branchId: "N003",
+			departmentId: "N003-MFG-PROD",
+			positionId: "N003-129",
+			levelId: managerLevelId,
+			lastEducationDegree: EducationDegree.S3,
+			lastEducationSchool: "Institut Teknologi Bandung",
+			lastEducationMajor: "Teknik Industri",
 		},
-		// 4. Employee (Cabang Tangerang)
 		{
-			nik: "EMP001TGR",
-			name: "Karyawan Tangerang",
+			employeeId: "EMP001TGR",
+			fullName: "Karyawan Tangerang",
 			dob: "04041995",
 			gender: Gender.FEMALE,
 			role: Role.EMPLOYEE,
-			branchId: "N004", // Cabang Tangerang
-			departmentId: "RND-QCA",
-			positionId: "143", // QC Process Spv
+			branchId: "N004",
+			departmentId: "N004-RND-QCA",
+			positionId: "N004-143",
+			levelId: staffLevelId,
+			lastEducationDegree: EducationDegree.D3,
+			lastEducationSchool: "Politeknik Negeri Jakarta",
+			lastEducationMajor: "Analis Kimia",
 		},
 	];
 
-	for (const userData of usersToSeed) {
-		// Generate the hashed password from NIK and DOB
-		const hashedPassword = await generatePassword(userData.nik, userData.dob);
+	// Hapus semua user dan employee lama yang mungkin ada di data seed
+	console.log("🔥 Menghapus pengguna dan karyawan lama...");
+	await prisma.user.deleteMany({
+		where: { employeeId: { in: usersToSeed.map((u) => u.employeeId) } },
+	});
+	await prisma.employee.deleteMany({
+		where: { employeeId: { in: usersToSeed.map((u) => u.employeeId) } },
+	});
 
-		// Create the User record first, which holds the login credentials
-		const user = await prisma.user.upsert({
-			where: { nik: userData.nik }, // Find user by NIK
-			update: {
+	console.log("✨ Membuat ulang pengguna dan karyawan...");
+	for (const userData of usersToSeed) {
+		const hashedPassword = await generatePassword(
+			userData.employeeId,
+			userData.dob
+		);
+
+		// FIXED: Create User first, then Employee
+		// This avoids the foreign key constraint issue
+		const user = await prisma.user.create({
+			data: {
+				employeeId: userData.employeeId,
 				password: hashedPassword,
 				role: userData.role,
-				name: userData.name,
-			},
-			create: {
-				nik: userData.nik, // Create user with NIK as the login identifier
-				name: userData.name,
-				password: hashedPassword,
-				role: userData.role,
+				...(userData.role === Role.HR_BRANCH && {
+					branchId: userData.branchId,
+				}),
+				...(userData.role === Role.HD && {
+					branchId: userData.branchId,
+					departmentId: userData.departmentId,
+				}),
 			},
 		});
 
-		// Then, create the associated Employee profile and link it to the User
-		await prisma.employee.upsert({
-			where: { nik: userData.nik },
-			update: {}, // Don't update the employee profile if it already exists
-			create: {
-				id: userData.nik, // Use NIK as the primary key for the Employee record
-				nik: userData.nik,
+		// Then create Employee that references the User
+		await prisma.employee.create({
+			data: {
+				employeeId: userData.employeeId,
+				fullName: userData.fullName,
 				dateOfBirth: parseDate(userData.dob),
 				gender: userData.gender,
-				// Establish the one-to-one relationship to the User record
-				userId: user.id,
-				// Connect to other master data
+				hireDate: new Date(),
+				lastEducationDegree: userData.lastEducationDegree,
+				lastEducationSchool: userData.lastEducationSchool,
+				lastEducationMajor: userData.lastEducationMajor,
 				branchId: userData.branchId,
 				departmentId: userData.departmentId,
 				positionId: userData.positionId,
+				levelId: userData.levelId,
 			},
 		});
+
 		console.log(
-			`✅ Berhasil seeding pengguna ${userData.role}: ${userData.nik}`
+			`✅ Berhasil seeding pengguna ${userData.role}: ${userData.employeeId}`
 		);
 	}
 
-	console.log("🎉 Seeding akun mockup dengan NIK dan password telah selesai!");
+	console.log("🎉 Seeding akun pengguna mockup telah selesai!");
 }
 
 main()
@@ -132,6 +160,5 @@ main()
 		process.exit(1);
 	})
 	.finally(async () => {
-		// Ensure Prisma Client is disconnected
 		await prisma.$disconnect();
 	});

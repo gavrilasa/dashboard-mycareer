@@ -8,237 +8,6 @@ datasource db {
   // directUrl = env("DIRECT_URL")
 }
 
-// =================================
-// --- AUTH & CORE USER MODELS ---
-// =================================
-
-model User {
-  id       String    @id @default(cuid())
-  nik      String    @unique
-  name     String
-  password String
-  role     Role      @default(EMPLOYEE)
-  employee Employee?
-}
-
-model Employee {
-  id           String     @id
-  nik          String     @unique
-  dateOfBirth  DateTime
-  gender       Gender
-  userId       String     @unique
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  positionId   String
-  position     Position   @relation(fields: [positionId], references: [id])
-  branchId     String
-  branch       Branch     @relation(fields: [branchId], references: [id])
-  departmentId String
-  department   Department @relation(fields: [departmentId], references: [id])
-
-  educations            Education[]
-  careerHistories       CareerHistory[]
-  organizationHistories OrganizationHistory[]
-  projectHistories      ProjectHistory[]
-  committeeHistories    CommitteeHistory[]
-  gkmHistories          GkmHistory[]
-  bestEmployeeScores    BestEmployeeScore[]
-  careerPreferences     CareerPreference?
-  questionnaireAnswers  Answer[]
-  jobInterests          JobInterest[]
-}
-
-// =================================
-// --- MASTER DATA MODELS ---
-// =================================
-
-model Branch {
-  id           String       @id
-  name         String       @unique
-  isHeadOffice Boolean      @default(false)
-  employees    Employee[]
-  jobVacancies JobVacancy[]
-}
-
-model Department {
-  id        String     @id
-  name      String     @unique
-  employees Employee[]
-  Position  Position[]
-}
-
-model Position {
-  id              String                  @id
-  name            String
-  level           PositionLevel
-  departmentId    String
-  department      Department              @relation(fields: [departmentId], references: [id])
-  employees       Employee[]
-  questionnaires  QuestionnairePosition[]
-  careerPathsFrom CareerPath[]            @relation("PathFrom")
-  careerPathsTo   CareerPath[]            @relation("PathTo")
-}
-
-// ========================================
-// --- EMPLOYEE HISTORY & PREFERENCES ---
-// ========================================
-
-model Education {
-  id          String   @id @default(cuid())
-  institution String
-  major       String
-  level       String
-  endDate     DateTime
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-}
-
-model CareerHistory {
-  id         String    @id @default(cuid())
-  position   String
-  department String
-  startDate  DateTime
-  endDate    DateTime?
-  employeeId String
-  employee   Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-}
-
-model OrganizationHistory {
-  id           String    @id @default(cuid())
-  organization String
-  role         String
-  startDate    DateTime
-  endDate      DateTime?
-  employeeId   String
-  employee     Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-}
-
-model ProjectHistory {
-  id          String    @id @default(cuid())
-  projectName String
-  role        String
-  startDate   DateTime
-  endDate     DateTime?
-  employeeId  String
-  employee    Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-}
-
-model CommitteeHistory {
-  id            String    @id @default(cuid())
-  committeeName String
-  role          String
-  startDate     DateTime
-  endDate       DateTime?
-  employeeId    String
-  employee      Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-}
-
-model GkmHistory {
-  id          String   @id @default(cuid())
-  gkmName     String
-  achievement String
-  year        Int
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-}
-
-model BestEmployeeScore {
-  id         String   @id @default(cuid())
-  score      Float
-  period     DateTime
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-}
-
-model CareerPreference {
-  id                  String   @id @default(cuid())
-  willingToRelocate   Boolean
-  relocationReason    String?
-  willingToChangeDept Boolean
-  shortTermCareerPlan String
-  longTermCareerPlan  String
-  preferredMentor     String
-  preferredTraining   String
-  employeeId          String   @unique
-  employee            Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-}
-
-// =================================
-// --- FUNCTIONAL MODULES ---
-// =================================
-
-model JobVacancy {
-  id           String        @id @default(cuid())
-  title        String
-  description  String
-  requirements String
-  isPublished  Boolean       @default(false)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  branchId     String
-  branch       Branch        @relation(fields: [branchId], references: [id])
-  jobInterests JobInterest[]
-}
-
-model JobInterest {
-  id         String     @id @default(cuid())
-  employeeId String
-  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  vacancyId  String
-  vacancy    JobVacancy @relation(fields: [vacancyId], references: [id], onDelete: Cascade)
-  createdAt  DateTime   @default(now())
-
-  @@unique([employeeId, vacancyId])
-}
-
-model Questionnaire {
-  id          String                  @id @default(cuid())
-  title       String                  @unique
-  description String
-  questions   Question[]
-  positions   QuestionnairePosition[]
-}
-
-model QuestionnairePosition {
-  questionnaireId String
-  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
-  positionId      String
-  position        Position      @relation(fields: [positionId], references: [id], onDelete: Cascade)
-
-  @@id([questionnaireId, positionId])
-}
-
-model Question {
-  id              String        @id @default(cuid())
-  text            String
-  questionnaireId String
-  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id], onDelete: Cascade)
-  answers         Answer[]
-}
-
-model Answer {
-  id          String   @id @default(cuid())
-  value       String
-  employeeId  String
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  questionId  String
-  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  submittedAt DateTime @default(now())
-}
-
-model CareerPath {
-  currentPositionId String
-  currentPosition   Position @relation("PathFrom", fields: [currentPositionId], references: [id], onDelete: Cascade)
-  nextPositionId    String
-  nextPosition      Position @relation("PathTo", fields: [nextPositionId], references: [id], onDelete: Cascade)
-  description       String?
-
-  @@id([currentPositionId, nextPositionId])
-}
-
-// =================================
-// --- ENUMS ---
-// =================================
-
 enum Role {
   ADMIN
   HR_BRANCH
@@ -251,8 +20,325 @@ enum Gender {
   FEMALE
 }
 
-enum PositionLevel {
-  STAFF
-  SUPERVISOR
-  MANAGER
+enum EducationDegree {
+  SMP
+  SMA
+  SMK
+  D1
+  D2
+  D3
+  S1
+  S2
+  S3
+}
+
+enum VacancyPeriod {
+  SHORT_TERM
+  LONG_TERM
+}
+
+model User {
+  id           String      @id @default(cuid())
+  employeeId   String?     @unique
+  password     String
+  role         Role        @default(EMPLOYEE)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  employee     Employee?
+  branchId     String?
+  departmentId String?
+  branch       Branch?     @relation(fields: [branchId], references: [id])
+  department   Department? @relation(fields: [departmentId], references: [id])
+}
+
+model Employee {
+  employeeId             String                  @id
+  fullName               String
+  dateOfBirth            DateTime
+  gender                 Gender
+  phoneNumber            String?
+  address                String?
+  hireDate               DateTime
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+  lastEducationDegree    EducationDegree
+  lastEducationSchool    String
+  lastEducationMajor     String
+  branchId               String
+  departmentId           String
+  positionId             String
+  levelId                String
+  branch                 Branch                  @relation(fields: [branchId], references: [id])
+  department             Department              @relation(fields: [departmentId], references: [id])
+  position               Position                @relation(fields: [positionId], references: [id])
+  level                  Level                   @relation(fields: [levelId], references: [id])
+  user                   User?                   @relation(fields: [employeeId], references: [employeeId])
+  educations             Education[]
+  careerHistories        CareerHistory[]
+  organizationHistories  OrganizationHistory[]
+  committeeHistories     CommitteeHistory[]
+  projectHistories       ProjectHistory[]
+  gkmHistories           GkmHistory[]
+  bestEmployeeScores     BestEmployeeScore[]
+  careerPreference       CareerPreference?
+  careerPlan             CareerPlan?
+  jobInterests           JobInterest[]
+  questionnaireResponses QuestionnaireResponse[]
+}
+
+model Branch {
+  id           String       @id
+  name         String       @unique
+  location     String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  employees    Employee[]
+  departments  Department[]
+  positions    Position[]
+  jobVacancies JobVacancy[]
+  users        User[]
+}
+
+model Department {
+  id             String                    @id
+  name           String
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  branchId       String
+  branch         Branch                    @relation(fields: [branchId], references: [id])
+  employees      Employee[]
+  positions      Position[]
+  jobVacancies   JobVacancy[]
+  users          User[]
+  questionnaires QuestionnaireDepartment[]
+
+  @@unique([name, branchId])
+}
+
+model Position {
+  id             String               @id
+  name           String
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  branchId       String
+  branch         Branch               @relation(fields: [branchId], references: [id])
+  departmentId   String
+  department     Department           @relation(fields: [departmentId], references: [id])
+  levelId        String
+  level          Level                @relation(fields: [levelId], references: [id])
+  employees      Employee[]
+  jobVacancies   JobVacancy[]
+  careerPathFrom PositionCareerPath[] @relation("CareerPathFrom")
+  careerPathTo   PositionCareerPath[] @relation("CareerPathTo")
+
+  @@unique([name, departmentId, branchId])
+}
+
+model Level {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  positions Position[]
+  employees Employee[]
+}
+
+model Education {
+  id           String          @id @default(cuid())
+  institution  String
+  major        String
+  level        EducationDegree
+  graduateYear Int
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  employeeId   String
+  employee     Employee        @relation(fields: [employeeId], references: [employeeId])
+}
+
+model CareerHistory {
+  id         String    @id @default(cuid())
+  position   String
+  department String
+  company    String
+  startDate  DateTime
+  endDate    DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  employeeId String
+  employee   Employee  @relation(fields: [employeeId], references: [employeeId])
+}
+
+model OrganizationHistory {
+  id           String    @id @default(cuid())
+  organization String
+  role         String
+  startDate    DateTime
+  endDate      DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [employeeId])
+}
+
+model CommitteeHistory {
+  id         String   @id @default(cuid())
+  eventName  String
+  role       String
+  year       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [employeeId])
+}
+
+model ProjectHistory {
+  id          String    @id @default(cuid())
+  projectName String
+  role        String
+  startDate   DateTime
+  endDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  employeeId  String
+  employee    Employee  @relation(fields: [employeeId], references: [employeeId])
+}
+
+model GkmHistory {
+  id         String   @id @default(cuid())
+  theme      String
+  role       String
+  year       Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [employeeId])
+}
+
+model BestEmployeeScore {
+  id         String   @id @default(cuid())
+  score      Float
+  periodYear Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [employeeId])
+}
+
+model CareerPreference {
+  id                        String   @id @default(cuid())
+  willingToRelocate         Boolean
+  relocationReason          String?
+  willingToChangeDepartment Boolean
+  preferredMentor           String?
+  preferredTraining         String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+  employeeId                String   @unique
+  employee                  Employee @relation(fields: [employeeId], references: [employeeId])
+}
+
+model CareerPlan {
+  id                  String   @id @default(cuid())
+  shortTermCareerPlan String?
+  longTermCareerPlan  String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  employeeId          String   @unique
+  employee            Employee @relation(fields: [employeeId], references: [employeeId])
+}
+
+model PositionCareerPath {
+  id             String   @id @default(cuid())
+  fromPositionId String
+  toPositionId   String
+  createdAt      DateTime @default(now())
+  fromPosition   Position @relation("CareerPathFrom", fields: [fromPositionId], references: [id])
+  toPosition     Position @relation("CareerPathTo", fields: [toPositionId], references: [id])
+
+  @@unique([fromPositionId, toPositionId])
+}
+
+model JobVacancy {
+  id                  String        @id @default(cuid())
+  title               String
+  description         String
+  requirements        String
+  isPublished         Boolean       @default(false)
+  period              VacancyPeriod
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  branchId            String
+  departmentId        String
+  positionId          String
+  branch              Branch        @relation(fields: [branchId], references: [id])
+  department          Department    @relation(fields: [departmentId], references: [id])
+  position            Position      @relation(fields: [positionId], references: [id])
+  interestedEmployees JobInterest[]
+}
+
+model JobInterest {
+  id           String     @id @default(cuid())
+  createdAt    DateTime   @default(now())
+  employeeId   String
+  jobVacancyId String
+  employee     Employee   @relation(fields: [employeeId], references: [employeeId])
+  jobVacancy   JobVacancy @relation(fields: [jobVacancyId], references: [id])
+
+  @@unique([employeeId, jobVacancyId])
+}
+
+model Questionnaire {
+  id          String                    @id @default(cuid())
+  title       String
+  description String?
+  isMandatory Boolean                   @default(false)
+  createdAt   DateTime                  @default(now())
+  updatedAt   DateTime                  @updatedAt
+  questions   Question[]
+  departments QuestionnaireDepartment[]
+  responses   QuestionnaireResponse[]
+}
+
+model QuestionnaireDepartment {
+  id              String        @id @default(cuid())
+  questionnaireId String
+  departmentId    String
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id])
+  department      Department    @relation(fields: [departmentId], references: [id])
+
+  @@unique([questionnaireId, departmentId])
+}
+
+model Question {
+  id              String        @id @default(cuid())
+  text            String
+  type            String
+  options         String[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  questionnaireId String
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id])
+  answers         Answer[]
+}
+
+model QuestionnaireResponse {
+  id              String        @id @default(cuid())
+  submittedAt     DateTime      @default(now())
+  employeeId      String
+  questionnaireId String
+  employee        Employee      @relation(fields: [employeeId], references: [employeeId])
+  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id])
+  answers         Answer[]
+
+  @@unique([employeeId, questionnaireId])
+}
+
+model Answer {
+  id         String                @id @default(cuid())
+  value      String
+  createdAt  DateTime              @default(now())
+  questionId String
+  responseId String
+  question   Question              @relation(fields: [questionId], references: [id])
+  response   QuestionnaireResponse @relation(fields: [responseId], references: [id])
 }
