@@ -40,19 +40,17 @@ export const Pagination: React.FC<PaginationProps> = ({
 			endPage = currentPage + 1;
 		}
 
-		// PERBAIKAN: Logika disederhanakan untuk hanya menampilkan ellipsis
-		// tanpa tombol halaman pertama/terakhir secara eksplisit.
-		if (startPage > 1) {
-			pageNumbers.push("...");
-		}
+		// if (startPage > 1) {
+		// 	pageNumbers.push("...");
+		// }
 
 		for (let i = startPage; i <= endPage; i++) {
 			pageNumbers.push(i);
 		}
 
-		if (endPage < totalPages) {
-			pageNumbers.push("...");
-		}
+		// if (endPage < totalPages) {
+		// 	pageNumbers.push("...");
+		// }
 	}
 
 	return (
@@ -69,7 +67,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 				<ChevronsLeft className="w-4 h-4" />
 			</Button>
 			{/* Tombol ke Halaman Sebelumnya */}
-			<Button
+			{/* <Button
 				variant="outline"
 				size="sm"
 				className="p-0 h-9 w-9"
@@ -78,7 +76,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 			>
 				<span className="sr-only">Go to previous page</span>
 				<ChevronLeft className="w-4 h-4" />
-			</Button>
+			</Button> */}
 
 			{/* Tombol Nomor Halaman */}
 			<div className="flex items-center gap-1">
@@ -102,7 +100,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 			</div>
 
 			{/* Tombol ke Halaman Berikutnya */}
-			<Button
+			{/* <Button
 				variant="outline"
 				size="sm"
 				className="p-0 h-9 w-9"
@@ -111,7 +109,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 			>
 				<span className="sr-only">Go to next page</span>
 				<ChevronRight className="w-4 h-4" />
-			</Button>
+			</Button> */}
 			{/* Tombol ke Halaman Terakhir */}
 			<Button
 				variant="outline"

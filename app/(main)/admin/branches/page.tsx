@@ -1,95 +1,125 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
-import { DataTable } from "@/components/common/DataTable";
+import { CrudTable } from "@/components/common/CrudTable";
+import { ColumnDef } from "@tanstack/react-table";
+import { Toaster, toast } from "sonner";
 
-// Tipe Data
+// Tipe data untuk Branch
 interface Branch {
 	id: string;
 	name: string;
-	address: string | null;
+	location: string | null;
+}
+
+// Tipe untuk informasi paginasi dari API
+interface PaginationInfo {
+	totalItems: number;
+	totalPages: number;
+}
+
+// Tipe untuk respons API yang dipaginasi
+interface PaginatedApiResponse {
+	data: Branch[];
+	pagination: PaginationInfo;
 }
 
 export default function BranchesPage() {
-	const [allBranches, setAllBranches] = useState<Branch[]>([]);
+	const [data, setData] = useState<Branch[]>([]);
+	const [pagination, setPagination] = useState<PaginationInfo>({
+		totalItems: 0,
+		totalPages: 0,
+	});
 	const [loading, setLoading] = useState(true);
-	const [searchTerm, setSearchTerm] = useState("");
-	const [currentPage, setCurrentPage] = useState(1);
 	const [limit, setLimit] = useState(10);
-	const debouncedSearchTerm = useDebounce(searchTerm, 300);
+	const [page, setPage] = useState(1);
+	const [searchTerm, setSearchTerm] = useState("");
+	const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-	useEffect(() => {
-		const fetchData = async () => {
-			setLoading(true);
-			try {
-				const response = await fetch("/api/master-data/branches");
-				if (!response.ok) throw new Error("Failed to fetch branches");
-				const data = await response.json();
-				setAllBranches(data);
-			} catch (error) {
-				console.error(error);
-			} finally {
-				setLoading(false);
+	const fetchBranches = useCallback(async () => {
+		setLoading(true);
+		try {
+			const params = new URLSearchParams({
+				page: page.toString(),
+				limit: limit.toString(),
+				q: debouncedSearchTerm,
+			});
+			const response = await fetch(`/api/admin/branches?${params.toString()}`);
+			if (!response.ok) {
+				throw new Error("Failed to fetch branches");
 			}
-		};
-		fetchData();
-	}, []);
+			const result: PaginatedApiResponse = await response.json();
 
-	const filteredData = useMemo(() => {
-		return allBranches.filter((branch) =>
-			branch.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-		);
-	}, [allBranches, debouncedSearchTerm]);
-
-	const paginatedData = useMemo(() => {
-		const start = (currentPage - 1) * limit;
-		return filteredData.slice(start, start + limit);
-	}, [filteredData, currentPage, limit]);
-
-	const totalPages = Math.ceil(filteredData.length / limit);
+			setData(result.data || []);
+			setPagination(result.pagination || { totalItems: 0, totalPages: 0 });
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : "An unknown error occurred.";
+			toast.error("Error fetching branches", { description: errorMessage });
+			setData([]);
+			setPagination({ totalItems: 0, totalPages: 0 });
+		} finally {
+			setLoading(false);
+		}
+	}, [page, limit, debouncedSearchTerm]);
 
 	useEffect(() => {
-		setCurrentPage(1);
+		fetchBranches();
+	}, [fetchBranches]);
+
+	// Atur ulang halaman ke 1 saat pencarian atau batas entri berubah
+	useEffect(() => {
+		setPage(1);
 	}, [limit, debouncedSearchTerm]);
 
-	// Define columns for the DataTable
-	const columns = [
+	const columns: ColumnDef<Branch>[] = [
 		{
-			header: "ID Cabang",
-			accessor: (item: Branch) => item.id,
-			className: "w-[15%]",
+			accessorKey: "id",
+			header: "Branch ID",
+			meta: {
+				width: "10%",
+			},
 		},
 		{
-			header: "Nama Cabang",
-			accessor: (item: Branch) => item.name,
-			className: "w-[40%]",
+			accessorKey: "name",
+			header: "Branch Name",
+			meta: {
+				width: "30%",
+			},
 		},
 		{
-			header: "Alamat",
-			accessor: (item: Branch) => item.address || "-",
-			className: "w-[45%]",
+			accessorKey: "location",
+			header: "Location",
+			cell: ({ row }) => row.original.location || "-",
+			meta: {
+				width: "60%",
+			},
 		},
 	];
 
 	return (
-		<div>
-			<h1 className="mb-6 text-2xl font-bold text-gray-800">Data Cabang</h1>
-			<DataTable
-				columns={columns}
-				data={paginatedData}
-				loading={loading}
-				limit={limit}
-				onLimitChange={setLimit}
-				searchTerm={searchTerm}
-				onSearchChange={setSearchTerm}
-				pagination={{
-					currentPage,
-					totalPages,
-					totalRecords: filteredData.length,
-					onPageChange: setCurrentPage,
-				}}
-			/>
-		</div>
+		<>
+			<Toaster position="top-center" richColors />
+			<div className="container mx-auto py-10">
+				<h1 className="text-2xl font-bold text-gray-800 mb-4">Branches</h1>
+
+				<CrudTable
+					columns={columns}
+					data={data}
+					loading={loading}
+					limit={limit}
+					onLimitChange={setLimit}
+					search={searchTerm}
+					onSearchChange={setSearchTerm}
+					pagination={{
+						currentPage: page,
+						totalPages: pagination.totalPages,
+						totalRecords: pagination.totalItems,
+						onPageChange: setPage,
+					}}
+				/>
+			</div>
+		</>
 	);
 }
