@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
-import { UserRole, EducationDegree, Gender } from "@prisma/client"; // Import Gender enum
+import { Role, EducationDegree, Gender } from "@prisma/client";
 import { hash } from "bcryptjs";
-import { ValidatedRow } from "../analyze/route"; // Import the shared type from the analyze endpoint
+import { ValidatedRow } from "../analyze/route";
 
 interface ExecutePayload {
 	toCreate: { employeeId: string; name: string }[];
@@ -11,18 +11,7 @@ interface ExecutePayload {
 	fullData: ValidatedRow[];
 }
 
-// Helper to calculate age and length of service
-const calculateYearsDifference = (startDate: Date): number => {
-	const today = new Date();
-	let years = today.getFullYear() - startDate.getFullYear();
-	const m = today.getMonth() - startDate.getMonth();
-	if (m < 0 || (m === 0 && today.getDate() < startDate.getDate())) {
-		years--;
-	}
-	return parseFloat(years.toFixed(2));
-};
-
-// Helper to format date for password generation
+// Helper to format date for password generation (e.g., 01011990)
 const formatDateForPassword = (date: Date): string => {
 	const d = String(date.getUTCDate()).padStart(2, "0");
 	const m = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -37,7 +26,7 @@ export async function POST(req: Request) {
 
 		const dataMap = new Map(fullData.map((row) => [row.employeeId, row]));
 
-		// --- OPTIMIZATION: Perform all expensive operations BEFORE the transaction ---
+		// --- Prepare data for creation before the transaction ---
 		const usersToCreate = await Promise.all(
 			toCreate.map(async (emp) => {
 				const rowData = dataMap.get(emp.employeeId);
@@ -51,8 +40,7 @@ export async function POST(req: Request) {
 				return {
 					employeeId: emp.employeeId,
 					password: password,
-					role: UserRole.EMPLOYEE,
-					email: null,
+					role: Role.EMPLOYEE,
 				};
 			})
 		);
@@ -67,80 +55,82 @@ export async function POST(req: Request) {
 
 			return {
 				employeeId: emp.employeeId,
-				name: rowData["Employee Name"],
+				fullName: rowData["Employee Name"],
 				dateOfBirth: dateOfBirth,
 				hireDate: hireDate,
-				// FIX: Cast the string to the Gender enum type
-				gender: (rowData["Gender"] === "Male" ? "MALE" : "FEMALE") as Gender,
-				personnelAreaId: rowData.branchId,
+				gender: rowData["Gender"] === "Male" ? Gender.MALE : Gender.FEMALE,
+				branchId: rowData.branchId,
 				positionId: rowData.positionId,
 				departmentId: rowData.departmentId,
 				levelId: rowData.levelId,
-				age: calculateYearsDifference(dateOfBirth),
-				lengthOfService: calculateYearsDifference(hireDate),
-				educationDegree: rowData["Pend"] as EducationDegree,
-				schoolName: rowData["Nama Sekolah/Univ"],
-				majorName: rowData["Jurusan"],
-				formFilledStatus: 0,
-				questionnaireStatus: 0,
-				createdAt: new Date(),
+				lastEducationDegree: rowData["Pend"] as EducationDegree,
+				lastEducationSchool: rowData["Nama Sekolah/Univ"],
+				lastEducationMajor: rowData["Jurusan"],
 			};
 		});
 
-		// --- Database Transaction with increased timeout ---
+		// --- Database Transaction ---
 		await prisma.$transaction(
 			async (tx) => {
 				// 1. Deletions
 				if (toDelete.length > 0) {
 					const idsToDelete = toDelete.map((e) => e.employeeId);
-					await tx.user.deleteMany({
+
+					// ## FIX: Correct deletion order ##
+					// Delete the dependent record (Employee) first.
+					await tx.employee.deleteMany({
 						where: { employeeId: { in: idsToDelete } },
 					});
-					await tx.employee.deleteMany({
+
+					// Then delete the principal record (User).
+					await tx.user.deleteMany({
 						where: { employeeId: { in: idsToDelete } },
 					});
 				}
 
-				// 2. Updates (must be done in a loop, but this is generally fast)
+				// 2. Updates
 				if (toUpdate.length > 0) {
 					for (const emp of toUpdate) {
 						const rowData = dataMap.get(emp.employeeId);
 						if (rowData) {
 							const dateOfBirth = new Date(rowData.birthDate);
 							const hireDate = new Date(rowData.hireDate);
+
 							await tx.employee.update({
 								where: { employeeId: emp.employeeId },
 								data: {
-									name: rowData["Employee Name"],
+									fullName: rowData["Employee Name"],
 									dateOfBirth,
 									hireDate,
-									gender: (rowData["Gender"] === "Male"
-										? "MALE"
-										: "FEMALE") as Gender,
-									personnelAreaId: rowData.branchId,
+									gender:
+										rowData["Gender"] === "Male" ? Gender.MALE : Gender.FEMALE,
+									branchId: rowData.branchId,
 									positionId: rowData.positionId,
 									departmentId: rowData.departmentId,
 									levelId: rowData.levelId,
-									age: calculateYearsDifference(dateOfBirth),
-									lengthOfService: calculateYearsDifference(hireDate),
-									educationDegree: rowData["Pend"] as EducationDegree,
-									schoolName: rowData["Nama Sekolah/Univ"],
-									majorName: rowData["Jurusan"],
-									lastUpdatedAt: new Date(),
+									lastEducationDegree: rowData["Pend"] as EducationDegree,
+									lastEducationSchool: rowData["Nama Sekolah/Univ"],
+									lastEducationMajor: rowData["Jurusan"],
 								},
 							});
 						}
 					}
 				}
 
-				// 3. Creations (using efficient batch operations)
+				// 3. Creations
 				if (usersToCreate.length > 0) {
-					await tx.user.createMany({ data: usersToCreate });
-					await tx.employee.createMany({ data: employeesToCreate });
+					await tx.user.createMany({
+						data: usersToCreate,
+						skipDuplicates: true,
+					});
+					await tx.employee.createMany({
+						data: employeesToCreate,
+						skipDuplicates: true,
+					});
 				}
 			},
 			{
-				timeout: 30000, // Increase timeout to 30 seconds for safety
+				timeout: 30000,
 			}
 		);
 
@@ -149,6 +139,9 @@ export async function POST(req: Request) {
 		});
 	} catch (error) {
 		console.error("Sync execution failed:", error);
+		if (error instanceof Error) {
+			return NextResponse.json({ message: error.message }, { status: 500 });
+		}
 		return NextResponse.json(
 			{ message: "An unexpected error occurred during synchronization." },
 			{ status: 500 }

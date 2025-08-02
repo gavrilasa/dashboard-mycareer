@@ -1,9 +1,11 @@
+// app/api/admin/employees/sync/analyze/route.ts
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { read, utils } from "xlsx";
 import { EducationDegree, Gender } from "@prisma/client";
 
-// --- (Type definitions and parseDate function remain the same) ---
+// Tipe untuk baris data dari file Excel
 type ExcelRow = {
 	"Personnel Area": string;
 	"Pers. Number": string;
@@ -19,24 +21,30 @@ type ExcelRow = {
 	Jurusan: string;
 };
 
+// Tipe untuk baris data yang telah divalidasi dan diperkaya dengan ID
 export type ValidatedRow = ExcelRow & {
 	employeeId: string;
 	branchId: string;
 	departmentId: string;
-	positionId: number;
+	positionId: string;
 	levelId: string;
 	birthDate: Date;
 	hireDate: Date;
 };
 
+// Fungsi parseDate yang dapat menangani format angka serial, string, dan Date
 function parseDate(dateValue: string | number | Date): Date | null {
 	if (dateValue instanceof Date) {
 		if (isNaN(dateValue.getTime())) return null;
-		const year = dateValue.getUTCFullYear();
-		const month = dateValue.getUTCMonth();
-		const day = dateValue.getUTCDate();
-		return new Date(Date.UTC(year, month, day));
+		return new Date(
+			Date.UTC(
+				dateValue.getUTCFullYear(),
+				dateValue.getUTCMonth(),
+				dateValue.getUTCDate()
+			)
+		);
 	}
+
 	if (typeof dateValue === "string") {
 		const parts = dateValue.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
 		if (!parts) return null;
@@ -51,19 +59,37 @@ function parseDate(dateValue: string | number | Date): Date | null {
 		if (isNaN(date.getTime())) return null;
 		return date;
 	}
+
 	if (typeof dateValue === "number") {
-		let adjustedValue = dateValue;
-		if (dateValue < 61) {
-			adjustedValue = dateValue - 1;
-		}
-		const utcMilliseconds = (adjustedValue - 25569) * 86400000;
-		const tempDate = new Date(utcMilliseconds);
-		const year = tempDate.getUTCFullYear();
-		const month = tempDate.getUTCMonth();
-		const day = tempDate.getUTCDate();
-		const date = new Date(Date.UTC(year, month, day));
+		const utcMilliseconds = (dateValue - 25569) * 86400000;
+		const date = new Date(utcMilliseconds);
 		if (isNaN(date.getTime())) return null;
-		return date;
+		// Normalisasi ke UTC untuk menghindari masalah zona waktu
+		return new Date(
+			Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate())
+		);
+	}
+
+	return null;
+}
+
+// Fungsi untuk menormalkan nama level dari singkatan ke nama lengkap
+function normalizeLevelName(
+	levelAbbr: string
+): "STAFF" | "SUPERVISOR" | "MANAGER" | null {
+	const lowerCaseName = levelAbbr.toLowerCase();
+	if (lowerCaseName.includes("mgr") || lowerCaseName.includes("manager")) {
+		return "MANAGER";
+	}
+	if (
+		lowerCaseName.includes("spv") ||
+		lowerCaseName.includes("supervisor") ||
+		lowerCaseName.includes("coord")
+	) {
+		return "SUPERVISOR";
+	}
+	if (lowerCaseName.includes("staff") || lowerCaseName.includes("admin")) {
+		return "STAFF";
 	}
 	return null;
 }
@@ -117,13 +143,13 @@ export async function POST(req: Request) {
 		const branchMap = new Map(
 			dbBranches.map((b) => [b.name.toLowerCase(), b.id])
 		);
+		const levelMap = new Map(dbLevels.map((l) => [l.name.toLowerCase(), l.id]));
 		const departmentMap = new Map(
-			dbDepartments.map((d) => [d.name.toLowerCase(), d.id])
+			dbDepartments.map((d) => [`${d.name.toLowerCase()}|${d.branchId}`, d.id])
 		);
 		const positionMap = new Map(
-			dbPositions.map((p) => [p.name.toLowerCase(), p.id])
+			dbPositions.map((p) => [`${p.name.toLowerCase()}|${p.branchId}`, p.id])
 		);
-		const levelMap = new Map(dbLevels.map((l) => [l.id.toLowerCase(), l.id]));
 
 		const errors: { row: number; employeeId: string; error: string }[] = [];
 		const validRows: ValidatedRow[] = [];
@@ -131,7 +157,7 @@ export async function POST(req: Request) {
 		for (let i = 0; i < data.length; i++) {
 			const row = data[i];
 			const rowNum = i + 2;
-			const employeeId = row["Pers. Number"]?.toString();
+			const employeeId = row["Pers. Number"]?.toString().split(" ")[0];
 			const currentErrors: string[] = [];
 
 			if (!employeeId) {
@@ -145,24 +171,35 @@ export async function POST(req: Request) {
 			}
 
 			const branchId = branchMap.get(row["Personnel Area"]?.toLowerCase());
-			if (!branchId)
+			if (!branchId) {
 				currentErrors.push(`Branch '${row["Personnel Area"]}' not found.`);
+			}
 
-			const departmentId = departmentMap.get(
-				row["Personnel Subarea"]?.toLowerCase()
-			);
-			if (!departmentId)
-				currentErrors.push(
-					`Department '${row["Personnel Subarea"]}' not found.`
-				);
+			let departmentId: string | undefined;
+			let positionId: string | undefined;
+			if (branchId) {
+				const deptKey = `${row[
+					"Personnel Subarea"
+				]?.toLowerCase()}|${branchId}`;
+				departmentId = departmentMap.get(deptKey);
+				if (!departmentId)
+					currentErrors.push(
+						`Department '${row["Personnel Subarea"]}' not found in branch '${row["Personnel Area"]}'.`
+					);
 
-			const positionId = positionMap.get(row["Position"]?.toLowerCase());
-			if (!positionId)
-				currentErrors.push(`Position '${row["Position"]}' not found.`);
+				const posKey = `${row["Position"]?.toLowerCase()}|${branchId}`;
+				positionId = positionMap.get(posKey);
+				if (!positionId)
+					currentErrors.push(
+						`Position '${row["Position"]}' not found in branch '${row["Personnel Area"]}'.`
+					);
+			}
 
-			const levelIdInput = row["Lv"]?.toLowerCase();
-			const levelId = levelMap.get(levelIdInput);
-			if (!levelId) currentErrors.push(`Level ID '${row["Lv"]}' not found.`);
+			const normalizedLevel = normalizeLevelName(row["Lv"] || "");
+			const levelId = normalizedLevel
+				? levelMap.get(normalizedLevel.toLowerCase())
+				: undefined;
+			if (!levelId) currentErrors.push(`Level '${row["Lv"]}' not valid.`);
 
 			const birthDate = parseDate(row["Birthdate"]);
 			if (!birthDate)
@@ -213,7 +250,6 @@ export async function POST(req: Request) {
 			.filter((row) => !dbEmployeeMap.has(row.employeeId))
 			.map((r) => ({ employeeId: r.employeeId, name: r["Employee Name"] }));
 
-		// PERBAIKAN: Mengganti 'any' dengan tipe yang lebih spesifik
 		type Change = {
 			field: string;
 			from: string | Gender | EducationDegree | null | undefined;
@@ -228,13 +264,13 @@ export async function POST(req: Request) {
 
 			const changes: Change[] = [];
 
-			if (dbEmployee.name !== row["Employee Name"])
+			if (dbEmployee.fullName !== row["Employee Name"])
 				changes.push({
 					field: "Name",
-					from: dbEmployee.name,
+					from: dbEmployee.fullName,
 					to: row["Employee Name"],
 				});
-			if (dbEmployee.personnelAreaId !== row.branchId)
+			if (dbEmployee.branchId !== row.branchId)
 				changes.push({
 					field: "Branch",
 					from: dbEmployee.branch?.name,
@@ -255,8 +291,8 @@ export async function POST(req: Request) {
 			if (dbEmployee.levelId !== row.levelId)
 				changes.push({
 					field: "Level",
-					from: dbEmployee.levelId,
-					to: row.levelId,
+					from: dbEmployee.level.name,
+					to: row.Lv,
 				});
 			if (dbEmployee.dateOfBirth.getTime() !== row.birthDate.getTime())
 				changes.push({
@@ -279,22 +315,22 @@ export async function POST(req: Request) {
 					to: fileGender,
 				});
 
-			if (dbEmployee.educationDegree !== row.Pend)
+			if (dbEmployee.lastEducationDegree !== row.Pend)
 				changes.push({
 					field: "Education",
-					from: dbEmployee.educationDegree,
+					from: dbEmployee.lastEducationDegree,
 					to: row.Pend,
 				});
-			if (dbEmployee.schoolName !== row["Nama Sekolah/Univ"])
+			if (dbEmployee.lastEducationSchool !== row["Nama Sekolah/Univ"])
 				changes.push({
 					field: "School",
-					from: dbEmployee.schoolName,
+					from: dbEmployee.lastEducationSchool,
 					to: row["Nama Sekolah/Univ"],
 				});
-			if (dbEmployee.majorName !== row.Jurusan)
+			if (dbEmployee.lastEducationMajor !== row.Jurusan)
 				changes.push({
 					field: "Major",
-					from: dbEmployee.majorName,
+					from: dbEmployee.lastEducationMajor,
 					to: row.Jurusan,
 				});
 
@@ -309,13 +345,16 @@ export async function POST(req: Request) {
 
 		const toDelete = Array.from(dbEmployeeMap.values())
 			.filter((emp) => !fileEmployeeIds.has(emp.employeeId))
-			.map((emp) => ({ employeeId: emp.employeeId, name: emp.name }));
+			.map((emp) => ({ employeeId: emp.employeeId, name: emp.fullName }));
 
 		return NextResponse.json({
 			analysis: { toCreate, toUpdate, toDelete, fullData: validRows },
 		});
 	} catch (error) {
 		console.error("Sync analysis failed:", error);
+		if (error instanceof Error) {
+			return NextResponse.json({ message: error.message }, { status: 500 });
+		}
 		return NextResponse.json(
 			{ message: "An unexpected error occurred during file analysis." },
 			{ status: 500 }
