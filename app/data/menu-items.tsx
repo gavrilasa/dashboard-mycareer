@@ -1,131 +1,99 @@
+import React from "react";
 import {
 	LayoutDashboard,
-	Briefcase,
-	ClipboardList,
-	Network,
-	User,
 	Users,
+	Briefcase,
 	Building2,
-	Building,
-	BarChart3,
-	UserCog,
+	GitBranch,
+	Layers,
+	FileText,
+	ClipboardList,
 } from "lucide-react";
-import { UserRole } from "@prisma/client";
 
-export type NavItem = {
+export interface NavItem {
 	href: string;
 	icon: React.ReactNode;
 	label: string;
-	startsWith?: boolean;
-};
+	startsWith?: boolean; // To match parent routes like /admin/employees/*
+}
 
-export type MenuGroup = {
+export interface MenuGroup {
 	title: string;
 	items: NavItem[];
-};
+}
 
-const getAdminMenu = (): MenuGroup[] => [
+// Defines the navigation structure for the admin sidebar
+export const adminMenuGroups: MenuGroup[] = [
 	{
-		title: "MENU",
+		title: "Menu",
 		items: [
 			{
-				href: "/dashboard",
+				href: "/admin/dashboard",
 				icon: <LayoutDashboard size={18} />,
 				label: "Dashboard",
 			},
 			{
-				href: "/dashboard/job-vacant",
+				href: "/admin/job-vacant",
 				icon: <Briefcase size={18} />,
 				label: "Job Vacant",
 			},
 			{
-				href: "/dashboard/questionnaire",
-				icon: <ClipboardList size={18} />,
-				label: "Questionnaire",
+				href: "/admin/career-path",
+				icon: <GitBranch size={18} />,
+				label: "Career Path",
 			},
 			{
-				href: "/dashboard/career-path",
-				icon: <Network size={18} />,
-				label: "Career Path",
+				href: "/admin/questionnaires",
+				icon: <ClipboardList size={18} />,
+				label: "Questionnaires",
+				startsWith: true,
+			},
+			{
+				href: "/admin/forms",
+				icon: <FileText size={18} />,
+				label: "Forms",
+				startsWith: true,
 			},
 		],
 	},
 	{
-		title: "DATABASE",
+		title: "Database",
 		items: [
 			{
-				href: "/dashboard/employees",
+				href: "/admin/employees",
 				icon: <Users size={18} />,
 				label: "Employees",
 				startsWith: true,
 			},
 			{
-				href: "/dashboard/positions",
-				icon: <BarChart3 size={18} />,
+				href: "/admin/positions",
+				icon: <Layers size={18} />,
 				label: "Positions",
+				startsWith: true,
 			},
 			{
-				href: "/dashboard/departments",
+				href: "/admin/departments",
 				icon: <Building2 size={18} />,
 				label: "Departments",
+				startsWith: true,
 			},
 			{
-				href: "/dashboard/branches",
-				icon: <Building size={18} />,
+				href: "/admin/branches",
+				icon: <GitBranch size={18} />,
 				label: "Branches",
+				startsWith: true,
 			},
 		],
 	},
 	{
-		title: "OTHERS",
+		title: "Account",
 		items: [
 			{
-				href: "/dashboard/account-control",
-				icon: <UserCog size={18} />,
-				label: "Account Control",
+				href: "/admin/users",
+				icon: <Users size={18} />,
+				label: "Users",
+				startsWith: true,
 			},
 		],
 	},
 ];
-
-// Fungsi ini akan menghasilkan menu untuk karyawan
-const getEmployeeMenu = (): MenuGroup[] => [
-	{
-		title: "MENU",
-		items: [
-			{
-				href: "/dashboard",
-				icon: <LayoutDashboard size={18} />,
-				label: "Dashboard",
-			},
-			{
-				href: `/dashboard/form`,
-				icon: <User size={18} />,
-				label: "Form",
-			},
-			{
-				href: "/dashboard/questionnaire",
-				icon: <ClipboardList size={18} />,
-				label: "Questionnaire",
-			},
-			{
-				href: "/dashboard/job-vacant",
-				icon: <Briefcase size={18} />,
-				label: "Job Vacant",
-			},
-		],
-	},
-];
-
-// Fungsi utama untuk mendapatkan menu berdasarkan peran
-export const getMenuItems = (role: UserRole): MenuGroup[] => {
-	switch (role) {
-		case UserRole.HR:
-		case UserRole.HD:
-			return getAdminMenu();
-		case UserRole.EMPLOYEE:
-			return getEmployeeMenu();
-		default:
-			return [];
-	}
-};
