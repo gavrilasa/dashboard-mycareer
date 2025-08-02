@@ -1,89 +1,115 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
-import { DataTable } from "@/components/common/DataTable";
+import { CrudTable } from "@/components/common/CrudTable";
+import { ColumnDef } from "@tanstack/react-table";
+import { Toaster, toast } from "sonner";
 
-// Tipe Data
+// Tipe data untuk Department
 interface Department {
 	id: string;
 	name: string;
+	branch: { name: string } | null;
+}
+
+// Tipe untuk informasi paginasi dari API
+interface PaginationInfo {
+	totalItems: number;
+	totalPages: number;
+}
+
+// Tipe untuk respons API yang dipaginasi
+interface PaginatedApiResponse {
+	data: Department[];
+	pagination: PaginationInfo;
 }
 
 export default function DepartmentsPage() {
-	const [allDepartments, setAllDepartments] = useState<Department[]>([]);
+	const [data, setData] = useState<Department[]>([]);
+	const [pagination, setPagination] = useState<PaginationInfo>({
+		totalItems: 0,
+		totalPages: 0,
+	});
 	const [loading, setLoading] = useState(true);
-	const [searchTerm, setSearchTerm] = useState("");
-	const [currentPage, setCurrentPage] = useState(1);
 	const [limit, setLimit] = useState(10);
-	const debouncedSearchTerm = useDebounce(searchTerm, 300);
+	const [page, setPage] = useState(1);
+	const [searchTerm, setSearchTerm] = useState("");
+	const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
-	useEffect(() => {
-		const fetchData = async () => {
-			setLoading(true);
-			try {
-				const response = await fetch("/api/master-data/departments");
-				if (!response.ok) throw new Error("Failed to fetch departments");
-				const data = await response.json();
-				setAllDepartments(data);
-			} catch (error) {
-				console.error(error);
-			} finally {
-				setLoading(false);
+	const fetchDepartments = useCallback(async () => {
+		setLoading(true);
+		try {
+			const params = new URLSearchParams({
+				page: page.toString(),
+				limit: limit.toString(),
+				q: debouncedSearchTerm,
+			});
+			const response = await fetch(
+				`/api/admin/departments?${params.toString()}`
+			);
+			if (!response.ok) {
+				throw new Error("Failed to fetch departments");
 			}
-		};
-		fetchData();
-	}, []);
+			const result: PaginatedApiResponse = await response.json();
 
-	const filteredData = useMemo(() => {
-		return allDepartments.filter((dept) =>
-			dept.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-		);
-	}, [allDepartments, debouncedSearchTerm]);
-
-	const paginatedData = useMemo(() => {
-		const start = (currentPage - 1) * limit;
-		return filteredData.slice(start, start + limit);
-	}, [filteredData, currentPage, limit]);
-
-	const totalPages = Math.ceil(filteredData.length / limit);
+			setData(result.data || []);
+			setPagination(result.pagination || { totalItems: 0, totalPages: 0 });
+		} catch (error) {
+			const errorMessage =
+				error instanceof Error ? error.message : "An unknown error occurred.";
+			toast.error("Error fetching departments", { description: errorMessage });
+			setData([]);
+			setPagination({ totalItems: 0, totalPages: 0 });
+		} finally {
+			setLoading(false);
+		}
+	}, [page, limit, debouncedSearchTerm]);
 
 	useEffect(() => {
-		setCurrentPage(1);
+		fetchDepartments();
+	}, [fetchDepartments]);
+
+	// Atur ulang halaman ke 1 saat pencarian atau batas entri berubah
+	useEffect(() => {
+		setPage(1);
 	}, [limit, debouncedSearchTerm]);
 
-	// Define columns for the DataTable
-	const columns = [
+	// Definisi kolom untuk TanStack Table
+	const columns: ColumnDef<Department>[] = [
 		{
-			header: "ID Departemen",
-			accessor: (item: Department) => item.id,
-			className: "w-[20%]",
+			accessorKey: "name",
+			header: "Department Name",
 		},
 		{
-			header: "Nama Departemen",
-			accessor: (item: Department) => item.name,
-			className: "w-[60%]",
+			accessorKey: "branch.name",
+			header: "Branch",
+			cell: ({ row }) => row.original.branch?.name || "-",
 		},
 	];
 
 	return (
-		<div>
-			<h1 className="mb-6 text-2xl font-bold text-gray-800">Data Departemen</h1>
-			<DataTable
-				columns={columns}
-				data={paginatedData}
-				loading={loading}
-				limit={limit}
-				onLimitChange={setLimit}
-				searchTerm={searchTerm}
-				onSearchChange={setSearchTerm}
-				pagination={{
-					currentPage,
-					totalPages,
-					totalRecords: filteredData.length,
-					onPageChange: setCurrentPage,
-				}}
-			/>
-		</div>
+		<>
+			<Toaster position="top-center" richColors />
+			<div className="container mx-auto py-10">
+				<h1 className="text-2xl font-bold text-gray-800 mb-4">Departments</h1>
+
+				<CrudTable
+					columns={columns}
+					data={data}
+					loading={loading}
+					limit={limit}
+					onLimitChange={setLimit}
+					search={searchTerm}
+					onSearchChange={setSearchTerm}
+					pagination={{
+						currentPage: page,
+						totalPages: pagination.totalPages,
+						totalRecords: pagination.totalItems,
+						onPageChange: setPage,
+					}}
+				/>
+			</div>
+		</>
 	);
 }
