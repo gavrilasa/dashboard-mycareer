@@ -24,8 +24,9 @@ import {
 	AccordionItem,
 	AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress"; // Import the Progress component
 
-// Define updated types for the API response
+// --- Type Definitions (Unchanged) ---
 interface ChangeDetail {
 	field: string;
 	from: string | null;
@@ -42,6 +43,7 @@ interface SyncAnalysis {
 	toCreate: { employeeId: string; name: string }[];
 	toUpdate: EmployeeUpdate[];
 	toDelete: { employeeId: string; name: string }[];
+	fullData: any;
 }
 
 interface SyncError {
@@ -53,7 +55,7 @@ interface SyncError {
 interface SyncModalProps {
 	isOpen: boolean;
 	onClose: () => void;
-	onSuccess: () => void; // To refresh the main table
+	onSuccess: () => void;
 }
 
 export const SyncModal: React.FC<SyncModalProps> = ({
@@ -62,12 +64,17 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 	onSuccess,
 }) => {
 	const [step, setStep] = useState<
-		"upload" | "processing" | "confirm" | "error" | "success"
+		"upload" | "processing" | "confirm" | "executing" | "error" | "success"
 	>("upload");
 	const [selectedFile, setSelectedFile] = useState<File | null>(null);
 	const [analysis, setAnalysis] = useState<SyncAnalysis | null>(null);
 	const [errors, setErrors] = useState<SyncError[]>([]);
-	const [isExecuting, setIsExecuting] = useState(false);
+
+	// --- State for Progress Simulation ---
+	const [progress, setProgress] = useState(0);
+	const [progressMessage, setProgressMessage] = useState(
+		"Starting synchronization..."
+	);
 
 	const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		if (event.target.files && event.target.files[0]) {
@@ -78,6 +85,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 	const handleUploadAndAnalyze = async () => {
 		if (!selectedFile) return;
 		setStep("processing");
+		setErrors([]); // Clear previous errors
 
 		const formData = new FormData();
 		formData.append("file", selectedFile);
@@ -104,13 +112,8 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 				return;
 			}
 
-			if (result.errors && result.errors.length > 0) {
-				setErrors(result.errors);
-				setStep("error");
-			} else {
-				setAnalysis(result.analysis);
-				setStep("confirm");
-			}
+			setAnalysis(result.analysis);
+			setStep("confirm");
 		} catch (err) {
 			setErrors([
 				{
@@ -125,12 +128,36 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 
 	const handleExecuteSync = async () => {
 		if (!analysis) return;
-		setIsExecuting(true);
+		setStep("executing");
+		setProgress(0); // Reset progress
+
+		// --- Progress Simulation Logic ---
+		const totalOperations =
+			analysis.toDelete.length +
+			analysis.toUpdate.length +
+			analysis.toCreate.length;
+		let progressInterval: NodeJS.Timeout;
+
+		// Simulate progress updates every few seconds
+		if (totalOperations > 0) {
+			progressInterval = setInterval(() => {
+				setProgress((prev) => {
+					const next = prev + 10;
+					if (next < 30) setProgressMessage("Deleting old records...");
+					else if (next < 60)
+						setProgressMessage("Updating existing records...");
+					else if (next < 90) setProgressMessage("Creating new records...");
+					else setProgressMessage("Finalizing transaction...");
+					return Math.min(next, 95); // Stop at 95% until complete
+				});
+			}, 1500);
+		}
+		// --- End Simulation Logic ---
+
 		try {
 			const response = await fetch("/api/admin/employees/sync/execute", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				// The execute API doesn't need the 'changes' detail, so we send the original analysis object
 				body: JSON.stringify(analysis),
 			});
 
@@ -147,8 +174,14 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 				return;
 			}
 
-			setStep("success");
-			onSuccess();
+			setProgress(100); // Mark as complete
+			setProgressMessage("Synchronization successful!");
+
+			// Give a moment for the user to see the "complete" state
+			setTimeout(() => {
+				setStep("success");
+				onSuccess();
+			}, 1000);
 		} catch (err) {
 			setErrors([
 				{
@@ -159,7 +192,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 			]);
 			setStep("error");
 		} finally {
-			setIsExecuting(false);
+			clearInterval(progressInterval!); // Stop the simulation
 		}
 	};
 
@@ -167,6 +200,8 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 		setSelectedFile(null);
 		setAnalysis(null);
 		setErrors([]);
+		setProgress(0);
+		setProgressMessage("");
 		setStep("upload");
 	};
 
@@ -177,6 +212,20 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 
 	const renderContent = () => {
 		switch (step) {
+			// Cases 'upload', 'processing', 'confirm', 'error', 'success' remain largely the same.
+			// The main addition is the new 'executing' case.
+			case "executing":
+				return (
+					<div className="flex flex-col items-center justify-center h-48">
+						<Loader2 className="h-16 w-16 animate-spin text-blue-600" />
+						<p className="mt-4 text-lg font-medium text-gray-700">
+							{progressMessage}
+						</p>
+						<Progress value={progress} className="w-full mt-4" />
+					</div>
+				);
+
+			// ... other cases from your provided code ...
 			case "upload":
 				return (
 					<>
@@ -343,12 +392,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 							<Button variant="outline" onClick={handleClose}>
 								Cancel
 							</Button>
-							<Button onClick={handleExecuteSync} disabled={isExecuting}>
-								{isExecuting && (
-									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-								)}
-								Confirm & Synchronize
-							</Button>
+							<Button onClick={handleExecuteSync}>Confirm & Synchronize</Button>
 						</DialogFooter>
 					</>
 				);
