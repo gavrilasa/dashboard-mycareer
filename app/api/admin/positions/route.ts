@@ -1,110 +1,110 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/app/lib/prisma";
-import { auth } from "@/app/lib/auth";
+import { NextResponse, type NextRequest } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { withAuthorization } from "@/lib/auth-hof";
 import { Prisma } from "@prisma/client";
 
-export async function GET(req: Request) {
-	const session = await auth();
-	if (session?.user?.role !== "ADMIN") {
-		return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-	}
-
-	try {
+// The GET handler is already correct and requires no changes.
+export const GET = withAuthorization(
+	{ resource: "position", action: "read" },
+	async (req: NextRequest, { whereClause }) => {
 		const { searchParams } = new URL(req.url);
-		const page = parseInt(searchParams.get("page") || "1");
-		const limit = parseInt(searchParams.get("limit") || "10");
-		const q = searchParams.get("q") || "";
-
+		const page = parseInt(searchParams.get("page") || "1", 10);
+		const limit = parseInt(searchParams.get("limit") || "10", 10);
+		const search = searchParams.get("search") || "";
 		const skip = (page - 1) * limit;
 
-		const whereClause: Prisma.PositionWhereInput = q
-			? {
-					OR: [
-						{ id: { contains: q, mode: "insensitive" } },
-						{ name: { contains: q, mode: "insensitive" } },
-						{ branch: { name: { contains: q, mode: "insensitive" } } },
-						{ department: { name: { contains: q, mode: "insensitive" } } },
-						{ level: { name: { contains: q, mode: "insensitive" } } },
-					],
-			  }
-			: {};
-
-		const [data, total] = await prisma.$transaction([
-			prisma.position.findMany({
-				where: whereClause,
-				skip,
-				take: limit,
-				include: {
-					branch: true,
-					department: true,
-					level: true,
-				},
-				orderBy: [{ branch: { id: "asc" } }, { level: { id: "asc" } }],
-			}),
-			prisma.position.count({ where: whereClause }),
-		]);
-
-		const totalPages = Math.ceil(total / limit);
-
-		return NextResponse.json({
-			data,
-			pagination: {
-				totalItems: total,
-				totalPages,
-			},
-		});
-	} catch (error) {
-		console.error("Error fetching positions:", error);
-		return NextResponse.json(
-			{ message: "Internal Server Error" },
-			{ status: 500 }
-		);
-	}
-}
-
-// POST: Membuat posisi baru
-export async function POST(request: Request) {
-	const session = await auth();
-	if (session?.user?.role !== "ADMIN") {
-		return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-	}
-
-	try {
-		const body = await request.json();
-		const { name, branchId, departmentId, levelId } = body;
-
-		if (!name || !branchId || !departmentId || !levelId) {
-			return NextResponse.json(
-				{ message: "All fields are required" },
-				{ status: 400 }
-			);
+		const finalWhere: Prisma.PositionWhereInput = { ...whereClause };
+		if (search) {
+			finalWhere.name = { contains: search, mode: "insensitive" };
 		}
 
-		const sanitizedName = name.toLowerCase().replace(/[^a-z0-9]/g, "-");
-		const newPositionId = `${branchId}-${sanitizedName}-${Date.now()}`;
+		try {
+			const [positions, totalItems] = await prisma.$transaction([
+				prisma.position.findMany({
+					where: finalWhere,
+					skip,
+					take: limit,
+					include: {
+						branch: { select: { name: true } },
+						department: { select: { name: true } },
+						level: { select: { name: true } },
+					},
+					orderBy: [
+						{ branch: { id: "asc" } },
+						{ level: { id: "asc" } },
+						{ name: "asc" },
+					],
+				}),
+				prisma.position.count({ where: finalWhere }),
+			]);
 
-		const newPosition = await prisma.position.create({
-			data: {
-				id: newPositionId,
-				name,
-				branch: {
-					connect: { id: branchId },
-				},
-				department: {
-					connect: { id: departmentId },
-				},
-				level: {
-					connect: { id: levelId },
-				},
-			},
-		});
+			const totalPages = Math.ceil(totalItems / limit);
 
-		return NextResponse.json(newPosition, { status: 201 });
-	} catch (error) {
-		console.error("Error creating position:", error);
-		return NextResponse.json(
-			{ message: "Internal Server Error" },
-			{ status: 500 }
-		);
+			return NextResponse.json({
+				data: positions,
+				pagination: { totalItems, totalPages, currentPage: page, limit },
+			});
+		} catch {
+			return NextResponse.json(
+				{ message: "Internal Server Error" },
+				{ status: 500 }
+			);
+		}
 	}
-}
+);
+
+// POST: Membuat posisi baru dengan ID yang dibuat secara manual
+export const POST = withAuthorization(
+	{ resource: "position", action: "create" },
+	async (req, { session }) => {
+		try {
+			const body = await req.json();
+			// FIX: Use 'const' for variables that are not reassigned.
+			let { branchId } = body;
+			const { departmentId, name, levelId } = body;
+
+			if (!name || !branchId || !departmentId || !levelId) {
+				return NextResponse.json(
+					{ message: "Nama, cabang, departemen, dan level diperlukan" },
+					{ status: 400 }
+				);
+			}
+
+			if (session?.user?.role === "HR_BRANCH") {
+				branchId = session.user.branchId;
+			}
+
+			const sanitizedName = name.replace(/\s+/g, "-").toLowerCase();
+			const uniqueId = `${branchId}-${departmentId}-${sanitizedName}-${Date.now()}`;
+
+			const newPosition = await prisma.position.create({
+				data: {
+					id: uniqueId,
+					name,
+					branchId,
+					departmentId,
+					levelId,
+				},
+			});
+
+			return NextResponse.json(newPosition, { status: 201 });
+		} catch (error) {
+			if (
+				error instanceof Prisma.PrismaClientKnownRequestError &&
+				error.code === "P2002"
+			) {
+				return NextResponse.json(
+					{
+						message:
+							"Posisi dengan nama ini sudah ada di departemen yang sama.",
+					},
+					{ status: 409 }
+				);
+			}
+			return NextResponse.json(
+				{ message: "Internal Server Error" },
+				{ status: 500 }
+			);
+		}
+	}
+);

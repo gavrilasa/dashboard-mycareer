@@ -1,83 +1,100 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/app/lib/prisma";
-import { auth } from "@/app/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { withAuthorization } from "@/lib/auth-hof";
 
-// PUT: Mengedit posisi berdasarkan ID
-export async function PUT(
-	request: Request,
-	{ params }: { params: { positionId: string } }
-) {
-	const session = await auth();
-	if (session?.user?.role !== "ADMIN") {
-		return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-	}
-
-	const { positionId } = params;
-
-	try {
-		const body = await request.json();
-		const { name } = body;
-
-		if (!name) {
+// GET: Mengambil satu posisi
+export const GET = withAuthorization(
+	{ resource: "position", action: "read" },
+	async (_req, _args, { params }) => {
+		const { positionId } = params;
+		if (typeof positionId !== "string") {
 			return NextResponse.json(
-				{ message: "Position name is required" },
+				{ message: "ID Posisi tidak valid" },
 				{ status: 400 }
 			);
 		}
 
-		const updatedPosition = await prisma.position.update({
+		const position = await prisma.position.findUnique({
 			where: { id: positionId },
-			data: { name },
 		});
 
-		return NextResponse.json(updatedPosition);
-	} catch (error) {
-		console.error(`Error updating position ${positionId}:`, error);
-		return NextResponse.json(
-			{ message: "Internal Server Error" },
-			{ status: 500 }
-		);
-	}
-}
-
-// DELETE: Menghapus posisi berdasarkan ID
-export async function DELETE(
-	request: Request,
-	{ params }: { params: { positionId: string } }
-) {
-	const session = await auth();
-	if (session?.user?.role !== "ADMIN") {
-		return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-	}
-
-	const { positionId } = params;
-
-	try {
-		// Tambahan: Cek apakah posisi masih digunakan oleh karyawan
-		const employeeCount = await prisma.employee.count({
-			where: { positionId: positionId },
-		});
-
-		if (employeeCount > 0) {
+		if (!position) {
 			return NextResponse.json(
-				{ message: "Cannot delete position, it is still in use by employees." },
-				{ status: 409 } // 409 Conflict
+				{ message: "Posisi tidak ditemukan" },
+				{ status: 404 }
+			);
+		}
+		return NextResponse.json(position);
+	}
+);
+
+// PUT: Memperbarui posisi
+export const PUT = withAuthorization(
+	{ resource: "position", action: "update" },
+	async (req, _args, { params }) => {
+		const { positionId } = params;
+		if (typeof positionId !== "string") {
+			return NextResponse.json(
+				{ message: "ID Posisi tidak valid" },
+				{ status: 400 }
 			);
 		}
 
-		await prisma.position.delete({
-			where: { id: positionId },
-		});
-
-		return NextResponse.json(
-			{ message: "Position deleted successfully" },
-			{ status: 200 }
-		);
-	} catch (error) {
-		console.error(`Error deleting position ${positionId}:`, error);
-		return NextResponse.json(
-			{ message: "Internal Server Error" },
-			{ status: 500 }
-		);
+		try {
+			const body = await req.json();
+			const updatedPosition = await prisma.position.update({
+				where: { id: positionId },
+				data: body,
+			});
+			return NextResponse.json(updatedPosition);
+		} catch (error) {
+			console.error("Error updating position:", error);
+			return NextResponse.json(
+				{ message: "Internal Server Error" },
+				{ status: 500 }
+			);
+		}
 	}
-}
+);
+
+// DELETE: Menghapus posisi
+export const DELETE = withAuthorization(
+	{ resource: "position", action: "delete" },
+	async (_req, _args, { params }) => {
+		const { positionId } = params;
+		if (typeof positionId !== "string") {
+			return NextResponse.json(
+				{ message: "ID Posisi tidak valid" },
+				{ status: 400 }
+			);
+		}
+
+		try {
+			// Periksa apakah posisi masih digunakan oleh karyawan
+			const employeeCount = await prisma.employee.count({
+				where: { positionId: positionId },
+			});
+
+			if (employeeCount > 0) {
+				return NextResponse.json(
+					{
+						message:
+							"Tidak dapat menghapus posisi yang masih digunakan oleh karyawan.",
+					},
+					{ status: 409 } // 409 Conflict
+				);
+			}
+
+			await prisma.position.delete({
+				where: { id: positionId },
+			});
+			return new NextResponse(null, { status: 204 }); // 204 No Content
+		} catch (error) {
+			console.error("Error deleting position:", error);
+			return NextResponse.json(
+				{ message: "Internal Server Error" },
+				{ status: 500 }
+			);
+		}
+	}
+);

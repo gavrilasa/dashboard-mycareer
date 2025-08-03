@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/app/lib/prisma";
-import { auth } from "@/app/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 
 // GET: Mengambil semua level
 export async function GET() {

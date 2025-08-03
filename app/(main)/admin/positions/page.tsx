@@ -1,24 +1,24 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CrudTable } from "@/components/common/CrudTable";
 import { Button } from "@/components/ui/button";
-import { Edit, PlusCircle, Trash2 } from "lucide-react";
+import { Edit, Plus, Trash2 } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
 
 import {
 	Dialog,
 	DialogContent,
-	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-	DialogTrigger,
+	DialogDescription,
+	DialogFooter,
 } from "@/components/ui/dialog";
 import {
 	AlertDialog,
@@ -46,6 +46,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { PERMISSIONS } from "@/lib/permissions";
 
 // --- Type Definitions ---
 interface Position {
@@ -71,26 +72,30 @@ interface MasterData {
 	levels: MasterDataItem[];
 }
 
+// FIX: Corrected PaginationInfo type to match CrudTable's expectation
 interface PaginationInfo {
-	totalItems: number;
+	totalRecords: number;
 	totalPages: number;
+	currentPage: number;
 }
 
 // --- Zod Schema for Form Validation ---
 const formSchema = z.object({
-	name: z.string().min(1, "Position name is required."),
-	branchId: z.string().min(1, "Branch is required."),
-	departmentId: z.string().min(1, "Department is required."),
-	levelId: z.string().min(1, "Level is required."),
+	name: z.string().min(1, "Nama posisi wajib diisi."),
+	branchId: z.string().min(1, "Cabang wajib dipilih."),
+	departmentId: z.string().min(1, "Departemen wajib dipilih."),
+	levelId: z.string().min(1, "Level wajib dipilih."),
 });
 
 type PositionFormValues = z.infer<typeof formSchema>;
 
 export default function PositionsPage() {
+	const { data: session } = useSession();
 	const [data, setData] = useState<Position[]>([]);
 	const [pagination, setPagination] = useState<PaginationInfo>({
-		totalItems: 0,
+		totalRecords: 0,
 		totalPages: 0,
+		currentPage: 1,
 	});
 	const [masterData, setMasterData] = useState<MasterData>({
 		branches: [],
@@ -110,6 +115,17 @@ export default function PositionsPage() {
 		null
 	);
 
+	const { canCreate, canEdit, canDelete } = useMemo(() => {
+		if (!session?.user?.role)
+			return { canCreate: false, canEdit: false, canDelete: false };
+		const permissions = PERMISSIONS[session.user.role]?.position || [];
+		return {
+			canCreate: permissions.includes("create"),
+			canEdit: permissions.includes("update"),
+			canDelete: permissions.includes("delete"),
+		};
+	}, [session]);
+
 	const form = useForm<PositionFormValues>({
 		resolver: zodResolver(formSchema),
 	});
@@ -120,17 +136,25 @@ export default function PositionsPage() {
 			const params = new URLSearchParams({
 				page: page.toString(),
 				limit: limit.toString(),
-				q: debouncedSearchTerm,
+				search: debouncedSearchTerm,
 			});
 			const response = await fetch(`/api/admin/positions?${params.toString()}`);
-			if (!response.ok) throw new Error("Failed to fetch positions");
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || "Gagal memuat posisi");
+			}
 			const result = await response.json();
 			setData(result.data || []);
-			setPagination(result.pagination || { totalItems: 0, totalPages: 0 });
+			setPagination({
+				// FIX: Mapped totalItems to totalRecords to match the type
+				totalRecords: result.pagination?.totalItems || 0,
+				totalPages: result.pagination?.totalPages || 0,
+				currentPage: result.pagination?.currentPage || 1,
+			});
 		} catch (error) {
-			toast.error("Error", {
+			toast.error("Error Memuat Posisi", {
 				description:
-					error instanceof Error ? error.message : "Could not fetch data.",
+					error instanceof Error ? error.message : "Tidak dapat memuat data.",
 			});
 		} finally {
 			setLoading(false);
@@ -139,25 +163,19 @@ export default function PositionsPage() {
 
 	const fetchMasterData = useCallback(async () => {
 		try {
-			const [branchesRes, departmentsRes, levelsRes] = await Promise.all([
-				fetch("/api/admin/branches?limit=1000"),
-				fetch("/api/admin/departments?limit=4000"),
-				fetch("/api/admin/levels"),
-			]);
-
-			const branchesJson = await branchesRes.json();
-			const departmentsJson = await departmentsRes.json();
-			const levelsJson = await levelsRes.json(); // This returns an array directly
-
-			// ## FIX: Handle the direct array response from the levels API ##
-			setMasterData({
-				branches: branchesJson.data || [],
-				departments: departmentsJson.data || [],
-				levels: levelsJson || [], // Use the direct array
-			});
+			const response = await fetch("/api/admin/master-data");
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || "Gagal memuat data form");
+			}
+			const data = await response.json();
+			setMasterData(data);
 		} catch (error) {
-			toast.error("Error", {
-				description: "Could not fetch master data for the form.",
+			toast.error("Error Memuat Master Data", {
+				description:
+					error instanceof Error
+						? error.message
+						: "Tidak dapat memuat data master untuk form.",
 			});
 		}
 	}, []);
@@ -174,129 +192,134 @@ export default function PositionsPage() {
 		setPage(1);
 	}, [limit, debouncedSearchTerm]);
 
-	const handleOpenModal = (position: Position | null = null) => {
-		setEditingPosition(position);
-		if (position) {
-			form.reset({
-				name: position.name,
-				branchId: position.branchId,
-				departmentId: position.departmentId,
-				levelId: position.levelId,
-			});
-		} else {
-			form.reset({
-				name: "",
-				branchId: "",
-				departmentId: "",
-				levelId: "",
-			});
-		}
-		setIsModalOpen(true);
+	const handleOpenModal = useCallback(
+		(position: Position | null = null) => {
+			setEditingPosition(position);
+			if (position) {
+				form.reset({
+					name: position.name,
+					branchId: position.branchId,
+					departmentId: position.departmentId,
+					levelId: position.levelId,
+				});
+			} else {
+				form.reset({ name: "", branchId: "", departmentId: "", levelId: "" });
+			}
+			setIsModalOpen(true);
+		},
+		[form]
+	);
+
+	const handleCloseModal = () => {
+		setIsModalOpen(false);
+		setEditingPosition(null);
 	};
+
+	const handleDeleteConfirm = useCallback((position: Position) => {
+		setPositionToDelete(position);
+		setIsDeleteAlertOpen(true);
+	}, []);
 
 	const onSubmit = async (values: PositionFormValues) => {
 		const url = editingPosition
 			? `/api/admin/positions/${editingPosition.id}`
 			: "/api/admin/positions";
 		const method = editingPosition ? "PUT" : "POST";
-
 		const promise = fetch(url, {
 			method,
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(values),
 		}).then(async (res) => {
 			if (!res.ok) {
-				const error = await res.json();
-				throw new Error(error.message || `Failed to save position.`);
+				const errorData = await res.json();
+				throw new Error(errorData.message || "Gagal menyimpan posisi.");
 			}
 			return res.json();
 		});
-
 		toast.promise(promise, {
-			loading: "Saving position...",
-			success: () => {
-				setIsModalOpen(false);
+			loading: "Menyimpan posisi...",
+			success: (data) => {
+				handleCloseModal();
 				fetchPositions();
-				return `Position successfully ${
-					editingPosition ? "updated" : "created"
-				}.`;
+				return `Posisi "${data.name}" telah disimpan.`;
 			},
 			error: (err) => err.message,
 		});
-	};
-
-	const handleDeleteConfirm = (position: Position) => {
-		setPositionToDelete(position);
-		setIsDeleteAlertOpen(true);
 	};
 
 	const handleDelete = async () => {
 		if (!positionToDelete) return;
-
 		const promise = fetch(`/api/admin/positions/${positionToDelete.id}`, {
 			method: "DELETE",
 		}).then(async (res) => {
-			if (!res.ok) {
-				const error = await res.json();
-				throw new Error(error.message || "Failed to delete position.");
+			if (!res.ok && res.status !== 204) {
+				const errorData = await res.json();
+				throw new Error(errorData.message || "Gagal menghapus posisi.");
 			}
-			return res.json();
 		});
-
 		toast.promise(promise, {
-			loading: "Deleting position...",
+			loading: "Menghapus posisi...",
 			success: () => {
 				setIsDeleteAlertOpen(false);
 				fetchPositions();
-				return "Position successfully deleted.";
+				return "Posisi berhasil dihapus.";
 			},
 			error: (err) => err.message,
 		});
 	};
 
-	const columns: ColumnDef<Position>[] = [
-		{ accessorKey: "name", header: "Position Name" },
-		{
-			accessorKey: "level.name",
-			header: "Level",
-			cell: ({ row }) => row.original.level?.name || "-",
-		},
-		{
-			accessorKey: "department.name",
-			header: "Department",
-			cell: ({ row }) => row.original.department?.name || "-",
-		},
-		{
-			accessorKey: "branch.name",
-			header: "Branch",
-			cell: ({ row }) => row.original.branch?.name || "-",
-		},
-		{
-			id: "actions",
-			header: "Actions",
-			size: 100,
-			cell: ({ row }) => (
-				<div className="flex items-center justify-center gap-2">
-					<Button
-						onClick={() => handleOpenModal(row.original)}
-						variant="ghost"
-						size="icon"
-						className="h-6 w-6 text-gray-500 hover:text-blue-600"
-					>
-						<Edit size={16} />
-					</Button>
-					<Button
-						onClick={() => handleDeleteConfirm(row.original)}
-						variant="ghost"
-						size="icon"
-						className="h-6 w-6 text-gray-500 hover:text-red-600"
-					>
-						<Trash2 size={16} />
-					</Button>
-				</div>
-			),
-		},
-	];
+	const columns = useMemo<ColumnDef<Position>[]>(() => {
+		const baseCols: ColumnDef<Position>[] = [
+			{ accessorKey: "name", header: "Nama Posisi" },
+			{
+				accessorKey: "level.name",
+				header: "Level",
+				cell: ({ row }) => row.original.level?.name || "-",
+			},
+			{
+				accessorKey: "department.name",
+				header: "Departemen",
+				cell: ({ row }) => row.original.department?.name || "-",
+			},
+			{
+				accessorKey: "branch.name",
+				header: "Cabang",
+				cell: ({ row }) => row.original.branch?.name || "-",
+			},
+		];
+		if (canEdit || canDelete) {
+			baseCols.push({
+				id: "actions",
+				header: "Aksi",
+				size: 100,
+				cell: ({ row }) => (
+					<div className="flex items-center justify-center gap-2">
+						{canEdit && (
+							<Button
+								onClick={() => handleOpenModal(row.original)}
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8 text-gray-500 hover:text-blue-600"
+							>
+								<Edit size={16} />
+							</Button>
+						)}
+						{canDelete && (
+							<Button
+								onClick={() => handleDeleteConfirm(row.original)}
+								variant="ghost"
+								size="icon"
+								className="h-8 w-8 text-gray-500 hover:text-red-600"
+							>
+								<Trash2 size={16} />
+							</Button>
+						)}
+					</div>
+				),
+			});
+		}
+		return baseCols;
+	}, [canEdit, canDelete, handleOpenModal, handleDeleteConfirm]);
 
 	const selectedBranchId = form.watch("branchId");
 	const filteredDepartments = useMemo(
@@ -308,53 +331,84 @@ export default function PositionsPage() {
 		<>
 			<Toaster position="top-center" richColors />
 			<div className="container mx-auto py-10">
-				<h1 className="text-2xl font-bold text-gray-800 mb-4">Positions</h1>
-
+				<div className="flex justify-between items-center mb-4">
+					<h1 className="text-2xl font-bold">Data Posisi</h1>
+				</div>
 				<CrudTable
 					columns={columns}
 					data={data}
 					loading={loading}
-					limit={limit}
-					onLimitChange={setLimit}
 					search={searchTerm}
 					onSearchChange={setSearchTerm}
 					pagination={{
-						currentPage: page,
+						currentPage: pagination.currentPage,
 						totalPages: pagination.totalPages,
-						totalRecords: pagination.totalItems,
+						totalRecords: pagination.totalRecords,
 						onPageChange: setPage,
 					}}
+					limit={limit}
+					onLimitChange={setLimit}
+					// FIX: Use a ternary operator to pass null instead of false
 					createButton={
-						<Button onClick={() => handleOpenModal()}>
-							<PlusCircle className="mr-2 h-4 w-4" />
-							Create Position
-						</Button>
+						canCreate ? (
+							<Button onClick={() => handleOpenModal()}>
+								<Plus className="mr-2 h-4 w-4" /> Buat Posisi
+							</Button>
+						) : null
 					}
 				/>
 			</div>
 
-			{/* Create/Edit Modal */}
 			<Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-				<DialogContent>
+				<DialogContent className="sm:max-w-[600px]">
 					<DialogHeader>
 						<DialogTitle>
-							{editingPosition ? "Edit Position" : "Create New Position"}
+							{editingPosition ? "Edit Posisi" : "Buat Posisi Baru"}
 						</DialogTitle>
-						<DialogDescription>
-							Fill in the details for the position.
-						</DialogDescription>
+						<DialogDescription>Isi detail untuk posisi.</DialogDescription>
 					</DialogHeader>
 					<Form {...form}>
-						<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+						<form
+							onSubmit={form.handleSubmit(onSubmit)}
+							className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4"
+						>
 							<FormField
 								control={form.control}
 								name="name"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Position Name</FormLabel>
+										<FormLabel>Nama Posisi</FormLabel>
 										<FormControl>
-											<Input placeholder="e.g., HR Staff" {...field} />
+											<Input
+												placeholder="Contoh: Staff HR"
+												{...field}
+												className="w-full"
+											/>
 										</FormControl>
+										<FormMessage />
+									</FormItem>
+								)}
+							/>
+							<FormField
+								control={form.control}
+								name="levelId"
+								render={({ field }) => (
+									<FormItem>
+										<FormLabel>Level</FormLabel>
+										<Select onValueChange={field.onChange} value={field.value}>
+											<FormControl>
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Pilih level" />
+												</SelectTrigger>
+											</FormControl>
+											<SelectContent>
+												{masterData.levels.map((level) => (
+													<SelectItem key={level.id} value={level.id}>
+														{level.name}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
 										<FormMessage />
 									</FormItem>
 								)}
@@ -364,17 +418,17 @@ export default function PositionsPage() {
 								name="branchId"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Branch</FormLabel>
+										<FormLabel>Cabang</FormLabel>
 										<Select
 											onValueChange={(value) => {
 												field.onChange(value);
-												form.resetField("departmentId");
+												form.setValue("departmentId", "");
 											}}
 											value={field.value}
 										>
 											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select a branch" />
+												<SelectTrigger className="w-full">
+													<SelectValue placeholder="Pilih cabang" />
 												</SelectTrigger>
 											</FormControl>
 											<SelectContent>
@@ -394,15 +448,21 @@ export default function PositionsPage() {
 								name="departmentId"
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Department</FormLabel>
+										<FormLabel>Departemen</FormLabel>
 										<Select
 											onValueChange={field.onChange}
 											value={field.value}
 											disabled={!selectedBranchId}
 										>
 											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select a department" />
+												<SelectTrigger className="w-full">
+													<SelectValue
+														placeholder={
+															selectedBranchId
+																? "Pilih departemen"
+																: "Pilih cabang dulu"
+														}
+													/>
 												</SelectTrigger>
 											</FormControl>
 											<SelectContent>
@@ -417,40 +477,16 @@ export default function PositionsPage() {
 									</FormItem>
 								)}
 							/>
-							<FormField
-								control={form.control}
-								name="levelId"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Level</FormLabel>
-										<Select onValueChange={field.onChange} value={field.value}>
-											<FormControl>
-												<SelectTrigger>
-													<SelectValue placeholder="Select a level" />
-												</SelectTrigger>
-											</FormControl>
-											<SelectContent>
-												{masterData.levels.map((level) => (
-													<SelectItem key={level.id} value={level.id}>
-														{level.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<FormMessage />
-									</FormItem>
-								)}
-							/>
-							<DialogFooter>
+							<DialogFooter className="md:col-span-2 pt-6">
 								<Button
 									type="button"
 									variant="outline"
-									onClick={() => setIsModalOpen(false)}
+									onClick={handleCloseModal}
 								>
-									Cancel
+									Batal
 								</Button>
 								<Button type="submit" disabled={form.formState.isSubmitting}>
-									{form.formState.isSubmitting ? "Saving..." : "Save"}
+									{form.formState.isSubmitting ? "Menyimpan..." : "Simpan"}
 								</Button>
 							</DialogFooter>
 						</form>
@@ -458,24 +494,23 @@ export default function PositionsPage() {
 				</DialogContent>
 			</Dialog>
 
-			{/* Delete Confirmation Dialog */}
 			<AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+						<AlertDialogTitle>Apakah Anda yakin?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This action cannot be undone. This will permanently delete the
-							position:{" "}
+							Tindakan ini tidak dapat dibatalkan. Ini akan menghapus posisi
+							secara permanen:{" "}
 							<span className="font-semibold">{positionToDelete?.name}</span>.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogCancel>Batal</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={handleDelete}
 							className="bg-red-600 hover:bg-red-700"
 						>
-							Delete
+							Hapus
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
