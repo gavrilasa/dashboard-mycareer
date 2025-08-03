@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { Header } from "@/components/layout/Header";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { adminMenuGroups } from "@/app/data/menu-items";
+
 export default function AdminLayout({
 	children,
 }: {
@@ -13,11 +13,7 @@ export default function AdminLayout({
 
 	return (
 		<div className="flex h-screen overflow-hidden bg-gray-100 dark:bg-slate-900">
-			<Sidebar
-				sidebarOpen={sidebarOpen}
-				setSidebarOpen={setSidebarOpen}
-				menuGroups={adminMenuGroups}
-			/>
+			<Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 			<div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
 				<Header sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 				<main>

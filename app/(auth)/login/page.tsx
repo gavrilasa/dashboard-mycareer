@@ -25,7 +25,7 @@ export default function LoginPage() {
 	const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
 
 	const [employeeId, setEmployeeId] = useState("");
-	const [password, setPassword] = useState(""); // This will hold the combined ID+DOB
+	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -38,7 +38,7 @@ export default function LoginPage() {
 			const res = await signIn("credentials", {
 				redirect: false,
 				employeeId,
-				password, // Pass the combined string directly
+				password,
 				callbackUrl,
 			});
 
