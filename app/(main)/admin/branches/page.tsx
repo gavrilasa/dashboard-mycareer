@@ -1,35 +1,33 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSession } from "next-auth/react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CrudTable } from "@/components/common/CrudTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
+import { PERMISSIONS } from "@/lib/permissions";
 
-// Tipe data untuk Branch
+// --- Type Definitions ---
 interface Branch {
 	id: string;
 	name: string;
 	location: string | null;
 }
 
-// Tipe untuk informasi paginasi dari API
-interface PaginationInfo {
-	totalItems: number;
+interface PaginationState {
+	totalRecords: number;
 	totalPages: number;
-}
-
-// Tipe untuk respons API yang dipaginasi
-interface PaginatedApiResponse {
-	data: Branch[];
-	pagination: PaginationInfo;
+	currentPage: number;
 }
 
 export default function BranchesPage() {
+	const { data: session } = useSession();
 	const [data, setData] = useState<Branch[]>([]);
-	const [pagination, setPagination] = useState<PaginationInfo>({
-		totalItems: 0,
+	const [pagination, setPagination] = useState<PaginationState>({
+		totalRecords: 0,
 		totalPages: 0,
+		currentPage: 1,
 	});
 	const [loading, setLoading] = useState(true);
 	const [limit, setLimit] = useState(10);
@@ -37,87 +35,99 @@ export default function BranchesPage() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
+	// --- RBAC Permissions Check ---
+	// This page is only visible if the user has 'read' permission for the 'branch' resource.
+	const canReadBranches = useMemo(() => {
+		if (!session?.user?.role) return false;
+		return PERMISSIONS[session.user.role]?.branch?.includes("read") ?? false;
+	}, [session]);
+
 	const fetchBranches = useCallback(async () => {
+		if (!canReadBranches) {
+			setLoading(false);
+			return;
+		}
+
 		setLoading(true);
 		try {
 			const params = new URLSearchParams({
 				page: page.toString(),
 				limit: limit.toString(),
-				q: debouncedSearchTerm,
+				search: debouncedSearchTerm,
 			});
 			const response = await fetch(`/api/admin/branches?${params.toString()}`);
 			if (!response.ok) {
-				throw new Error("Failed to fetch branches");
+				const errorData = await response.json();
+				throw new Error(errorData.message || "Gagal memuat data cabang");
 			}
-			const result: PaginatedApiResponse = await response.json();
-
+			const result = await response.json();
 			setData(result.data || []);
-			setPagination(result.pagination || { totalItems: 0, totalPages: 0 });
+			setPagination({
+				totalRecords: result.pagination.totalItems || 0,
+				totalPages: result.pagination.totalPages || 0,
+				currentPage: result.pagination.currentPage || 1,
+			});
 		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : "An unknown error occurred.";
-			toast.error("Error fetching branches", { description: errorMessage });
-			setData([]);
-			setPagination({ totalItems: 0, totalPages: 0 });
+			toast.error("Error", {
+				description:
+					error instanceof Error ? error.message : "Tidak dapat memuat data.",
+			});
 		} finally {
 			setLoading(false);
 		}
-	}, [page, limit, debouncedSearchTerm]);
+	}, [page, limit, debouncedSearchTerm, canReadBranches]);
 
 	useEffect(() => {
 		fetchBranches();
 	}, [fetchBranches]);
 
-	// Atur ulang halaman ke 1 saat pencarian atau batas entri berubah
 	useEffect(() => {
 		setPage(1);
 	}, [limit, debouncedSearchTerm]);
 
-	const columns: ColumnDef<Branch>[] = [
-		{
-			accessorKey: "id",
-			header: "Branch ID",
-			meta: {
-				width: "10%",
+	// --- Table Column Definitions (Read-Only) ---
+	const columns = useMemo<ColumnDef<Branch>[]>(
+		() => [
+			{ accessorKey: "name", header: "Nama Cabang" },
+			{ accessorKey: "id", header: "ID Cabang" },
+			{
+				accessorKey: "location",
+				header: "Lokasi",
+				cell: ({ row }) => row.original.location || "-",
 			},
-		},
-		{
-			accessorKey: "name",
-			header: "Branch Name",
-			meta: {
-				width: "30%",
-			},
-		},
-		{
-			accessorKey: "location",
-			header: "Location",
-			cell: ({ row }) => row.original.location || "-",
-			meta: {
-				width: "60%",
-			},
-		},
-	];
+		],
+		[]
+	);
+
+	// --- Conditional Rendering based on permissions ---
+	// If the user does not have permission, the entire page component renders nothing.
+	if (!canReadBranches) {
+		return null;
+	}
 
 	return (
 		<>
 			<Toaster position="top-center" richColors />
 			<div className="container mx-auto py-10">
-				<h1 className="text-2xl font-bold text-gray-800 mb-4">Branches</h1>
-
+				<div className="flex justify-between items-center mb-4">
+					<h1 className="text-2xl font-bold">Manajemen Cabang</h1>
+				</div>
 				<CrudTable
 					columns={columns}
 					data={data}
 					loading={loading}
-					limit={limit}
-					onLimitChange={setLimit}
 					search={searchTerm}
 					onSearchChange={setSearchTerm}
 					pagination={{
-						currentPage: page,
+						currentPage: pagination.currentPage,
 						totalPages: pagination.totalPages,
-						totalRecords: pagination.totalItems,
+						totalRecords: pagination.totalRecords,
 						onPageChange: setPage,
 					}}
+					limit={limit}
+					onLimitChange={setLimit}
+					// No createButton is passed, ensuring the table is strictly read-only.
+					createButton={null}
 				/>
 			</div>
 		</>
