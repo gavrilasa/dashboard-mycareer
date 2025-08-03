@@ -6,6 +6,7 @@ import {
 	flexRender,
 	getCoreRowModel,
 	useReactTable,
+	Cell, // Import the 'Cell' type from the library
 } from "@tanstack/react-table";
 import {
 	Table,
@@ -17,7 +18,6 @@ import {
 } from "@/components/ui/table";
 import { Loader2 } from "lucide-react";
 
-// Tipe data item harus memiliki 'id' untuk key pada baris
 interface DataItem {
 	id: string | number;
 }
@@ -39,8 +39,8 @@ export function DataTable<TData extends DataItem, TValue>({
 		getCoreRowModel: getCoreRowModel(),
 	});
 
-	// Helper untuk mendapatkan teks mentah untuk tooltip
-	const getCellTextContent = (cell: any): string => {
+	// FIX: Replace 'any' with the specific 'Cell' type for type safety.
+	const getCellTextContent = (cell: Cell<TData, unknown>): string => {
 		const value = cell.getValue();
 		if (React.isValidElement(value)) {
 			const props = value.props as { children?: React.ReactNode };
@@ -91,14 +91,22 @@ export function DataTable<TData extends DataItem, TValue>({
 						</TableRow>
 					) : table.getRowModel().rows?.length ? (
 						table.getRowModel().rows.map((row) => (
-							<TableRow key={row.id} className="border-b border-gray-200">
+							<TableRow
+								key={row.original.id}
+								className="border-b border-gray-200"
+							>
 								{row.getVisibleCells().map((cell) => (
 									<TableCell
 										key={cell.id}
-										className="py-3 whitespace-nowrap overflow-hidden text-ellipsis"
+										className="py-2 px-3 whitespace-nowrap overflow-hidden text-ellipsis align-top h-10"
 										title={getCellTextContent(cell)}
 									>
-										{flexRender(cell.column.columnDef.cell, cell.getContext())}
+										<div className="flex items-center justify-start h-8">
+											{flexRender(
+												cell.column.columnDef.cell,
+												cell.getContext()
+											)}
+										</div>
 									</TableCell>
 								))}
 							</TableRow>

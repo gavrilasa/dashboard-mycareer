@@ -1,216 +1,142 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { prisma } from "@/app/lib/prisma";
-import { auth } from "@/app/lib/auth";
-import { Prisma, Role } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
+import { withAuthorization } from "@/lib/auth-hof";
+import { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { format } from "date-fns";
 
-// GET: Mengambil daftar karyawan dengan filter, pencarian, dan paginasi
-export async function GET(req: NextRequest) {
-	const session = await auth();
-	if (!session?.user) {
-		return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-	}
+export const GET = withAuthorization(
+	{ resource: "employee", action: "read" },
+	async (req: NextRequest, { whereClause }) => {
+		const { searchParams } = new URL(req.url);
+		const page = parseInt(searchParams.get("page") || "1", 10);
+		const limit = parseInt(searchParams.get("limit") || "10", 10);
+		const search = searchParams.get("search") || "";
+		const skip = (page - 1) * limit;
 
-	// Otorisasi: Hanya Admin, HR Cabang, dan HD yang bisa melihat daftar karyawan
-	const allowedRoles: Role[] = ["ADMIN", "HR_BRANCH", "HD"];
-	if (!session.user.role || !allowedRoles.includes(session.user.role)) {
-		return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-	}
-
-	const { searchParams } = new URL(req.url);
-	const page = parseInt(searchParams.get("page") || "1", 10);
-	const limit = parseInt(searchParams.get("limit") || "10", 10);
-	const search = searchParams.get("search") || "";
-	const branchId = searchParams.get("branchId");
-	const departmentId = searchParams.get("departmentId");
-
-	const skip = (page - 1) * limit;
-
-	// Membangun klausa 'where' untuk filter
-	const where: Prisma.EmployeeWhereInput = {};
-
-	// Filter berdasarkan peran pengguna
-	const userRole = session.user.role;
-	const userBranchId = (session.user as { branchId?: string }).branchId;
-	const userDepartmentId = (session.user as { departmentId?: string })
-		.departmentId;
-
-	if (userRole === "HR_BRANCH") {
-		where.branchId = userBranchId;
-	} else if (userRole === "HD") {
-		where.branchId = userBranchId;
-		where.departmentId = userDepartmentId;
-	} else if (userRole === "ADMIN") {
-		if (branchId) where.branchId = branchId;
-		if (departmentId) where.departmentId = departmentId;
-	}
-
-	// Filter berdasarkan pencarian (nama atau ID karyawan)
-	if (search) {
-		where.OR = [
-			{ fullName: { contains: search, mode: "insensitive" } },
-			{ employeeId: { contains: search, mode: "insensitive" } },
-		];
-	}
-
-	try {
-		const [employees, totalItems] = await prisma.$transaction([
-			prisma.employee.findMany({
-				where,
-				skip,
-				take: limit,
-				include: {
-					branch: { select: { name: true } },
-					department: { select: { name: true } },
-					position: { select: { name: true } },
-					level: { select: { name: true } },
-				},
-				orderBy: {
-					fullName: "asc",
-				},
-			}),
-			prisma.employee.count({ where }),
-		]);
-
-		const totalPages = Math.ceil(totalItems / limit);
-
-		return NextResponse.json({
-			data: employees,
-			pagination: {
-				totalItems,
-				totalPages,
-				currentPage: page,
-				limit,
-			},
-		});
-	} catch (error) {
-		console.error("Error fetching employees:", error);
-		return NextResponse.json(
-			{ message: "Internal Server Error" },
-			{ status: 500 }
-		);
-	}
-}
-
-// POST: Membuat karyawan baru
-export async function POST(req: Request) {
-	const session = await auth();
-	if (!session?.user) {
-		return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-	}
-
-	// Otorisasi: Hanya Admin dan HR Cabang yang bisa membuat karyawan
-	const allowedRoles: Role[] = ["ADMIN", "HR_BRANCH"];
-	if (!session.user.role || !allowedRoles.includes(session.user.role)) {
-		return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-	}
-
-	try {
-		const body = await req.json();
-		const {
-			employeeId,
-			password,
-			fullName,
-			dateOfBirth,
-			gender,
-			hireDate,
-			lastEducationDegree,
-			lastEducationSchool,
-			lastEducationMajor,
-			branchId,
-			departmentId,
-			positionId,
-			levelId,
-			role = "EMPLOYEE", // Default role
-		} = body;
-
-		// Validasi input
-		if (
-			!employeeId ||
-			!password ||
-			!fullName ||
-			!branchId ||
-			!departmentId ||
-			!positionId ||
-			!levelId
-		) {
-			return NextResponse.json(
-				{ message: "Data yang diperlukan tidak lengkap" },
-				{ status: 400 }
-			);
+		const finalWhere: Prisma.EmployeeWhereInput = { ...whereClause };
+		if (search) {
+			finalWhere.OR = [
+				{ fullName: { contains: search, mode: "insensitive" } },
+				{ employeeId: { contains: search, mode: "insensitive" } },
+			];
 		}
 
-		// HR Cabang hanya bisa membuat karyawan di cabangnya sendiri
-		const userBranchId = (session.user as { branchId?: string }).branchId;
-		if (session.user.role === "HR_BRANCH" && branchId !== userBranchId) {
+		try {
+			const [employees, totalItems] = await prisma.$transaction([
+				prisma.employee.findMany({
+					where: finalWhere,
+					skip,
+					take: limit,
+					include: {
+						branch: { select: { name: true } },
+						department: { select: { name: true } },
+						position: { select: { name: true } },
+					},
+					orderBy: [
+						{ branch: { id: "asc" } },
+						{ level: { id: "asc" } },
+						{ fullName: "asc" },
+					],
+				}),
+				prisma.employee.count({ where: finalWhere }),
+			]);
+
+			const totalPages = Math.ceil(totalItems / limit);
+
+			return NextResponse.json({
+				data: employees,
+				pagination: { totalItems, totalPages, currentPage: page, limit },
+			});
+		} catch (error) {
 			return NextResponse.json(
-				{ message: "Anda tidak dapat membuat karyawan untuk cabang lain" },
-				{ status: 403 }
+				{ message: "Internal Server Error" },
+				{ status: 500 }
 			);
 		}
+	}
+);
 
-		// Cek apakah employeeId sudah ada
-		const existingEmployee = await prisma.employee.findUnique({
-			where: { employeeId },
-		});
+export const POST = withAuthorization(
+	{ resource: "employee", action: "create" },
+	async (req, { session }) => {
+		try {
+			const body = await req.json();
+			let { branchId } = body;
+			const {
+				departmentId,
+				positionId,
+				levelId,
+				employeeId,
+				fullName,
+				gender,
+				dateOfBirth,
+				hireDate,
+				lastEducationDegree,
+				lastEducationSchool,
+				lastEducationMajor,
+				role = "EMPLOYEE",
+			} = body;
 
-		if (existingEmployee) {
-			return NextResponse.json(
-				{ message: "ID Karyawan sudah digunakan" },
-				{ status: 409 }
-			);
-		}
+			if (!employeeId || !dateOfBirth || !gender || !lastEducationDegree) {
+				return NextResponse.json(
+					{ message: "Data wajib tidak lengkap." },
+					{ status: 400 }
+				);
+			}
 
-		const hashedPassword = await bcrypt.hash(password, 10);
+			const dobFormatted = format(new Date(dateOfBirth), "yyyyMMdd");
+			const autoPassword = `${employeeId}${dobFormatted}`;
+			const hashedPassword = await bcrypt.hash(autoPassword, 10);
 
-		// Membuat User dan Employee dalam satu transaksi
-		const newEmployee = await prisma.$transaction(async (tx) => {
-			const newUser = await tx.user.create({
+			if (session?.user?.role === "HR_BRANCH") {
+				branchId = session.user.branchId;
+			}
+
+			const newUser = await prisma.user.create({
 				data: {
 					employeeId,
 					password: hashedPassword,
 					role,
 					branchId,
 					departmentId,
+					employee: {
+						create: {
+							fullName,
+							gender,
+							dateOfBirth: new Date(dateOfBirth),
+							hireDate: new Date(hireDate),
+							lastEducationDegree,
+							lastEducationSchool,
+							lastEducationMajor,
+							branch: { connect: { id: branchId } },
+							department: { connect: { id: departmentId } },
+							position: { connect: { id: positionId } },
+							level: { connect: { id: levelId } },
+						},
+					},
+				},
+				include: {
+					employee: true,
 				},
 			});
 
-			const employee = await tx.employee.create({
-				data: {
-					employeeId,
-					fullName,
-					dateOfBirth: new Date(dateOfBirth),
-					gender,
-					hireDate: new Date(hireDate),
-					lastEducationDegree,
-					lastEducationSchool,
-					lastEducationMajor,
-					branch: { connect: { id: branchId } },
-					department: { connect: { id: departmentId } },
-					position: { connect: { id: positionId } },
-					level: { connect: { id: levelId } },
-					user: { connect: { id: newUser.id } },
-				},
-			});
-
-			return employee;
-		});
-
-		return NextResponse.json(newEmployee, { status: 201 });
-	} catch (error) {
-		console.error("Error creating employee:", error);
-		if (error instanceof Prisma.PrismaClientKnownRequestError) {
-			if (error.code === "P2002") {
-				// Unique constraint violation
+			return NextResponse.json(newUser.employee, { status: 201 });
+		} catch (error) {
+			if (
+				error instanceof Prisma.PrismaClientKnownRequestError &&
+				error.code === "P2002"
+			) {
 				return NextResponse.json(
-					{ message: "ID Karyawan sudah ada" },
+					{ message: "ID Karyawan sudah digunakan." },
 					{ status: 409 }
 				);
 			}
+			console.error("Error creating employee:", error);
+			return NextResponse.json(
+				{ message: "Internal Server Error" },
+				{ status: 500 }
+			);
 		}
-		return NextResponse.json(
-			{ message: "Internal Server Error" },
-			{ status: 500 }
-		);
 	}
-}
+);
