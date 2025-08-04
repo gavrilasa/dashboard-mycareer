@@ -7,6 +7,7 @@ import {
 	FileText,
 	ClipboardCheck,
 	Search,
+	Route,
 } from "lucide-react";
 import { Resource, Action } from "@/lib/permissions";
 
@@ -35,6 +36,12 @@ export const adminMenuGroups: MenuGroup[] = [
 				icon: <LayoutDashboard size={18} />,
 				label: "Dashboard",
 				permission: { resource: "dashboard", action: "read" },
+			},
+			{
+				href: "/admin/career-path",
+				icon: <Route size={18} />,
+				label: "Career Path",
+				permission: { resource: "careerPath", action: "read" },
 			},
 		],
 	},

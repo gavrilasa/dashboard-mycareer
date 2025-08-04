@@ -11,6 +11,7 @@ const protectedRoutes: Record<string, { resource: Resource; action: Action }> =
 		"/admin/departments": { resource: "department", action: "read" },
 		"/admin/branches": { resource: "branch", action: "read" },
 		"/admin/users": { resource: "userManagement", action: "read" },
+		"/admin/career-path": { resource: "careerPath", action: "read" },
 
 		"/profile": { resource: "dashboard", action: "read" },
 		"/form": { resource: "form", action: "read" },

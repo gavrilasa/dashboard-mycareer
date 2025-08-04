@@ -38,6 +38,11 @@ enum VacancyPeriod {
   LONG_TERM
 }
 
+enum PathType {
+  ALIGN
+  CROSS
+}
+
 model User {
   id           String      @id @default(cuid())
   employeeId   String?     @unique
@@ -82,7 +87,6 @@ model Employee {
   gkmHistories           GkmHistory[]
   bestEmployeeScores     BestEmployeeScore[]
   careerPreference       CareerPreference?
-  careerPlan             CareerPlan?
   jobInterests           JobInterest[]
   questionnaireResponses QuestionnaireResponse[]
 }
@@ -117,20 +121,20 @@ model Department {
 }
 
 model Position {
-  id             String               @id
-  name           String
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
-  branchId       String
-  branch         Branch               @relation(fields: [branchId], references: [id])
-  departmentId   String
-  department     Department           @relation(fields: [departmentId], references: [id])
-  levelId        String
-  level          Level                @relation(fields: [levelId], references: [id])
-  employees      Employee[]
-  jobVacancies   JobVacancy[]
-  careerPathFrom PositionCareerPath[] @relation("CareerPathFrom")
-  careerPathTo   PositionCareerPath[] @relation("CareerPathTo")
+  id           String       @id
+  name         String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  branchId     String
+  branch       Branch       @relation(fields: [branchId], references: [id])
+  departmentId String
+  department   Department   @relation(fields: [departmentId], references: [id])
+  levelId      String
+  level        Level        @relation(fields: [levelId], references: [id])
+  employees    Employee[]
+  jobVacancies JobVacancy[]
+  fromPosition CareerPath[] @relation("FromPosition")
+  toPosition   CareerPath[] @relation("ToPosition")
 
   @@unique([name, departmentId, branchId])
 }
@@ -238,25 +242,17 @@ model CareerPreference {
   employee                  Employee @relation(fields: [employeeId], references: [employeeId])
 }
 
-model CareerPlan {
-  id                  String   @id @default(cuid())
-  shortTermCareerPlan String?
-  longTermCareerPlan  String?
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  employeeId          String   @unique
-  employee            Employee @relation(fields: [employeeId], references: [employeeId])
-}
-
-model PositionCareerPath {
+model CareerPath {
   id             String   @id @default(cuid())
   fromPositionId String
   toPositionId   String
-  createdAt      DateTime @default(now())
-  fromPosition   Position @relation("CareerPathFrom", fields: [fromPositionId], references: [id])
-  toPosition     Position @relation("CareerPathTo", fields: [toPositionId], references: [id])
+  pathType       PathType
+
+  fromPosition Position @relation("FromPosition", fields: [fromPositionId], references: [id], onDelete: Cascade)
+  toPosition   Position @relation("ToPosition", fields: [toPositionId], references: [id], onDelete: Cascade)
 
   @@unique([fromPositionId, toPositionId])
+  @@map("career_paths")
 }
 
 model JobVacancy {

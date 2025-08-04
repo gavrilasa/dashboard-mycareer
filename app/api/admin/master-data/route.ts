@@ -30,7 +30,7 @@ export const GET = withAuthorization(
 				await prisma.$transaction([
 					prisma.branch.findMany({
 						where: branchWhere,
-						orderBy: { name: "asc" },
+						orderBy: { id: "asc" },
 					}),
 					prisma.department.findMany({
 						where: departmentWhere,
