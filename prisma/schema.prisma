@@ -43,6 +43,20 @@ enum PathType {
   CROSS
 }
 
+enum GkmRole {
+  KETUA
+  WAKIL_KETUA
+  SEKRETARIS
+  ANGGOTA
+  TIDAK_PERNAH
+}
+
+enum ProjectRole {
+  PIC
+  KETUA
+  ANGGOTA
+}
+
 model User {
   id           String      @id @default(cuid())
   employeeId   String?     @unique
@@ -84,8 +98,8 @@ model Employee {
   organizationHistories  OrganizationHistory[]
   committeeHistories     CommitteeHistory[]
   projectHistories       ProjectHistory[]
-  gkmHistories           GkmHistory[]
-  bestEmployeeScores     BestEmployeeScore[]
+  gkmHistory             GkmHistory?
+  bestEmployeeScore      BestEmployeeScore?
   careerPreference       CareerPreference?
   jobInterests           JobInterest[]
   questionnaireResponses QuestionnaireResponse[]
@@ -161,16 +175,16 @@ model Education {
 }
 
 model CareerHistory {
-  id         String    @id @default(cuid())
-  position   String
-  department String
-  company    String
-  startDate  DateTime
-  endDate    DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  employeeId String
-  employee   Employee  @relation(fields: [employeeId], references: [employeeId])
+  id           String    @id @default(cuid())
+  positionId   String
+  departmentId String
+  branchId     String
+  startDate    DateTime
+  endDate      DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  employeeId   String
+  employee     Employee  @relation(fields: [employeeId], references: [employeeId])
 }
 
 model OrganizationHistory {
@@ -197,49 +211,44 @@ model CommitteeHistory {
 }
 
 model ProjectHistory {
-  id          String    @id @default(cuid())
+  id          String      @id @default(cuid())
   projectName String
-  role        String
-  startDate   DateTime
-  endDate     DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  role        ProjectRole
+  year        Int
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
   employeeId  String
-  employee    Employee  @relation(fields: [employeeId], references: [employeeId])
+  employee    Employee    @relation(fields: [employeeId], references: [employeeId])
 }
 
 model GkmHistory {
-  id         String   @id @default(cuid())
-  theme      String
-  role       String
-  year       Int
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  employeeId String
-  employee   Employee @relation(fields: [employeeId], references: [employeeId])
+  id                 String   @id @default(cuid())
+  participationCount Int      @default(0)
+  highestRole        GkmRole  @default(TIDAK_PERNAH)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  employeeId         String   @unique
+  employee           Employee @relation(fields: [employeeId], references: [employeeId])
 }
 
 model BestEmployeeScore {
   id         String   @id @default(cuid())
-  score      Float
-  periodYear Int
+  count      Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  employeeId String
+  employeeId String   @unique
   employee   Employee @relation(fields: [employeeId], references: [employeeId])
 }
 
 model CareerPreference {
-  id                        String   @id @default(cuid())
-  willingToRelocate         Boolean
-  relocationReason          String?
-  willingToChangeDepartment Boolean
-  preferredMentor           String?
-  preferredTraining         String?
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
-  employeeId                String   @unique
-  employee                  Employee @relation(fields: [employeeId], references: [employeeId])
+  id                String   @id @default(cuid())
+  preferredMentor   String?
+  preferredTraining String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  employeeId        String   @unique
+  employee          Employee @relation(fields: [employeeId], references: [employeeId])
 }
 
 model CareerPath {
@@ -247,9 +256,8 @@ model CareerPath {
   fromPositionId String
   toPositionId   String
   pathType       PathType
-
-  fromPosition Position @relation("FromPosition", fields: [fromPositionId], references: [id], onDelete: Cascade)
-  toPosition   Position @relation("ToPosition", fields: [toPositionId], references: [id], onDelete: Cascade)
+  fromPosition   Position @relation("FromPosition", fields: [fromPositionId], references: [id], onDelete: Cascade)
+  toPosition     Position @relation("ToPosition", fields: [toPositionId], references: [id], onDelete: Cascade)
 
   @@unique([fromPositionId, toPositionId])
   @@map("career_paths")

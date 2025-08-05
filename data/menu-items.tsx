@@ -88,27 +88,26 @@ export const adminMenuGroups: MenuGroup[] = [
 	},
 ];
 
-// --- Menu untuk Peran Karyawan (EMPLOYEE) ---
 export const employeeMenuGroups: MenuGroup[] = [
 	{
 		title: "Menu",
 		items: [
 			{
-				href: "/profile",
-				icon: <Users size={18} />,
-				label: "My Profile",
+				href: "/dashboard",
+				icon: <LayoutDashboard size={18} />,
+				label: "Dashboard",
 				permission: { resource: "dashboard", action: "read" },
 			},
 			{
 				href: "/form",
 				icon: <FileText size={18} />,
-				label: "My Form",
+				label: "Form",
 				permission: { resource: "form", action: "read" },
 			},
 			{
 				href: "/questionnaire",
 				icon: <ClipboardCheck size={18} />,
-				label: "My Questionnaires",
+				label: "Questionnaires",
 				permission: { resource: "questionnaire", action: "read" },
 			},
 			{
