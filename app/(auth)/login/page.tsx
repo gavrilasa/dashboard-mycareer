@@ -61,7 +61,7 @@ export default function LoginPage() {
 					<CardHeader className="px-0">
 						<div className="mb-4">
 							<Image
-								src="/IndofoodCBP-Logo-ND.webp"
+								src="https://res.cloudinary.com/dah2v3xbg/image/upload/v1754410463/IndofoodCBP-Logo-ND_s8xafd.webp"
 								alt="Indofood CBP Noodle Division Logo"
 								width={200}
 								height={68}
@@ -96,7 +96,7 @@ export default function LoginPage() {
 									<Input
 										id="password"
 										type="password"
-										placeholder="Enter your password (ID+DOB)"
+										placeholder="Enter your password"
 										required
 										value={password}
 										onChange={(e) => setPassword(e.target.value)}
@@ -130,7 +130,7 @@ export default function LoginPage() {
 				</div>
 			</div>
 			<div className="hidden lg:block">
-				<div className="object-cover w-full h-full bg-center bg-cover bg-[url(/authImage.webp)] dark:brightness-[0.2] dark:grayscale" />
+				<div className="object-cover w-full h-full bg-center bg-cover bg-[url(https://res.cloudinary.com/dah2v3xbg/image/upload/v1754410772/authImage_1_it6mni.webp)] dark:brightness-[0.2] dark:grayscale" />
 			</div>
 		</div>
 	);

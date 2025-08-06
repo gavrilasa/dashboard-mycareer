@@ -1,13 +1,15 @@
 import {
 	LayoutDashboard,
 	Users,
-	Briefcase,
 	Building2,
 	Network,
 	FileText,
 	ClipboardCheck,
 	Search,
 	Route,
+	CircleUser,
+	ShieldUser,
+	NotepadText,
 } from "lucide-react";
 import { Resource, Action } from "@/lib/permissions";
 
@@ -38,6 +40,12 @@ export const adminMenuGroups: MenuGroup[] = [
 				permission: { resource: "dashboard", action: "read" },
 			},
 			{
+				href: "/admin/forms",
+				icon: <NotepadText size={18} />,
+				label: "Form",
+				permission: { resource: "form", action: "read" },
+			},
+			{
 				href: "/admin/career-path",
 				icon: <Route size={18} />,
 				label: "Career Path",
@@ -57,7 +65,7 @@ export const adminMenuGroups: MenuGroup[] = [
 			},
 			{
 				href: "/admin/positions",
-				icon: <Briefcase size={18} />,
+				icon: <CircleUser size={18} />,
 				label: "Positions",
 				permission: { resource: "position", action: "read" },
 			},
@@ -80,7 +88,7 @@ export const adminMenuGroups: MenuGroup[] = [
 		items: [
 			{
 				href: "/admin/users",
-				icon: <Users size={18} />,
+				icon: <ShieldUser size={18} />,
 				label: "User Management",
 				permission: { resource: "userManagement", action: "read" },
 			},

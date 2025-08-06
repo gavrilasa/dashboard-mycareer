@@ -100,7 +100,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 			<div className="flex items-center justify-center gap-2 px-6 py-5.5 lg:py-6.5">
 				<Link href="/">
 					<Image
-						src="/IndofoodCBP-Logo-ND.webp"
+						src="https://res.cloudinary.com/dah2v3xbg/image/upload/v1754410463/IndofoodCBP-Logo-ND_s8xafd.webp"
 						alt="Logo"
 						width={186}
 						height={64}

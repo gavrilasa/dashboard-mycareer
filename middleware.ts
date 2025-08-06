@@ -32,9 +32,9 @@ export default withAuth(
 
 		if (pathname === "/login" || pathname === "/") {
 			if (userRole === "EMPLOYEE") {
-				return NextResponse.redirect(new URL("/profile", req.url)); // Arahkan ke profil
+				return NextResponse.redirect(new URL("/form", req.url));
 			}
-			return NextResponse.redirect(new URL("/admin/dashboard", req.url));
+			return NextResponse.redirect(new URL("/admin", req.url));
 		}
 
 		const requiredPermission = Object.entries(protectedRoutes).find(([route]) =>
