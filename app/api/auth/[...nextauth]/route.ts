@@ -21,7 +21,6 @@ export const authOptions: NextAuthOptions = {
 				});
 
 				if (user && bcrypt.compareSync(credentials.password, user.password)) {
-					// Return the full user object needed for the JWT
 					return {
 						id: user.id,
 						employeeId: user.employeeId,
@@ -36,7 +35,6 @@ export const authOptions: NextAuthOptions = {
 	],
 
 	callbacks: {
-		// This callback adds the custom fields to the JWT
 		async jwt({ token, user }) {
 			if (user) {
 				token.role = user.role;
@@ -47,7 +45,6 @@ export const authOptions: NextAuthOptions = {
 			return token;
 		},
 
-		// This callback adds the fields from the token to the client-side session
 		async session({ session, token }) {
 			if (session.user) {
 				session.user.role = token.role;
