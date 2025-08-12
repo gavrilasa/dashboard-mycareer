@@ -18,21 +18,21 @@ interface CustomSession {
 	};
 }
 
-type GenericWhereClause = { [key: string]: any };
+type GenericWhereClause = { [key: string]: unknown };
 
 interface HandlerArgs {
 	session: CustomSession;
 	whereClause: GenericWhereClause;
 }
 
-type NextJsParams = {
-	params: { [key: string]: string | string[] | undefined };
+type NextJsParams<P = { [key: string]: string | string[] | undefined }> = {
+	params: P;
 };
 
-type ApiHandler = (
+type ApiHandler<P> = (
 	req: NextRequest,
 	args: HandlerArgs,
-	nextJsParams: NextJsParams
+	nextJsParams: NextJsParams<P>
 ) => Promise<NextResponse>;
 
 interface RequiredPermission {
@@ -40,11 +40,11 @@ interface RequiredPermission {
 	action: Action;
 }
 
-export function withAuthorization(
+export function withAuthorization<P>(
 	permission: RequiredPermission,
-	handler: ApiHandler
+	handler: ApiHandler<P>
 ) {
-	return async (req: NextRequest, nextJsParams: NextJsParams) => {
+	return async (req: NextRequest, nextJsParams: NextJsParams<P>) => {
 		const session: CustomSession | null = await getServerSession(authOptions);
 
 		if (!session?.user?.role) {
@@ -93,7 +93,6 @@ export function withAuthorization(
 			return await handler(req, { session, whereClause }, nextJsParams);
 		} catch (error) {
 			console.error("Kesalahan pada API Handler:", error);
-			// Hindari membocorkan detail error di produksi
 			return NextResponse.json(
 				{ message: "Terjadi kesalahan internal pada server." },
 				{ status: 500 }

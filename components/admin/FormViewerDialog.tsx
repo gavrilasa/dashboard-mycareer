@@ -1,3 +1,5 @@
+// components/admin/forms/FormViewerDialog.tsx
+
 "use client";
 
 import {
@@ -73,13 +75,83 @@ export function FormViewerDialog({
 		if (!formData)
 			return (
 				<p className="text-center text-gray-500 py-10">
-					Data formulir tidak ditemukan.
+					Data formulir tidak ditemukan atau belum diisi oleh karyawan.
 				</p>
 			);
 
 		return (
 			<div className="space-y-8">
-				{/* --- SECTIONS --- */}
+				{/* --- Riwayat Karier --- */}
+				<div>
+					<SectionTitle title="Riwayat Karier Internal" />
+					{formData.careerHistories?.length > 0 ? (
+						formData.careerHistories.map((item) => (
+							<div key={item.id} className="mb-4 pl-4 border-l-2">
+								{/* Note: Branch, Department, and Position names would require a join in the API call. Displaying IDs for now. */}
+								<InfoRow label="ID Posisi" value={item.positionId} />
+								<InfoRow
+									label="Tanggal Mulai"
+									value={format(new Date(item.startDate), "dd MMMM yyyy")}
+								/>
+								<InfoRow
+									label="Tanggal Selesai"
+									value={
+										item.endDate
+											? format(new Date(item.endDate), "dd MMMM yyyy")
+											: "Sekarang"
+									}
+								/>
+							</div>
+						))
+					) : (
+						<p className="text-sm text-gray-500">Tidak ada data.</p>
+					)}
+				</div>
+
+				{/* --- Riwayat Organisasi --- */}
+				<div>
+					<SectionTitle title="Riwayat Organisasi" />
+					{formData.organizationHistories?.length > 0 ? (
+						formData.organizationHistories.map((item) => (
+							<div key={item.id} className="mb-4 pl-4 border-l-2">
+								<InfoRow label="Nama Organisasi" value={item.organization} />
+								<InfoRow label="Peran" value={item.role} />
+								<InfoRow
+									label="Tanggal Mulai"
+									value={format(new Date(item.startDate), "dd MMMM yyyy")}
+								/>
+								<InfoRow
+									label="Tanggal Selesai"
+									value={
+										item.endDate
+											? format(new Date(item.endDate), "dd MMMM yyyy")
+											: "Sekarang"
+									}
+								/>
+							</div>
+						))
+					) : (
+						<p className="text-sm text-gray-500">Tidak ada data.</p>
+					)}
+				</div>
+
+				{/* --- Riwayat Kepanitiaan --- */}
+				<div>
+					<SectionTitle title="Riwayat Kepanitiaan" />
+					{formData.committeeHistories?.length > 0 ? (
+						formData.committeeHistories.map((item) => (
+							<div key={item.id} className="mb-4 pl-4 border-l-2">
+								<InfoRow label="Nama Acara" value={item.eventName} />
+								<InfoRow label="Peran" value={item.role} />
+								<InfoRow label="Tahun" value={item.year} />
+							</div>
+						))
+					) : (
+						<p className="text-sm text-gray-500">Tidak ada data.</p>
+					)}
+				</div>
+
+				{/* --- Riwayat Proyek --- */}
 				<div>
 					<SectionTitle title="Riwayat Proyek" />
 					{formData.projectHistories?.length > 0 ? (
@@ -96,6 +168,7 @@ export function FormViewerDialog({
 					)}
 				</div>
 
+				{/* --- GKM & Prestasi --- */}
 				<div>
 					<SectionTitle title="GKM & Prestasi" />
 					<InfoRow
@@ -112,6 +185,7 @@ export function FormViewerDialog({
 					/>
 				</div>
 
+				{/* --- Preferensi Karir --- */}
 				<div>
 					<SectionTitle title="Preferensi Karir" />
 					<InfoRow

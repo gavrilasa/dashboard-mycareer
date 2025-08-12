@@ -98,13 +98,10 @@ export function GkmHistoryForm({ onSkip }: GkmHistoryFormProps) {
 									name="gkmHistory.participationCount"
 									render={({ field }) => (
 										<FormItem>
-											{" "}
 											<FormLabel>
-												{" "}
-												Jumlah Keikutsertaan <Asterisk />{" "}
-											</FormLabel>{" "}
+												Jumlah Keikutsertaan <Asterisk />
+											</FormLabel>
 											<FormControl>
-												{" "}
 												<Input
 													type="number"
 													placeholder="Isi dengan angka, cth: 3"
@@ -113,9 +110,9 @@ export function GkmHistoryForm({ onSkip }: GkmHistoryFormProps) {
 													onChange={(e) =>
 														field.onChange(parseInt(e.target.value, 10) || 0)
 													}
-												/>{" "}
-											</FormControl>{" "}
-											<FormMessage />{" "}
+												/>
+											</FormControl>
+											<FormMessage />
 										</FormItem>
 									)}
 								/>
@@ -124,34 +121,27 @@ export function GkmHistoryForm({ onSkip }: GkmHistoryFormProps) {
 									name="gkmHistory.highestRole"
 									render={({ field }) => (
 										<FormItem>
-											{" "}
 											<FormLabel>
-												{" "}
-												Jabatan Tertinggi <Asterisk />{" "}
-											</FormLabel>{" "}
+												Jabatan Tertinggi <Asterisk />
+											</FormLabel>
 											<Select
 												onValueChange={field.onChange}
 												value={field.value}
 											>
-												{" "}
 												<FormControl>
-													{" "}
 													<SelectTrigger>
-														{" "}
-														<SelectValue placeholder="Pilih jabatan tertinggi" />{" "}
-													</SelectTrigger>{" "}
-												</FormControl>{" "}
+														<SelectValue placeholder="Pilih jabatan tertinggi" />
+													</SelectTrigger>
+												</FormControl>
 												<SelectContent>
-													{" "}
 													{Object.values(GkmRole).map((role) => (
 														<SelectItem key={role} value={role}>
-															{" "}
-															{role.replace(/_/g, " ")}{" "}
+															{role.replace(/_/g, " ")}
 														</SelectItem>
-													))}{" "}
-												</SelectContent>{" "}
-											</Select>{" "}
-											<FormMessage />{" "}
+													))}
+												</SelectContent>
+											</Select>
+											<FormMessage />
 										</FormItem>
 									)}
 								/>

@@ -9,23 +9,8 @@ const compat = new FlatCompat({
 	baseDirectory: __dirname,
 });
 
-// Extend and then override rules
 const eslintConfig = [
 	...compat.extends("next/core-web-vitals", "next/typescript"),
-
-	// 👇 Add this block to override rules
-	{
-		files: ["**/*.ts", "**/*.tsx"],
-		languageOptions: {
-			parserOptions: {
-				project: "./tsconfig.json",
-			},
-		},
-		rules: {
-			"@typescript-eslint/no-unused-vars": "off",
-			"@typescript-eslint/no-explicit-any": "off",
-		},
-	},
 ];
 
 export default eslintConfig;

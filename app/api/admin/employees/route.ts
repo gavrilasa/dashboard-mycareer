@@ -1,3 +1,5 @@
+// app/api/admin/employees/route.ts
+
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
@@ -85,7 +87,9 @@ export const POST = withAuthorization(
 				);
 			}
 
-			const dobFormatted = format(new Date(dateOfBirth), "yyyyMMdd");
+			// [!code focus]
+			// Mengubah format tanggal lahir menjadi ddmmyyyy untuk password
+			const dobFormatted = format(new Date(dateOfBirth), "ddMMyyyy"); // [!code focus]
 			const autoPassword = `${employeeId}${dobFormatted}`;
 			const hashedPassword = await bcrypt.hash(autoPassword, 10);
 

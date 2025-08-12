@@ -6,13 +6,12 @@ import { useSession } from "next-auth/react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CrudTable } from "@/components/common/CrudTable";
 import { Button } from "@/components/ui/button";
-import { Edit, Eye } from "lucide-react";
+import { Eye } from "lucide-react";
 import { ColumnDef } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
 import { PERMISSIONS } from "@/lib/permissions";
 import { Badge } from "@/components/ui/badge";
-import Link from "next/link";
-import { FormViewerDialog } from "@/components/admin/forms/FormViewerDialog";
+import { FormViewerDialog } from "@/components/admin/FormViewerDialog";
 import {
 	GkmRole,
 	ProjectRole,
@@ -76,12 +75,11 @@ export default function AdminFormsPage() {
 	);
 	const [isModalLoading, setIsModalLoading] = useState(false);
 
-	const { canRead, canEdit } = useMemo(() => {
-		if (!session?.user?.role) return { canRead: false, canEdit: false };
+	const { canRead } = useMemo(() => {
+		if (!session?.user?.role) return { canRead: false };
 		const perms = PERMISSIONS[session.user.role]?.form || [];
 		return {
 			canRead: perms.includes("read"),
-			canEdit: perms.includes("update"),
 		};
 	}, [session]);
 
@@ -197,18 +195,11 @@ export default function AdminFormsPage() {
 						>
 							<Eye size={16} />
 						</Button>
-						{canEdit && (
-							<Button asChild variant="ghost" size="icon" className="h-8 w-8">
-								<Link href={`/admin/forms/${row.original.employeeId}`}>
-									<Edit size={16} />
-								</Link>
-							</Button>
-						)}
 					</div>
 				),
 			},
 		];
-	}, [canEdit]);
+	}, []);
 
 	if (!canRead)
 		return (

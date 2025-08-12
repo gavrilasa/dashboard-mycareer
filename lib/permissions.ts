@@ -28,7 +28,7 @@ export const PERMISSIONS: Record<Role, Partial<Record<Resource, Action[]>>> = {
 		jobVacant: ["create", "read", "update", "delete", "publish"],
 		careerPath: ["create", "read", "update", "delete"],
 		questionnaire: ["read", "update"],
-		form: ["read", "update"],
+		form: ["read"],
 		employee: ["create", "read", "update", "delete", "upload"],
 		position: ["create", "read", "update", "delete"],
 		department: ["read"],
