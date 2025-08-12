@@ -25,14 +25,10 @@ interface HandlerArgs {
 	whereClause: GenericWhereClause;
 }
 
-type NextJsParams<P = { [key: string]: string | string[] | undefined }> = {
-	params: P;
-};
-
 type ApiHandler<P> = (
 	req: NextRequest,
 	args: HandlerArgs,
-	nextJsParams: NextJsParams<P>
+	context: { params: P }
 ) => Promise<NextResponse>;
 
 interface RequiredPermission {
@@ -40,11 +36,10 @@ interface RequiredPermission {
 	action: Action;
 }
 
-export function withAuthorization<P>(
-	permission: RequiredPermission,
-	handler: ApiHandler<P>
-) {
-	return async (req: NextRequest, nextJsParams: NextJsParams<P>) => {
+export function withAuthorization<
+	P extends { [key: string]: string | string[] | undefined }
+>(permission: RequiredPermission, handler: ApiHandler<P>) {
+	return async (req: NextRequest, context: { params: Promise<P> }) => {
 		const session: CustomSession | null = await getServerSession(authOptions);
 
 		if (!session?.user?.role) {
@@ -90,7 +85,12 @@ export function withAuthorization<P>(
 		}
 
 		try {
-			return await handler(req, { session, whereClause }, nextJsParams);
+			const resolvedParams = await context.params;
+			return await handler(
+				req,
+				{ session, whereClause },
+				{ params: resolvedParams }
+			);
 		} catch (error) {
 			console.error("Kesalahan pada API Handler:", error);
 			return NextResponse.json(
