@@ -88,12 +88,24 @@ export default function BranchesPage() {
 	// --- Table Column Definitions (Read-Only) ---
 	const columns = useMemo<ColumnDef<Branch>[]>(
 		() => [
-			{ accessorKey: "name", header: "Nama Cabang" },
-			{ accessorKey: "id", header: "ID Cabang" },
+			{
+				accessorKey: "id",
+				header: "ID Cabang",
+				size: 10,
+				meta: { width: "10%", truncate: false },
+			},
+			{
+				accessorKey: "name",
+				header: "Nama Cabang",
+				size: 25,
+				meta: { width: "25%", truncate: false },
+			},
 			{
 				accessorKey: "location",
 				header: "Lokasi",
 				cell: ({ row }) => row.original.location || "-",
+				size: 65,
+				meta: { width: "65%", truncate: true },
 			},
 		],
 		[]

@@ -142,13 +142,29 @@ export default function CareerPathPage() {
 
 	const columns = useMemo<ColumnDef<CareerPath>[]>(
 		() => [
-			{ accessorKey: "fromPosition.name", header: "Posisi Asal" },
-			{ accessorKey: "toPosition.name", header: "Posisi Tujuan" },
-			{ accessorKey: "pathType", header: "Jenis Path" },
+			{
+				accessorKey: "pathType",
+				header: "Tipe",
+				size: 15,
+				meta: { width: "15%", truncate: false },
+			},
+			{
+				accessorKey: "fromPosition.name",
+				header: "Posisi Asal",
+				size: 35,
+				meta: { width: "35%", truncate: true },
+			},
+			{
+				accessorKey: "toPosition.name",
+				header: "Posisi Tujuan",
+				size: 40,
+				meta: { width: "40%", truncate: true },
+			},
 			{
 				id: "actions",
 				header: "Aksi",
-				size: 100,
+				size: 10,
+				meta: { width: "10%", truncate: false, align: "center" },
 				cell: ({ row }) => (
 					<div className="flex items-center justify-center gap-2">
 						{canEdit && (
@@ -156,7 +172,7 @@ export default function CareerPathPage() {
 								onClick={() => handleOpenModal(row.original)}
 								variant="ghost"
 								size="icon"
-								className="h-8 w-8"
+								className="h-8 w-8 text-gray-500 hover:text-primary"
 							>
 								<Edit size={16} />
 							</Button>
@@ -166,7 +182,7 @@ export default function CareerPathPage() {
 								onClick={() => handleDeleteConfirm(row.original)}
 								variant="ghost"
 								size="icon"
-								className="h-8 w-8 text-red-600"
+								className="h-8 w-8 text-gray-500 hover:text-red-600"
 							>
 								<Trash2 size={16} />
 							</Button>

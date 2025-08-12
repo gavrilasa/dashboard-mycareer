@@ -6,7 +6,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Toaster, toast } from "sonner";
-import { GkmRole, ProjectRole } from "@prisma/client";
+import {
+	GkmRole,
+	ProjectRole,
+	CareerHistory,
+	OrganizationHistory,
+} from "@prisma/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Card,
@@ -52,6 +57,11 @@ interface MasterData {
 	departments: MasterDataItem[];
 	positions: MasterDataItem[];
 }
+
+type FetchedHistory = {
+	startDate: string;
+	endDate: string | null;
+};
 
 const projectRoles = Object.values(ProjectRole) as [string, ...string[]];
 const gkmRoles = Object.values(GkmRole) as [string, ...string[]];
@@ -237,17 +247,21 @@ export default function EmployeeFormPage() {
 				const processedFormData = {
 					...histories,
 					careerHistories:
-						histories.careerHistories?.map((h: any) => ({
-							...h,
-							startDate: new Date(h.startDate),
-							endDate: h.endDate ? new Date(h.endDate) : null,
-						})) || [],
+						histories.careerHistories?.map(
+							(h: CareerHistory & FetchedHistory) => ({
+								...h,
+								startDate: new Date(h.startDate),
+								endDate: h.endDate ? new Date(h.endDate) : null,
+							})
+						) || [],
 					organizationHistories:
-						histories.organizationHistories?.map((h: any) => ({
-							...h,
-							startDate: new Date(h.startDate),
-							endDate: h.endDate ? new Date(h.endDate) : null,
-						})) || [],
+						histories.organizationHistories?.map(
+							(h: OrganizationHistory & FetchedHistory) => ({
+								...h,
+								startDate: new Date(h.startDate),
+								endDate: h.endDate ? new Date(h.endDate) : null,
+							})
+						) || [],
 				};
 				reset(processedFormData);
 			} catch (error) {

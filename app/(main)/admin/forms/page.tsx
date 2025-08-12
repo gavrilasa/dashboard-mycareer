@@ -14,7 +14,6 @@ import { Badge } from "@/components/ui/badge";
 import { FormViewerDialog } from "@/components/admin/FormViewerDialog";
 import {
 	GkmRole,
-	ProjectRole,
 	CareerHistory,
 	OrganizationHistory,
 	CommitteeHistory,
@@ -154,21 +153,37 @@ export default function AdminFormsPage() {
 
 	const columns = useMemo<ColumnDef<FormSubmission>[]>(() => {
 		return [
-			{ accessorKey: "employeeId", header: "ID Karyawan" },
-			{ accessorKey: "fullName", header: "Nama Lengkap" },
 			{
-				accessorKey: "branch.name",
-				header: "Cabang",
-				cell: ({ row }) => row.original.branch?.name || "-",
+				accessorKey: "employeeId",
+				header: "ID Karyawan",
+				size: 15,
+				meta: { width: "15%", truncate: false },
+			},
+			{
+				accessorKey: "fullName",
+				header: "Nama Lengkap",
+				size: 25,
+				meta: { width: "25%", truncate: true },
 			},
 			{
 				accessorKey: "department.name",
 				header: "Departemen",
 				cell: ({ row }) => row.original.department?.name || "-",
+				size: 20,
+				meta: { width: "20%", truncate: true },
+			},
+			{
+				accessorKey: "branch.name",
+				header: "Cabang",
+				cell: ({ row }) => row.original.branch?.name || "-",
+				size: 20,
+				meta: { width: "20%", truncate: true },
 			},
 			{
 				accessorKey: "submissionStatus",
 				header: "Status",
+				size: 10,
+				meta: { width: "10%", truncate: false, align: "center" },
 				cell: ({ row }) => (
 					<Badge
 						variant={
@@ -184,14 +199,15 @@ export default function AdminFormsPage() {
 			{
 				id: "actions",
 				header: "Aksi",
-				size: 100,
+				size: 10,
+				meta: { width: "10%", truncate: false, align: "center" },
 				cell: ({ row }) => (
 					<div className="flex items-center justify-center gap-2">
 						<Button
 							onClick={() => handleOpenViewModal(row.original)}
 							variant="ghost"
 							size="icon"
-							className="h-8 w-8"
+							className="h-8 w-8 cursor-pointer hover:text-primary"
 						>
 							<Eye size={16} />
 						</Button>

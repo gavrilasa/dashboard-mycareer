@@ -93,7 +93,6 @@ const formSchema = z.object({
 	}),
 });
 
-// Definisikan tipe untuk item yang memiliki tanggal agar lebih bersih
 type HistoryItemWithDate = {
 	startDate: string | Date;
 	endDate?: string | Date | null;
@@ -101,7 +100,7 @@ type HistoryItemWithDate = {
 
 export const GET = withAuthorization(
 	{ resource: "form", action: "read" },
-	async (req: NextRequest, { session }: any) => {
+	async (_req: NextRequest, { session }: HandlerArgs) => {
 		try {
 			const employeeId = session?.user?.employeeId;
 			if (!employeeId) {
@@ -113,14 +112,10 @@ export const GET = withAuthorization(
 
 			const data = await prisma.employee.findUnique({
 				where: { employeeId },
-				// FIX: Tambahkan field posisi aktif ke dalam `select`
 				select: {
-					// Data posisi aktif untuk pre-fill form
 					branchId: true,
 					departmentId: true,
 					positionId: true,
-
-					// Data riwayat yang sudah ada
 					careerHistories: { orderBy: { startDate: "desc" } },
 					organizationHistories: true,
 					committeeHistories: true,
@@ -149,7 +144,6 @@ export const GET = withAuthorization(
 	}
 );
 
-// POST handler (fixed with proper type assertions)
 export const POST = withAuthorization(
 	{ resource: "form", action: "update" },
 	async (req: NextRequest, { session }: HandlerArgs) => {

@@ -13,7 +13,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import {
 	GkmRole,
-	ProjectRole,
 	CareerHistory,
 	OrganizationHistory,
 	CommitteeHistory,

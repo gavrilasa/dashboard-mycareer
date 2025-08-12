@@ -48,7 +48,6 @@ import {
 } from "@/components/ui/select";
 import { PERMISSIONS } from "@/lib/permissions";
 
-// --- Type Definitions ---
 interface Position {
 	id: string;
 	name: string;
@@ -72,14 +71,12 @@ interface MasterData {
 	levels: MasterDataItem[];
 }
 
-// FIX: Corrected PaginationInfo type to match CrudTable's expectation
 interface PaginationInfo {
 	totalRecords: number;
 	totalPages: number;
 	currentPage: number;
 }
 
-// --- Zod Schema for Form Validation ---
 const formSchema = z.object({
 	name: z.string().min(1, "Nama posisi wajib diisi."),
 	branchId: z.string().min(1, "Cabang wajib dipilih."),
@@ -146,7 +143,6 @@ export default function PositionsPage() {
 			const result = await response.json();
 			setData(result.data || []);
 			setPagination({
-				// FIX: Mapped totalItems to totalRecords to match the type
 				totalRecords: result.pagination?.totalItems || 0,
 				totalPages: result.pagination?.totalPages || 0,
 				currentPage: result.pagination?.currentPage || 1,
@@ -270,28 +266,44 @@ export default function PositionsPage() {
 
 	const columns = useMemo<ColumnDef<Position>[]>(() => {
 		const baseCols: ColumnDef<Position>[] = [
-			{ accessorKey: "name", header: "Nama Posisi" },
+			{
+				accessorKey: "name",
+				header: "Nama Posisi",
+				size: 35,
+				meta: { width: "35%", truncate: true },
+			},
 			{
 				accessorKey: "level.name",
 				header: "Level",
 				cell: ({ row }) => row.original.level?.name || "-",
+				size: 10,
+				meta: { width: "10%", truncate: false },
 			},
 			{
 				accessorKey: "department.name",
 				header: "Departemen",
 				cell: ({ row }) => row.original.department?.name || "-",
+				size: 20,
+				meta: { width: "20%", truncate: true },
 			},
 			{
 				accessorKey: "branch.name",
 				header: "Cabang",
 				cell: ({ row }) => row.original.branch?.name || "-",
+				size: 25,
+				meta: { width: "25%", truncate: true },
 			},
 		];
 		if (canEdit || canDelete) {
 			baseCols.push({
 				id: "actions",
 				header: "Aksi",
-				size: 100,
+				size: 10,
+				meta: {
+					width: "10%",
+					truncate: false,
+					align: "center",
+				},
 				cell: ({ row }) => (
 					<div className="flex items-center justify-center gap-2">
 						{canEdit && (
@@ -299,7 +311,7 @@ export default function PositionsPage() {
 								onClick={() => handleOpenModal(row.original)}
 								variant="ghost"
 								size="icon"
-								className="h-8 w-8 text-gray-500 hover:text-blue-600"
+								className="h-8 w-8 text-gray-500 hover:text-primary"
 							>
 								<Edit size={16} />
 							</Button>

@@ -172,28 +172,65 @@ export default function UsersPage() {
 
 	const columns = useMemo<ColumnDef<UserWithEmployee>[]>(() => {
 		const baseCols: ColumnDef<UserWithEmployee>[] = [
-			{ accessorKey: "employeeId", header: "ID Karyawan" },
+			{
+				accessorKey: "employeeId",
+				header: "ID Karyawan",
+				size: 15,
+				meta: {
+					width: "15%",
+					truncate: false,
+				},
+			},
 			{
 				accessorKey: "employee.fullName",
 				header: "Nama",
 				cell: ({ row }) => row.original.employee?.fullName || "-",
+				size: 20,
+				meta: {
+					width: "20%",
+					truncate: true,
+				},
 			},
-			{ accessorKey: "role", header: "Peran" },
+			{
+				accessorKey: "role",
+				header: "Peran",
+				size: 15,
+				meta: {
+					width: "15%",
+					truncate: true,
+				},
+			},
 			{
 				accessorKey: "employee.level.name",
 				header: "Level",
 				cell: ({ row }) => row.original.employee?.level?.name || "-",
+				size: 15,
+				meta: {
+					width: "15%",
+					truncate: true,
+				},
 			},
 			{
 				accessorKey: "employee.branch.name",
 				header: "Cabang",
 				cell: ({ row }) => row.original.employee?.branch?.name || "-",
+				size: 25,
+				meta: {
+					width: "25%",
+					truncate: true,
+				},
 			},
 		];
 		if (canEdit) {
 			baseCols.push({
 				id: "actions",
 				header: "Aksi",
+				size: 10,
+				meta: {
+					width: "10%",
+					truncate: false,
+					align: "center",
+				},
 				cell: ({ row }) => (
 					<div className="flex gap-2">
 						{canEdit && (
@@ -201,6 +238,7 @@ export default function UsersPage() {
 								onClick={() => handleOpenModal(row.original)}
 								variant="ghost"
 								size="icon"
+								className="hover:text-primary cursor-pointer"
 							>
 								<Edit size={16} />
 							</Button>

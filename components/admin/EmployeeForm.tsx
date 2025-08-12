@@ -109,7 +109,8 @@ export function EmployeeForm({
 				const response = await fetch("/api/admin/master-data");
 				if (!response.ok) throw new Error("Gagal memuat data master");
 				setMasterData(await response.json());
-			} catch (error) {
+			} catch (err) {
+				console.log(err);
 				toast.error("Error", { description: "Gagal memuat data untuk form." });
 			}
 		}

@@ -24,7 +24,8 @@ import {
 	AccordionItem,
 	AccordionTrigger,
 } from "@/components/ui/accordion";
-import { Progress } from "@/components/ui/progress"; // Import the Progress component
+import { Progress } from "@/components/ui/progress";
+import { ValidatedRow } from "@/app/api/admin/employees/sync/analyze/route";
 
 // --- Type Definitions (Unchanged) ---
 interface ChangeDetail {
@@ -43,7 +44,7 @@ interface SyncAnalysis {
 	toCreate: { employeeId: string; name: string }[];
 	toUpdate: EmployeeUpdate[];
 	toDelete: { employeeId: string; name: string }[];
-	fullData: any;
+	fullData: ValidatedRow[];
 }
 
 interface SyncError {
@@ -115,6 +116,7 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 			setAnalysis(result.analysis);
 			setStep("confirm");
 		} catch (err) {
+			console.log(err);
 			setErrors([
 				{
 					row: 0,
@@ -174,15 +176,15 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 				return;
 			}
 
-			setProgress(100); // Mark as complete
+			setProgress(100);
 			setProgressMessage("Synchronization successful!");
 
-			// Give a moment for the user to see the "complete" state
 			setTimeout(() => {
 				setStep("success");
 				onSuccess();
 			}, 1000);
 		} catch (err) {
+			console.log(err);
 			setErrors([
 				{
 					row: 0,

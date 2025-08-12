@@ -176,7 +176,7 @@ export default function EmployeesPage() {
 			toast.success("Sukses", {
 				description: "Karyawan berhasil dihapus.",
 			});
-			fetchEmployees(); // Refresh data
+			fetchEmployees();
 		} catch (error) {
 			toast.error("Error", {
 				description:
@@ -190,21 +190,52 @@ export default function EmployeesPage() {
 
 	const columns = useMemo<ColumnDef<Employee>[]>(() => {
 		const baseColumns: ColumnDef<Employee>[] = [
-			{ accessorKey: "employeeId", header: "ID" },
-			{ accessorKey: "fullName", header: "Nama" },
+			{
+				accessorKey: "employeeId",
+				header: "ID",
+				size: 15,
+				meta: {
+					width: "15%",
+					truncate: false,
+				},
+			},
+			{
+				accessorKey: "fullName",
+				header: "Nama",
+				size: 25,
+				meta: {
+					width: "25%",
+					truncate: true,
+				},
+			},
 			{
 				accessorKey: "position.name",
 				header: "Posisi",
+				size: 20,
+				meta: {
+					width: "20%",
+					truncate: true,
+				},
 				cell: ({ row }) => row.original.position?.name || "-",
 			},
 			{
 				accessorKey: "department.name",
 				header: "Departemen",
+				size: 15,
+				meta: {
+					width: "15%",
+					truncate: true,
+				},
 				cell: ({ row }) => row.original.department?.name || "-",
 			},
 			{
 				accessorKey: "branch.name",
 				header: "Cabang",
+				size: 25,
+				meta: {
+					width: "25%",
+					truncate: true,
+				},
 				cell: ({ row }) => row.original.branch?.name || "-",
 			},
 		];
@@ -213,7 +244,12 @@ export default function EmployeesPage() {
 			baseColumns.push({
 				id: "actions",
 				header: "Aksi",
-				size: 100,
+				size: 10,
+				meta: {
+					width: "10%",
+					truncate: false,
+					align: "center",
+				},
 				cell: ({ row }) => (
 					<div className="flex items-center justify-center gap-2">
 						{canEdit && (
@@ -221,7 +257,7 @@ export default function EmployeesPage() {
 								onClick={() => handleOpenEditModal(row.original)}
 								variant="ghost"
 								size="icon"
-								className="h-8 w-8 text-gray-500 hover:text-blue-600"
+								className="h-8 w-8 text-gray-500 hover:text-primary"
 							>
 								<Edit size={16} />
 							</Button>

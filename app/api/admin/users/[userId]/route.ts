@@ -38,7 +38,8 @@ export const PUT = withAuthorization(
 				data: { role },
 			});
 			return NextResponse.json(updatedUser);
-		} catch (error) {
+		} catch (err) {
+			console.log(err);
 			return NextResponse.json(
 				{ message: "Failed to update user" },
 				{ status: 500 }
