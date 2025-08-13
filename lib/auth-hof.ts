@@ -1,7 +1,7 @@
 // app/lib/auth-hof.ts
 
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "./auth";
 import { NextRequest, NextResponse } from "next/server";
 import { PERMISSIONS, Resource, Action } from "./permissions";
 import { Role } from "@prisma/client";
