@@ -132,9 +132,9 @@ export function CreateCareerPathDialog({
 
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-						<div className="space-y-4 rounded-xl border border-slate-200 bg-transparent p-4 md:p-6 shadow-sm">
+						<div className="p-4 space-y-4 bg-transparent border shadow-sm rounded-xl border-slate-200 md:p-6">
 							<h3 className="text-lg font-semibold">Dari Posisi</h3>
-							<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 								<FormField
 									name="fromBranchId"
 									control={form.control}
@@ -150,7 +150,7 @@ export function CreateCareerPathDialog({
 												value={field.value}
 											>
 												<FormControl>
-													<SelectTrigger>
+													<SelectTrigger className="w-full">
 														<SelectValue placeholder="Pilih Cabang" />
 													</SelectTrigger>
 												</FormControl>
@@ -181,7 +181,7 @@ export function CreateCareerPathDialog({
 												disabled={!fromBranchId}
 											>
 												<FormControl>
-													<SelectTrigger>
+													<SelectTrigger className="w-full">
 														<SelectValue placeholder="Pilih Departemen" />
 													</SelectTrigger>
 												</FormControl>
@@ -212,7 +212,7 @@ export function CreateCareerPathDialog({
 											disabled={!fromDepartmentId}
 										>
 											<FormControl>
-												<SelectTrigger>
+												<SelectTrigger className="w-full">
 													<SelectValue placeholder="Pilih Posisi" />
 												</SelectTrigger>
 											</FormControl>
@@ -249,13 +249,13 @@ export function CreateCareerPathDialog({
 										})
 									}
 								>
-									<Plus className="mr-2 h-4 w-4" /> Tambah Tujuan
+									<Plus className="w-4 h-4 mr-2" /> Tambah Tujuan
 								</Button>
 							</div>
 							{fields.map((field, index) => (
 								<div
 									key={field.id}
-									className="relative space-y-4 rounded-xl border border-slate-200 bg-transparent p-4 md:p-6 shadow-sm"
+									className="relative p-4 space-y-4 bg-transparent border shadow-sm rounded-xl border-slate-200 md:p-6"
 								>
 									<Button
 										type="button"
@@ -267,7 +267,7 @@ export function CreateCareerPathDialog({
 										<X className="w-4 h-4" />
 									</Button>
 
-									<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+									<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 										<FormField
 											name={`toPositions.${index}.branchId`}
 											control={form.control}
@@ -289,7 +289,7 @@ export function CreateCareerPathDialog({
 														value={f.value}
 													>
 														<FormControl>
-															<SelectTrigger>
+															<SelectTrigger className="w-full">
 																<SelectValue placeholder="Pilih Cabang" />
 															</SelectTrigger>
 														</FormControl>
@@ -325,7 +325,7 @@ export function CreateCareerPathDialog({
 														disabled={!toPositionsWatched?.[index]?.branchId}
 													>
 														<FormControl>
-															<SelectTrigger>
+															<SelectTrigger className="w-full">
 																<SelectValue placeholder="Pilih Departemen" />
 															</SelectTrigger>
 														</FormControl>
@@ -351,7 +351,7 @@ export function CreateCareerPathDialog({
 										/>
 									</div>
 
-									<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+									<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 										<FormField
 											name={`toPositions.${index}.toPositionId`}
 											control={form.control}
@@ -366,7 +366,7 @@ export function CreateCareerPathDialog({
 														}
 													>
 														<FormControl>
-															<SelectTrigger>
+															<SelectTrigger className="w-full">
 																<SelectValue placeholder="Pilih Posisi" />
 															</SelectTrigger>
 														</FormControl>
@@ -398,7 +398,7 @@ export function CreateCareerPathDialog({
 													<FormLabel>Jenis Path</FormLabel>
 													<Select onValueChange={f.onChange} value={f.value}>
 														<FormControl>
-															<SelectTrigger>
+															<SelectTrigger className="w-full">
 																<SelectValue placeholder="Pilih Jenis" />
 															</SelectTrigger>
 														</FormControl>
@@ -416,7 +416,7 @@ export function CreateCareerPathDialog({
 							))}
 						</div>
 
-						<DialogFooter className="mt-6 gap-2 border-t pt-4">
+						<DialogFooter className="gap-2 pt-4 mt-6 border-t">
 							<Button
 								type="button"
 								variant="outline"

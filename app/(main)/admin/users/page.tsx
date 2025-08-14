@@ -238,7 +238,7 @@ export default function UsersPage() {
 								onClick={() => handleOpenModal(row.original)}
 								variant="ghost"
 								size="icon"
-								className="hover:text-primary cursor-pointer"
+								className="cursor-pointer hover:text-primary"
 							>
 								<Edit size={16} />
 							</Button>
@@ -255,8 +255,8 @@ export default function UsersPage() {
 	return (
 		<>
 			<Toaster position="top-center" richColors />
-			<div className="container mx-auto py-10">
-				<div className="flex justify-between items-center mb-4">
+			<div className="container py-10 mx-auto">
+				<div className="flex items-center justify-between mb-4">
 					<h1 className="text-2xl font-bold">Manajemen Pengguna</h1>
 				</div>
 				<CrudTable
@@ -283,7 +283,7 @@ export default function UsersPage() {
 					<Form {...form}>
 						<form
 							onSubmit={form.handleSubmit(onSubmit)}
-							className="space-y-4 pt-4"
+							className="pt-4 space-y-4"
 						>
 							<FormField
 								control={form.control}
@@ -296,7 +296,7 @@ export default function UsersPage() {
 											defaultValue={field.value}
 										>
 											<FormControl>
-												<SelectTrigger>
+												<SelectTrigger className="w-full max-w-1/2">
 													<SelectValue />
 												</SelectTrigger>
 											</FormControl>
