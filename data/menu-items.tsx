@@ -51,6 +51,12 @@ export const adminMenuGroups: MenuGroup[] = [
 				label: "Career Path",
 				permission: { resource: "careerPath", action: "read" },
 			},
+			{
+				href: "/admin/job-vacancies",
+				icon: <Search size={18} />,
+				label: "Job Vacant",
+				permission: { resource: "jobVacant", action: "read" },
+			},
 		],
 	},
 	{
