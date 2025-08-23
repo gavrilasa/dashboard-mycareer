@@ -7748,21 +7748,24 @@ const questionnaireSeedData: QuestionnaireData[] = [
 ];
 
 async function main() {
-	console.log(`Mulai proses seeding untuk kuesioner...`);
+	console.log(`Mulai proses seeding untuk kuesioner (Mode Multi-Cabang)...`);
 
-	const allPositions = await prisma.position.findMany({
-		select: { id: true, name: true },
-	});
-
-	const normalizeString = (str: string) => {
+	const normalizeString = (str: string): string => {
+		if (!str) return "";
 		return str
 			.trim()
 			.toLowerCase()
-			.replace(/[^a-z0-9\s]/g, "");
+			.replace(/[^a-z0-9&\s/]/g, "")
+			.replace(/\s*&\s*/g, " and ")
+			.replace(/\s+/g, " ");
 	};
 
-	const positionMap = new Map(
-		allPositions.map((p) => [normalizeString(p.name), p.id])
+	const allJobRoles = await prisma.jobRole.findMany({
+		select: { id: true, name: true },
+	});
+
+	const jobRoleMap = new Map(
+		allJobRoles.map((role) => [normalizeString(role.name), role.id])
 	);
 
 	for (const qData of questionnaireSeedData) {
@@ -7780,26 +7783,29 @@ async function main() {
 				},
 			});
 
-			console.log(`Membuat atau memperbarui kuesioner: ${questionnaire.title}`);
+			console.log(`  -> Memproses kuesioner: ${questionnaire.title}`);
 
 			await tx.question.deleteMany({
 				where: { questionnaireId: questionnaire.id },
 			});
 
 			for (const questionData of qData.questions) {
-				const positionConnections = (questionData.forPositions ?? []).map(
-					(posName) => {
-						const normalizedPosName = normalizeString(posName);
-						const posId = positionMap.get(normalizedPosName);
+				const jobRoleIdsToConnect: string[] = [];
 
-						if (!posId) {
+				if (questionData.forPositions && questionData.forPositions.length > 0) {
+					for (const posName of questionData.forPositions) {
+						const normalizedRoleName = normalizeString(posName);
+						const roleId = jobRoleMap.get(normalizedRoleName);
+
+						if (roleId) {
+							jobRoleIdsToConnect.push(roleId);
+						} else {
 							throw new Error(
-								`Error Seeding: Jabatan "${posName}" pada kuesioner "${qData.title}" tidak ditemukan di database. Harap sinkronkan data Position.`
+								`Error Seeding: JobRole "${posName}" pada kuesioner "${qData.title}" tidak ditemukan.`
 							);
 						}
-						return { id: posId };
 					}
-				);
+				}
 
 				await tx.question.create({
 					data: {
@@ -7809,19 +7815,18 @@ async function main() {
 						subCompetency: questionData.subCompetency,
 						options: [],
 						questionnaireId: questionnaire.id,
-						positions: {
-							connect: positionConnections,
-						},
+						...(jobRoleIdsToConnect.length > 0 && {
+							jobRoles: {
+								connect: jobRoleIdsToConnect.map((id) => ({ id })),
+							},
+						}),
 					},
 				});
 			}
-			console.log(
-				`   -> ${qData.questions.length} pertanyaan berhasil ditambahkan untuk ${questionnaire.title}.`
-			);
 		});
 	}
 
-	console.log(`Proses seeding kuesioner selesai.`);
+	console.log("✅ Seeding Kuesioner selesai.");
 }
 
 main()

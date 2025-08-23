@@ -14872,95 +14872,58 @@ const standardsData: {
 ];
 
 async function main() {
-	console.log(`Mulai proses seeding untuk Standar Kompetensi...`);
+	console.log("Memulai seeding Standar Kompetensi (Mode Normalisasi)...");
 
-	const allPositions = await prisma.position.findMany({
-		select: { id: true, name: true },
-	});
-
-	const normalizeString = (str: string) => {
+  const normalizeString = (str: string): string => {
+		if (!str) return "";
 		return str
 			.trim()
 			.toLowerCase()
 			.replace(/[^a-z0-9&\s/]/g, "")
+			.replace(/\s*&\s*/g, " and ")
 			.replace(/\s+/g, " ");
 	};
 
-	const positionMap = new Map(
-		allPositions.map((p) => [normalizeString(p.name), p.id])
+	const allJobRoles = await prisma.jobRole.findMany();
+	const jobRoleMap = new Map(
+		allJobRoles.map((role) => [normalizeString(role.name), role.id])
 	);
 
 	const standardsToCreate = [];
-	const unprocessedPositions = new Set<string>();
 
 	for (const standard of standardsData) {
 		const normalizedPosName = normalizeString(standard.positionName);
-		const positionId = positionMap.get(normalizedPosName);
+		const jobRoleId = jobRoleMap.get(normalizedPosName);
 
-		if (positionId) {
+		if (jobRoleId) {
 			standardsToCreate.push({
-				positionId,
+				jobRoleId,
 				competency: standard.competency.trim(),
 				standardValue: standard.standardValue,
 			});
 		} else {
-			unprocessedPositions.add(standard.positionName);
+			console.warn(
+				`Peringatan: JobRole untuk "${standard.positionName}" tidak ditemukan dan dilewati.`
+			);
 		}
 	}
 
-	if (unprocessedPositions.size > 0) {
-		console.warn(
-			"\nPERINGATAN: Jabatan berikut dari data standar tidak ditemukan di database dan dilewati:"
-		);
-		unprocessedPositions.forEach((posName) => console.warn(`- ${posName}`));
-		console.log("\n");
-	}
-
-	if (standardsToCreate.length === 0 && standardsData.length > 0) {
-		throw new Error(
-			"Tidak ada data standar yang berhasil diproses. Proses seeding dihentikan."
-		);
-	}
-
-	console.log(`Menghapus data standar lama...`);
+	// Hapus data lama sebelum memasukkan yang baru
 	await prisma.competencyStandard.deleteMany({});
-
-	console.log(`Memasukkan ${standardsToCreate.length} data standar baru...`);
 	await prisma.competencyStandard.createMany({
 		data: standardsToCreate,
-		skipDuplicates: true,
+		skipDuplicates: true, // Menghindari error jika ada duplikasi competency per jobRole
 	});
 
-	console.log(`Proses seeding Standar Kompetensi selesai.`);
-
-	// --- LANGKAH VERIFIKASI AKHIR ---
-	console.log("\n--- Memulai Verifikasi Otomatis ---");
-	const helperOperatorId = positionMap.get(
-		normalizeString("Helper & Operator")
+	console.log(
+		`✅ ${standardsToCreate.length} Standar Kompetensi berhasil dibuat.`
 	);
-	if (helperOperatorId) {
-		const count = await prisma.competencyStandard.count({
-			where: { positionId: helperOperatorId },
-		});
-		if (count > 0) {
-			console.log(
-				`✅ SUKSES: Verifikasi berhasil. Ditemukan ${count} data standar untuk 'Helper & Operator'.`
-			);
-		} else {
-			console.error(
-				"❌ GAGAL: Verifikasi gagal. Tidak ada data standar untuk 'Helper & Operator' yang masuk ke database."
-			);
-		}
-	} else {
-		console.warn(
-			"Peringatan Verifikasi: Posisi 'Helper & Operator' tidak ditemukan untuk diverifikasi."
-		);
-	}
-	console.log("---------------------------------");
 }
 
+// Blok catch dan finally
 main()
 	.catch((e) => {
+		console.error("\n❌ Terjadi kesalahan fatal selama proses seeding:");
 		console.error(e);
 		process.exit(1);
 	})

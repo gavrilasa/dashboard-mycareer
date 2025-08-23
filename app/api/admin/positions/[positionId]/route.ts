@@ -1,8 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
+import { z } from "zod";
 
-// GET: Mengambil satu posisi
+// Skema validasi untuk data update
+const updatePositionSchema = z.object({
+	name: z.string().min(1, "Nama Jabatan tidak boleh kosong"),
+	branchId: z.string().min(1, "ID Cabang tidak boleh kosong"),
+	departmentId: z.string().min(1, "ID Departemen tidak boleh kosong"),
+	levelId: z.string().min(1, "ID Level tidak boleh kosong"),
+});
+
+// GET: Mengambil satu posisi (sudah disesuaikan)
 export const GET = withAuthorization(
 	{ resource: "position", action: "read" },
 	async (_req, _args, { params }) => {
@@ -16,6 +25,12 @@ export const GET = withAuthorization(
 
 		const position = await prisma.position.findUnique({
 			where: { id: positionId },
+			include: {
+				jobRole: true,
+				branch: true,
+				department: true,
+				level: true,
+			},
 		});
 
 		if (!position) {
@@ -42,15 +57,36 @@ export const PUT = withAuthorization(
 
 		try {
 			const body = await req.json();
+			const validation = updatePositionSchema.safeParse(body);
+
+			if (!validation.success) {
+				return NextResponse.json(
+					{ message: "Data tidak valid", errors: validation.error.issues },
+					{ status: 400 }
+				);
+			}
+
+			const { name, ...otherData } = validation.data;
+
+			const jobRole = await prisma.jobRole.upsert({
+				where: { name: name },
+				update: {},
+				create: { name: name },
+			});
+
 			const updatedPosition = await prisma.position.update({
 				where: { id: positionId },
-				data: body,
+				data: {
+					name,
+					...otherData,
+					jobRoleId: jobRole.id,
+				},
 			});
 			return NextResponse.json(updatedPosition);
 		} catch (error) {
-			console.error("Error updating position:", error);
+			console.error("Gagal memperbarui posisi:", error);
 			return NextResponse.json(
-				{ message: "Internal Server Error" },
+				{ message: "Terjadi kesalahan pada server" },
 				{ status: 500 }
 			);
 		}
@@ -70,29 +106,34 @@ export const DELETE = withAuthorization(
 		}
 
 		try {
-			// Periksa apakah posisi masih digunakan oleh karyawan
-			const employeeCount = await prisma.employee.count({
-				where: { positionId: positionId },
+			const positionToDelete = await prisma.position.findUnique({
+				where: { id: positionId },
+				select: { jobRoleId: true },
 			});
 
-			if (employeeCount > 0) {
-				return NextResponse.json(
-					{
-						message:
-							"Tidak dapat menghapus posisi yang masih digunakan oleh karyawan.",
-					},
-					{ status: 409 } // 409 Conflict
-				);
+			if (!positionToDelete) {
+				return new NextResponse(null, { status: 204 });
 			}
 
 			await prisma.position.delete({
 				where: { id: positionId },
 			});
-			return new NextResponse(null, { status: 204 }); // 204 No Content
+
+			const remainingPositionsWithJobRole = await prisma.position.count({
+				where: { jobRoleId: positionToDelete.jobRoleId },
+			});
+
+			if (remainingPositionsWithJobRole === 0) {
+				await prisma.jobRole.delete({
+					where: { id: positionToDelete.jobRoleId },
+				});
+			}
+
+			return new NextResponse(null, { status: 204 });
 		} catch (error) {
-			console.error("Error deleting position:", error);
+			console.error("Gagal menghapus posisi:", error);
 			return NextResponse.json(
-				{ message: "Internal Server Error" },
+				{ message: "Terjadi kesalahan pada server" },
 				{ status: 500 }
 			);
 		}

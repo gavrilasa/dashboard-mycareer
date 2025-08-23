@@ -1,8 +1,9 @@
+// app/api/employee/questionnaires/[questionnaireId]/route.ts
+
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 
-// Definisikan tipe untuk parameter URL
 interface HandlerContext {
 	params: { questionnaireId: string };
 }
@@ -21,20 +22,28 @@ export const GET = withAuthorization(
 		}
 
 		try {
-			// Ambil posisi karyawan untuk filtering pertanyaan
+			// --- PERUBAHAN LOGIKA 1: Ambil jobRoleId Karyawan ---
 			const employee = await prisma.employee.findUnique({
 				where: { employeeId },
-				select: { positionId: true },
+				select: {
+					position: {
+						select: {
+							jobRoleId: true,
+						},
+					},
+				},
 			});
 
-			if (!employee?.positionId) {
+			const jobRoleId = employee?.position?.jobRoleId;
+
+			if (!jobRoleId) {
 				return NextResponse.json(
-					{ message: "Posisi karyawan tidak ditemukan." },
+					{ message: "Peran jabatan (JobRole) karyawan tidak ditemukan." },
 					{ status: 404 }
 				);
 			}
 
-			// Ambil detail kuesioner beserta pertanyaan yang sudah difilter
+			// --- PERUBAHAN LOGIKA 2: Ambil Pertanyaan Berdasarkan jobRoleId ---
 			const questionnaire = await prisma.questionnaire.findUnique({
 				where: { id: questionnaireId },
 				select: {
@@ -43,12 +52,12 @@ export const GET = withAuthorization(
 					description: true,
 					questions: {
 						where: {
-							// Logika filter:
-							// 1. Ambil pertanyaan yang tidak terikat ke posisi manapun (umum)
-							// 2. ATAU ambil pertanyaan yang terikat spesifik ke posisi karyawan ini
+							// Filter baru:
+							// 1. Ambil pertanyaan yang tidak terikat ke JobRole manapun (umum)
+							// 2. ATAU ambil pertanyaan yang terikat spesifik ke jobRoleId karyawan ini
 							OR: [
-								{ positions: { none: {} } },
-								{ positions: { some: { id: employee.positionId } } },
+								{ jobRoles: { none: {} } },
+								{ jobRoles: { some: { id: jobRoleId } } },
 							],
 						},
 						select: {
@@ -58,7 +67,7 @@ export const GET = withAuthorization(
 							subCompetency: true,
 						},
 						orderBy: {
-							createdAt: "asc", // Menjaga urutan pertanyaan tetap konsisten
+							createdAt: "asc",
 						},
 					},
 				},
@@ -71,7 +80,7 @@ export const GET = withAuthorization(
 				);
 			}
 
-			// Kelompokkan pertanyaan berdasarkan competency dan subCompetency untuk frontend
+			// Sisa logika untuk mengelompokkan pertanyaan tetap sama
 			const groupedQuestions = questionnaire.questions.reduce((acc, q) => {
 				const competencyKey = q.competency;
 				const subCompetencyKey = q.subCompetency;

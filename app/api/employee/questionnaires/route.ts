@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 
-// Peta untuk menghubungkan ID departemen dengan judul kuesioner teknis (TETAP SAMA)
+// Peta ini tidak berubah, tetap digunakan untuk kuesioner teknis
 const departmentToQuestionnaireMap: Record<string, string> = {
 	"ADM-FA": "Kuisioner Mapping Kompetensi Accounting",
 	"ADM-GM": "Kuisioner Mapping Kompetensi MFG",
@@ -32,38 +32,46 @@ export const GET = withAuthorization(
 		}
 
 		try {
+			// --- PERUBAHAN LOGIKA 1: PENGAMBILAN DATA KARYAWAN ---
+			// Kita mengambil jobRoleId melalui relasi Employee -> Position -> JobRole
 			const employee = await prisma.employee.findUnique({
 				where: { employeeId },
 				select: {
-					positionId: true,
 					departmentId: true,
 					level: {
 						select: {
 							name: true,
 						},
 					},
+					position: {
+						select: {
+							jobRoleId: true, // Mengambil jobRoleId dari posisi terkait
+						},
+					},
 				},
 			});
 
-			if (
-				!employee?.positionId ||
-				!employee?.departmentId ||
-				!employee?.level
-			) {
+			// Ambil jobRoleId dari hasil query
+			const jobRoleId = employee?.position?.jobRoleId;
+			const departmentId = employee?.departmentId;
+			const level = employee?.level;
+
+			// Validasi kelengkapan data baru
+			if (!jobRoleId || !departmentId || !level) {
 				return NextResponse.json(
 					{
 						message:
-							"Data posisi, departemen, atau level karyawan tidak lengkap.",
+							"Data peran jabatan (JobRole), departemen, atau level karyawan tidak lengkap.",
 					},
 					{ status: 404 }
 				);
 			}
 
-			const { positionId, departmentId, level } = employee;
-
+			// --- PERUBAHAN LOGIKA 2: VALIDASI STANDAR KOMPETENSI ---
+			// Pencarian sekarang dilakukan menggunakan jobRoleId, bukan positionId
 			const standardExists = await prisma.competencyStandard.findFirst({
 				where: {
-					positionId,
+					jobRoleId: jobRoleId,
 				},
 			});
 
@@ -74,8 +82,9 @@ export const GET = withAuthorization(
 				);
 			}
 
-			// --- PERBAIKAN LOGIKA DIMULAI DI SINI ---
-			// Ekstrak kode departemen dari ID lengkap. Contoh: "N004-MFG-PROD" -> "MFG-PROD"
+			// --- Sisa logika tidak berubah, tapi disempurnakan ---
+
+			// Ekstrak kode departemen dari ID lengkap
 			const departmentCodeParts = departmentId.split("-");
 			const departmentShortCode =
 				departmentCodeParts.length > 2
@@ -83,7 +92,7 @@ export const GET = withAuthorization(
 					: departmentId;
 
 			const technicalQuestionnaireTitle =
-				departmentToQuestionnaireMap[departmentShortCode]; // Gunakan kode yang sudah diekstrak
+				departmentToQuestionnaireMap[departmentShortCode];
 
 			if (!technicalQuestionnaireTitle) {
 				return NextResponse.json(
@@ -93,7 +102,6 @@ export const GET = withAuthorization(
 					{ status: 404 }
 				);
 			}
-			// --- AKHIR PERBAIKAN LOGIKA ---
 
 			// Tentukan kuesioner manajerial berdasarkan level
 			let managerialQuestionnaireTitle = "";
