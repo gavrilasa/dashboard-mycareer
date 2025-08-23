@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 			include: {
 				employee: {
 					select: {
-						employeeId: true, // <-- Perbaikan: employeeId sekarang ikut diambil
+						employeeId: true,
 						positionId: true,
 					},
 				},
