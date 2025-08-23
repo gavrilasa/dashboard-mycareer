@@ -10,6 +10,7 @@ import {
 	CircleUser,
 	ShieldUser,
 	NotepadText,
+	FileQuestion,
 } from "lucide-react";
 import { Resource, Action } from "@/lib/permissions";
 
@@ -44,6 +45,12 @@ export const adminMenuGroups: MenuGroup[] = [
 				icon: <NotepadText size={18} />,
 				label: "Form",
 				permission: { resource: "form", action: "read" },
+			},
+			{
+				href: "/admin/questionnaires",
+				icon: <FileQuestion size={18} />,
+				label: "Questionnaires",
+				permission: { resource: "questionnaire", action: "read" },
 			},
 			{
 				href: "/admin/career-path",

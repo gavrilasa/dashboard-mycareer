@@ -6,7 +6,6 @@ import { withAuthorization } from "@/lib/auth-hof";
 import { z } from "zod";
 
 const createPositionSchema = z.object({
-	id: z.string().min(1, "ID Posisi tidak boleh kosong"),
 	name: z.string().min(1, "Nama Jabatan tidak boleh kosong"),
 	branchId: z.string().min(1, "ID Cabang tidak boleh kosong"),
 	departmentId: z.string().min(1, "ID Departemen tidak boleh kosong"),
@@ -15,20 +14,52 @@ const createPositionSchema = z.object({
 
 export const GET = withAuthorization(
 	{ resource: "position", action: "read" },
-	async () => {
+	async (req: NextRequest) => {
+		const { searchParams } = new URL(req.url);
+		const page = parseInt(searchParams.get("page") || "1");
+		const limit = parseInt(searchParams.get("limit") || "10");
+		const search = searchParams.get("search") || "";
+
+		const skip = (page - 1) * limit;
+
 		try {
-			const positions = await prisma.position.findMany({
-				include: {
-					branch: true,
-					department: true,
-					level: true,
-					jobRole: true,
+			const whereClause = {
+				name: {
+					contains: search,
+					mode: "insensitive" as const,
 				},
-				orderBy: {
-					createdAt: "desc",
+			};
+
+			const [positions, totalItems] = await prisma.$transaction([
+				prisma.position.findMany({
+					where: whereClause,
+					skip,
+					take: limit,
+					include: {
+						branch: true,
+						department: true,
+						level: true,
+						jobRole: true,
+					},
+					orderBy: {
+						branch: {
+							id: "asc",
+						},
+					},
+				}),
+				prisma.position.count({ where: whereClause }),
+			]);
+
+			const totalPages = Math.ceil(totalItems / limit);
+
+			return NextResponse.json({
+				data: positions,
+				pagination: {
+					totalItems,
+					totalPages,
+					currentPage: page,
 				},
 			});
-			return NextResponse.json(positions);
 		} catch (error) {
 			console.error("Gagal mengambil data posisi:", error);
 			return NextResponse.json(
@@ -39,12 +70,15 @@ export const GET = withAuthorization(
 	}
 );
 
-// Handler untuk membuat posisi baru dengan logika JobRole otomatis
+// Handler untuk membuat posisi baru (sudah diperbaiki)
 export const POST = withAuthorization(
 	{ resource: "position", action: "create" },
 	async (req: NextRequest) => {
 		try {
 			const body = await req.json();
+
+			// --- PERBAIKI LOGIKA VALIDASI INI ---
+			// Validasi body secara langsung, tanpa destructuring atau .omit()
 			const validation = createPositionSchema.safeParse(body);
 
 			if (!validation.success) {
@@ -57,8 +91,10 @@ export const POST = withAuthorization(
 				);
 			}
 
-			const { id, name, branchId, departmentId, levelId } = validation.data;
+			// Data yang sudah divalidasi sekarang aman untuk digunakan
+			const { name, branchId, departmentId, levelId } = validation.data;
 
+			// Logika JobRole tetap sama
 			const jobRole = await prisma.jobRole.upsert({
 				where: {
 					name: name,
@@ -69,9 +105,14 @@ export const POST = withAuthorization(
 				},
 			});
 
+			// Buat ID unik untuk posisi baru di backend
+			const newPositionId = `${branchId}-${departmentId}-${Math.random()
+				.toString(16)
+				.slice(2, 8)}`;
+
 			const newPosition = await prisma.position.create({
 				data: {
-					id,
+					id: newPositionId,
 					name,
 					branchId,
 					departmentId,
@@ -85,7 +126,9 @@ export const POST = withAuthorization(
 			console.error("Gagal membuat posisi:", error);
 			if (error.code === "P2002") {
 				return NextResponse.json(
-					{ message: "Gagal: ID Posisi yang Anda masukkan sudah ada." },
+					{
+						message: "Gagal: Posisi dengan detail tersebut mungkin sudah ada.",
+					},
 					{ status: 409 }
 				);
 			}
