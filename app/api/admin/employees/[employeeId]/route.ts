@@ -21,6 +21,11 @@ export const GET = withAuthorization(
 		}
 		const employee = await prisma.employee.findUnique({
 			where: { employeeId },
+			include: {
+				position: { select: { name: true } },
+				department: { select: { name: true } },
+				branch: { select: { name: true } },
+			},
 		});
 
 		return employee

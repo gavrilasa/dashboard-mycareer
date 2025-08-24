@@ -33,6 +33,7 @@ interface CrudTableProps<TData extends DataItem, TValue> {
 		onPageChange: (page: number) => void;
 	};
 	createButton?: React.ReactNode;
+	filterContent?: React.ReactNode;
 }
 
 export function CrudTable<TData extends DataItem, TValue>({
@@ -45,6 +46,7 @@ export function CrudTable<TData extends DataItem, TValue>({
 	onSearchChange,
 	pagination,
 	createButton,
+	filterContent,
 }: CrudTableProps<TData, TValue>) {
 	const { currentPage, totalPages, totalRecords, onPageChange } = pagination;
 	const startEntry = totalRecords > 0 ? (currentPage - 1) * limit + 1 : 0;
@@ -73,8 +75,8 @@ export function CrudTable<TData extends DataItem, TValue>({
 					</Select>
 					<span className="text-sm text-gray-600">entries</span>
 				</div>
-				<div className="flex items-center gap-4 w-full md:w-auto">
-					<div className="relative w-full md:w-auto">
+				<div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
+					<div className="relative w-full sm:w-auto">
 						<Search className="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" />
 						<Input
 							placeholder="Search..."
@@ -83,14 +85,13 @@ export function CrudTable<TData extends DataItem, TValue>({
 							className="w-full pl-10 md:w-64"
 						/>
 					</div>
+					{filterContent}
 					{createButton}
 				</div>
 			</div>
 
-			{/* Table Content */}
 			<DataTable columns={columns} data={data} loading={loading} />
 
-			{/* Footer */}
 			{totalRecords > 0 && (
 				<div className="flex flex-col items-center justify-between gap-4 mt-6 md:flex-row">
 					<p className="text-sm text-gray-600">

@@ -1,31 +1,42 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
-import { CrudTable } from "@/components/common/CrudTable";
 import { ColumnDef } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
-import { ArrowDown, ArrowUp } from "lucide-react";
+import { CrudTable } from "@/components/common/CrudTable";
+import {
+	FilterPopover,
+	ActiveFilters,
+} from "@/components/common/FilterPopover";
+import { Button } from "@/components/ui/button";
+import { Eye } from "lucide-react";
 
-// --- Definisi Tipe Data ---
-
-// Tipe ini harus memiliki 'id' untuk kompatibilitas dengan CrudTable
-interface EmployeeResult {
-	id: string; // Menggunakan 'id' sebagai alias untuk employeeId
+// --- Type Definitions ---
+interface SummaryResult {
+	id: string;
 	employeeId: string;
 	fullName: string;
 	positionName: string;
-	results: {
-		competency: string;
-		calculatedScore: number;
-		gap: number;
-		recommendations: string;
-	}[];
+	departmentName: string;
+	branchName: string;
+	overallAverageScore: number;
+}
+
+interface MasterDataItem {
+	id: string;
+	name: string;
+	branchId?: string;
+}
+
+interface MasterData {
+	branches: MasterDataItem[];
+	departments: MasterDataItem[];
 }
 
 interface ApiResponse {
-	data: Omit<EmployeeResult, "id">[]; // API respons tidak perlu 'id'
+	data: Omit<SummaryResult, "id">[];
 	meta: {
 		total: number;
 		page: number;
@@ -34,36 +45,13 @@ interface ApiResponse {
 	};
 }
 
-// --- Definisi Kolom ---
-
-const baseColumns: ColumnDef<EmployeeResult>[] = [
-	{
-		accessorKey: "fullName",
-		header: "Nama Karyawan",
-	},
-	{
-		accessorKey: "positionName",
-		header: "Jabatan",
-	},
-];
-
-const recommendationColumn: ColumnDef<EmployeeResult> = {
-	header: "Rekomendasi Pelatihan",
-	id: "recommendations",
-	cell: ({ row }) => {
-		const recommendations = row.original.results
-			.filter((r) => r.recommendations)
-			.map((r) => r.recommendations)
-			.join(", ");
-		return (
-			<div className="whitespace-normal text-xs">{recommendations || "-"}</div>
-		);
-	},
-};
-
 export default function QuestionnaireResultsPage() {
-	const [data, setData] = useState<EmployeeResult[]>([]);
-	const [allCompetencies, setAllCompetencies] = useState<string[]>([]);
+	const router = useRouter();
+	const [data, setData] = useState<SummaryResult[]>([]);
+	const [masterData, setMasterData] = useState<MasterData>({
+		branches: [],
+		departments: [],
+	});
 	const [loading, setLoading] = useState(true);
 	const [limit, setLimit] = useState(10);
 	const [page, setPage] = useState(1);
@@ -73,8 +61,28 @@ export default function QuestionnaireResultsPage() {
 		totalPages: 1,
 		totalRecords: 0,
 	});
+	const [filters, setFilters] = useState<ActiveFilters>({
+		branchId: "",
+		departmentId: "",
+	});
 
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
+
+	const fetchMasterData = useCallback(async () => {
+		try {
+			const res = await fetch("/api/admin/master-data");
+			if (!res.ok) throw new Error("Gagal memuat data master untuk filter.");
+			const data = await res.json();
+			setMasterData({
+				branches: data.branches,
+				departments: data.departments,
+			});
+		} catch (error) {
+			if (error instanceof Error) {
+				toast.error("Gagal Memuat Filter", { description: error.message });
+			}
+		}
+	}, []);
 
 	const fetchResults = useCallback(async () => {
 		setLoading(true);
@@ -83,6 +91,8 @@ export default function QuestionnaireResultsPage() {
 				page: page.toString(),
 				limit: limit.toString(),
 				search: debouncedSearchTerm,
+				branchId: filters.branchId || "",
+				departmentId: filters.departmentId || "",
 			});
 			const response = await fetch(
 				`/api/admin/competency-results?${params.toString()}`
@@ -95,30 +105,16 @@ export default function QuestionnaireResultsPage() {
 			}
 
 			const result: ApiResponse = await response.json();
-
-			// Mengubah 'employeeId' menjadi 'id' agar sesuai dengan CrudTable
-			const formattedData = result.data.map((emp) => ({
-				...emp,
-				id: emp.employeeId,
+			const formattedData = result.data.map((item) => ({
+				...item,
+				id: item.employeeId,
 			}));
 			setData(formattedData);
-
 			setPagination({
 				currentPage: result.meta.page,
 				totalPages: result.meta.totalPages,
 				totalRecords: result.meta.total,
 			});
-
-			if (page === 1 && debouncedSearchTerm === "") {
-				const uniqueCompetencies = result.data.reduce<Set<string>>(
-					(acc, employee) => {
-						employee.results.forEach((res) => acc.add(res.competency));
-						return acc;
-					},
-					new Set()
-				);
-				setAllCompetencies(Array.from(uniqueCompetencies));
-			}
 		} catch (error) {
 			if (error instanceof Error) {
 				toast.error("Gagal Memuat Data", { description: error.message });
@@ -126,47 +122,48 @@ export default function QuestionnaireResultsPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [page, limit, debouncedSearchTerm]);
+	}, [page, limit, debouncedSearchTerm, filters]);
+
+	useEffect(() => {
+		fetchMasterData();
+	}, [fetchMasterData]);
 
 	useEffect(() => {
 		fetchResults();
 	}, [fetchResults]);
 
-	const columns = useMemo<ColumnDef<EmployeeResult>[]>(() => {
-		const dynamicColumns: ColumnDef<EmployeeResult>[] = allCompetencies.map(
-			(competency) => ({
-				header: competency,
-				id: competency,
-				cell: ({ row }) => {
-					const result = row.original.results.find(
-						(r) => r.competency === competency
-					);
-					if (!result) return "-";
-
-					const score = result.calculatedScore.toFixed(2);
-					const gap = result.gap;
-
-					return (
-						<div className="flex flex-col items-center text-center">
-							<span className="font-semibold">{score}</span>
-							<Badge
-								variant={gap < 0 ? "destructive" : "default"}
-								className="w-fit"
-							>
-								{gap >= 0 ? (
-									<ArrowUp className="h-3 w-3 mr-1" />
-								) : (
-									<ArrowDown className="h-3 w-3 mr-1" />
-								)}
-								{gap.toFixed(2)}
-							</Badge>
-						</div>
-					);
-				},
-			})
-		);
-		return [...baseColumns, ...dynamicColumns, recommendationColumn];
-	}, [allCompetencies]);
+	const columns = useMemo<ColumnDef<SummaryResult>[]>(
+		() => [
+			{
+				accessorKey: "fullName",
+				header: "Nama Karyawan",
+			},
+			{ accessorKey: "positionName", header: "Jabatan" },
+			{ accessorKey: "branchName", header: "Cabang" },
+			{ accessorKey: "departmentName", header: "Departemen" },
+			{
+				accessorKey: "overallAverageScore",
+				header: "Skor Rata-Rata",
+				cell: ({ row }) => row.original.overallAverageScore.toFixed(2),
+			},
+			{
+				id: "actions",
+				header: "Aksi",
+				cell: ({ row }) => (
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() =>
+							router.push(`/admin/questionnaires/${row.original.employeeId}`)
+						}
+					>
+						<Eye className="h-4 w-4 mr-2" />
+					</Button>
+				),
+			},
+		],
+		[router]
+	);
 
 	return (
 		<>
@@ -181,10 +178,22 @@ export default function QuestionnaireResultsPage() {
 					loading={loading}
 					search={searchTerm}
 					onSearchChange={setSearchTerm}
-					pagination={{ ...pagination, onPageChange: setPage }}
+					pagination={{
+						currentPage: pagination.currentPage,
+						totalPages: pagination.totalPages,
+						totalRecords: pagination.totalRecords,
+						onPageChange: setPage,
+					}}
 					limit={limit}
 					onLimitChange={setLimit}
-					createButton={null}
+					filterContent={
+						<FilterPopover
+							masterData={masterData}
+							activeFilters={filters}
+							onApplyFilters={setFilters}
+							filterConfig={["branch", "department"]}
+						/>
+					}
 				/>
 			</div>
 		</>
