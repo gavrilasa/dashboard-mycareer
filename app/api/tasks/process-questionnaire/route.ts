@@ -34,7 +34,14 @@ export async function POST(req: NextRequest) {
 				employee: {
 					select: {
 						employeeId: true,
-						positionId: true,
+						// [!code focus:start]
+						// FIX: Mengambil jobRoleId melalui relasi Position
+						position: {
+							select: {
+								jobRoleId: true,
+							},
+						},
+						// [!code focus:end]
 					},
 				},
 				questionnaire: {
@@ -68,14 +75,21 @@ export async function POST(req: NextRequest) {
 			);
 		}
 
-		// Pastikan employeeId dan positionId ada sebelum destrukturisasi
-		const { employeeId, positionId } = responseData.employee;
-		if (!employeeId || !positionId) {
+		// [!code focus:start]
+		// FIX: Mengambil employeeId dan jobRoleId dari struktur data yang benar
+		const { employeeId } = responseData.employee;
+		const jobRoleId = responseData.employee.position?.jobRoleId;
+
+		if (!employeeId || !jobRoleId) {
+			// [!code focus:end]
 			console.error(
-				`Gagal memproses: employeeId atau positionId tidak ditemukan untuk responseId ${responseId}.`
+				`Gagal memproses: employeeId atau jobRoleId tidak ditemukan untuk responseId ${responseId}.`
 			);
 			return NextResponse.json(
-				{ message: "Data karyawan pada respons tidak lengkap." },
+				{
+					message:
+						"Data karyawan atau peran jabatan pada respons tidak lengkap.",
+				},
 				{ status: 404 }
 			);
 		}
@@ -101,19 +115,21 @@ export async function POST(req: NextRequest) {
 			const totalScore = scores.reduce((sum, score) => sum + score, 0);
 
 			const calculatedScore = totalScore / n;
-
+			// [!code focus:start]
+			// FIX: Mencari standar kompetensi menggunakan jobRoleId, bukan positionId
 			const standard = await prisma.competencyStandard.findUnique({
 				where: {
-					positionId_competency: {
-						positionId,
+					jobRoleId_competency: {
+						jobRoleId: jobRoleId,
 						competency,
 					},
 				},
 			});
+			// [!code focus:end]
 
 			if (!standard) {
 				console.warn(
-					`Peringatan: Standar untuk kompetensi "${competency}" pada posisi ID "${positionId}" tidak ditemukan. Kalkulasi dilewati.`
+					`Peringatan: Standar untuk kompetensi "${competency}" pada job role ID "${jobRoleId}" tidak ditemukan. Kalkulasi dilewati.`
 				);
 				continue;
 			}

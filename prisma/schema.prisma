@@ -93,7 +93,6 @@ model Employee {
   position               Position                @relation(fields: [positionId], references: [id])
   level                  Level                   @relation(fields: [levelId], references: [id])
   user                   User?                   @relation(fields: [employeeId], references: [employeeId])
-  educations             Education[]
   careerHistories        CareerHistory[]
   organizationHistories  OrganizationHistory[]
   committeeHistories     CommitteeHistory[]
@@ -120,17 +119,16 @@ model Branch {
 }
 
 model Department {
-  id             String                    @id
-  name           String
-  createdAt      DateTime                  @default(now())
-  updatedAt      DateTime                  @updatedAt
-  branchId       String
-  branch         Branch                    @relation(fields: [branchId], references: [id])
-  employees      Employee[]
-  positions      Position[]
-  jobVacancies   JobVacancy[]
-  users          User[]
-  questionnaires QuestionnaireDepartment[]
+  id           String       @id
+  name         String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  branchId     String
+  branch       Branch       @relation(fields: [branchId], references: [id])
+  employees    Employee[]
+  positions    Position[]
+  jobVacancies JobVacancy[]
+  users        User[]
 
   @@unique([name, branchId])
 }
@@ -163,18 +161,6 @@ model Level {
   updatedAt DateTime   @updatedAt
   positions Position[]
   employees Employee[]
-}
-
-model Education {
-  id           String          @id @default(cuid())
-  institution  String
-  major        String
-  level        EducationDegree
-  graduateYear Int
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  employeeId   String
-  employee     Employee        @relation(fields: [employeeId], references: [employeeId])
 }
 
 model CareerHistory {
@@ -300,25 +286,14 @@ model JobInterest {
 }
 
 model Questionnaire {
-  id          String                    @id @default(cuid())
-  title       String                    @unique
+  id          String                  @id @default(cuid())
+  title       String                  @unique
   description String?
-  isMandatory Boolean                   @default(false)
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
+  isMandatory Boolean                 @default(false)
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
   questions   Question[]
-  departments QuestionnaireDepartment[]
   responses   QuestionnaireResponse[]
-}
-
-model QuestionnaireDepartment {
-  id              String        @id @default(cuid())
-  questionnaireId String
-  departmentId    String
-  questionnaire   Questionnaire @relation(fields: [questionnaireId], references: [id])
-  department      Department    @relation(fields: [departmentId], references: [id])
-
-  @@unique([questionnaireId, departmentId])
 }
 
 model Question {
