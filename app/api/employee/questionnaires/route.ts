@@ -32,43 +32,31 @@ export const GET = withAuthorization(
 		}
 
 		try {
-			// --- PERUBAHAN LOGIKA 1: PENGAMBILAN DATA KARYAWAN ---
-			// Kita mengambil jobRoleId melalui relasi Employee -> Position -> JobRole
 			const employee = await prisma.employee.findUnique({
 				where: { employeeId },
 				select: {
 					departmentId: true,
-					level: {
-						select: {
-							name: true,
-						},
-					},
 					position: {
 						select: {
-							jobRoleId: true, // Mengambil jobRoleId dari posisi terkait
+							jobRoleId: true,
 						},
 					},
 				},
 			});
 
-			// Ambil jobRoleId dari hasil query
 			const jobRoleId = employee?.position?.jobRoleId;
 			const departmentId = employee?.departmentId;
-			const level = employee?.level;
 
-			// Validasi kelengkapan data baru
-			if (!jobRoleId || !departmentId || !level) {
+			if (!jobRoleId || !departmentId) {
 				return NextResponse.json(
 					{
 						message:
-							"Data peran jabatan (JobRole), departemen, atau level karyawan tidak lengkap.",
+							"Data peran jabatan (JobRole) atau departemen karyawan tidak lengkap.",
 					},
 					{ status: 404 }
 				);
 			}
 
-			// --- PERUBAHAN LOGIKA 2: VALIDASI STANDAR KOMPETENSI ---
-			// Pencarian sekarang dilakukan menggunakan jobRoleId, bukan positionId
 			const standardExists = await prisma.competencyStandard.findFirst({
 				where: {
 					jobRoleId: jobRoleId,
@@ -82,9 +70,6 @@ export const GET = withAuthorization(
 				);
 			}
 
-			// --- Sisa logika tidak berubah, tapi disempurnakan ---
-
-			// Ekstrak kode departemen dari ID lengkap
 			const departmentCodeParts = departmentId.split("-");
 			const departmentShortCode =
 				departmentCodeParts.length > 2
@@ -102,35 +87,14 @@ export const GET = withAuthorization(
 					{ status: 404 }
 				);
 			}
-
-			// Tentukan kuesioner manajerial berdasarkan level
-			let managerialQuestionnaireTitle = "";
-			const normalizedLevelName = level.name.toLowerCase();
-			if (
-				normalizedLevelName.includes("staff") ||
-				normalizedLevelName.includes("operatif")
-			) {
-				managerialQuestionnaireTitle =
-					"Kuisioner Mapping Kompetensi Managerial OPR STAFF";
-			} else if (normalizedLevelName.includes("supervisor")) {
-				managerialQuestionnaireTitle =
-					"Kuisioner Mapping Kompetensi Managerial SPV";
-			}
-
-			if (!managerialQuestionnaireTitle) {
-				return NextResponse.json(
-					{
-						message:
-							"Kuesioner manajerial untuk level jabatan Anda tidak ditemukan.",
-					},
-					{ status: 404 }
-				);
-			}
-
+			// [!code focus:start]
+			// FIX: Karyawan sekarang harus mengisi kedua kuesioner manajerial.
 			const requiredTitles = [
-				managerialQuestionnaireTitle,
+				"Kuisioner Mapping Kompetensi Managerial OPR STAFF",
+				"Kuisioner Mapping Kompetensi Managerial SPV",
 				technicalQuestionnaireTitle,
 			];
+			// [!code focus:end]
 
 			const questionnaires = await prisma.questionnaire.findMany({
 				where: {
