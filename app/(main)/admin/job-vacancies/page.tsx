@@ -16,10 +16,9 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Edit, Plus, Trash2, Eye } from "lucide-react";
+import { Edit, Plus, Eye } from "lucide-react";
 import { JobVacancyForm } from "@/components/admin/job-vacant/JobVacancyForm";
 import { InterestedEmployeesDialog } from "@/components/admin/job-vacant/InterestedEmployeesDialog";
-// Anda mungkin perlu membuat komponen DeleteAlert terpisah seperti pada fitur lain
 // import { DeleteVacancyAlert } from "@/components/admin/job-vacant/DeleteVacancyAlert";
 
 // --- Type Definitions ---
