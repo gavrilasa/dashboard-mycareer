@@ -108,7 +108,11 @@ export function FilterPopover({
 	return (
 		<Popover open={isOpen} onOpenChange={setIsOpen}>
 			<PopoverTrigger asChild>
-				<Button variant={isFilterActive ? "default" : "outline"} size="sm">
+				<Button
+					variant={isFilterActive ? "default" : "outline"}
+					size="sm"
+					className="cursor-pointer"
+				>
 					<Filter className="mr-2 h-4 w-4" />
 					Filter
 				</Button>

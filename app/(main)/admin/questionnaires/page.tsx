@@ -136,19 +136,60 @@ export default function QuestionnaireResultsPage() {
 		() => [
 			{
 				accessorKey: "fullName",
-				header: "Nama Karyawan",
+				header: "Nama",
+				size: 15,
+				meta: {
+					width: "15%",
+					truncate: false,
+				},
 			},
-			{ accessorKey: "positionName", header: "Jabatan" },
-			{ accessorKey: "branchName", header: "Cabang" },
-			{ accessorKey: "departmentName", header: "Departemen" },
+			{
+				accessorKey: "positionName",
+				header: "Jabatan",
+				size: 20,
+				meta: {
+					width: "20%",
+					truncate: true,
+				},
+			},
+			{
+				accessorKey: "branchName",
+				header: "Cabang",
+				size: 25,
+				meta: {
+					width: "25%",
+					truncate: true,
+				},
+			},
+			{
+				accessorKey: "departmentName",
+				header: "Departemen",
+				size: 15,
+				meta: {
+					width: "15%",
+					truncate: true,
+				},
+			},
 			{
 				accessorKey: "overallAverageScore",
-				header: "Skor Rata-Rata",
+				header: "Nilai",
+				size: 15,
+				meta: {
+					width: "15%",
+					truncate: false,
+					align: "center",
+				},
 				cell: ({ row }) => row.original.overallAverageScore.toFixed(2),
 			},
 			{
 				id: "actions",
 				header: "Aksi",
+				size: 10,
+				meta: {
+					width: "10%",
+					truncate: false,
+					align: "center",
+				},
 				cell: ({ row }) => (
 					<Button
 						variant="ghost"
@@ -156,8 +197,9 @@ export default function QuestionnaireResultsPage() {
 						onClick={() =>
 							router.push(`/admin/questionnaires/${row.original.employeeId}`)
 						}
+						className="text-gray-500 hover:text-primary cursor-pointer"
 					>
-						<Eye className="h-4 w-4 mr-2" />
+						<Eye className="h-4 w-4" />
 					</Button>
 				),
 			},

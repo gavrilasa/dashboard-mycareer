@@ -1,192 +1,223 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useForm, FormProvider, FieldPath } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Toaster, toast } from "sonner";
+import React, { useState, useEffect, useMemo, ElementType } from "react";
+import { useParams } from "next/navigation";
+import {
+	Accordion,
+	AccordionContent,
+	AccordionItem,
+	AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
 	AlertCircle,
-	ArrowLeft,
-	Bold,
-	Type,
-	Baseline,
-	CaseUpper,
+	Lightbulb,
+	Star,
+	TrendingDown,
+	TrendingUp,
+	Minus,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import QuestionnaireForm from "@/components/employee/questionnaire/QuestionnaireForm";
-import QuestionnaireNavigation from "@/components/employee/questionnaire/QuestionnaireNavigation";
-import InfoDialog from "@/components/employee/questionnaire/InfoDialog";
-import BackConfirmDialog from "@/components/common/BackConfirmDialog";
-import questionnaireInfo from "@/data/questionnaireInfo";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { BackButton } from "@/components/common/BackButton";
 
 // --- Type Definitions ---
-interface Question {
+interface EmployeeInfo {
+	fullName: string;
+	position: { name: string };
+	department: { name: string };
+	branch: { name: string };
+}
+
+interface QuestionDetail {
 	id: string;
 	text: string;
+	value: number;
 }
-type GroupedQuestions = Record<string, Record<string, Question[]>>;
-interface QuestionnaireData {
-	id: string;
+
+interface SubCompetencyDetail {
+	name: string;
+	questions: QuestionDetail[];
+	recommendations: string[];
+}
+
+interface CompetencyDetail {
+	competency: string;
+	calculatedScore: number;
+	standardScore: number;
+	gap: number;
+	recommendationNeeded: boolean;
+	subCompetencies: SubCompetencyDetail[];
+}
+
+const isValidRecommendation = (
+	rec: string | null | undefined
+): rec is string => {
+	return typeof rec === "string" && rec.trim().length > 0;
+};
+
+// --- Helper Components ---
+const DetailCard = ({
+	icon,
+	title,
+	value,
+	className,
+}: {
+	icon: ElementType;
 	title: string;
-	description: string | null;
-	groupedQuestions: GroupedQuestions;
-	totalQuestions: number;
-}
-type FormValues = Record<string, string>;
-type DynamicFormSchema = z.ZodObject<Record<string, z.ZodString>>;
-type FontSize = "text-sm" | "text-base" | "text-lg";
-type FontWeight = "font-normal" | "font-medium";
+	value: string | number;
+	className?: string;
+}) => {
+	const Icon = icon;
+	return (
+		<div
+			className={cn(
+				"flex flex-col p-4 border rounded-lg bg-slate-50",
+				className
+			)}
+		>
+			<div className="flex items-center text-sm font-medium text-slate-600">
+				<Icon className="w-4 h-4 mr-2" />
+				{title}
+			</div>
+			<p className="mt-1 text-xl font-bold text-slate-800">{value}</p>
+		</div>
+	);
+};
+
+const ScoreBar = ({ score, standard }: { score: number; standard: number }) => {
+	const max = 5;
+	const scorePercentage = (score / max) * 100;
+	const standardPercentage = (standard / max) * 100;
+	return (
+		<div className="w-full space-y-2 text-xs">
+			<div className="flex justify-between items-center">
+				<span className="font-semibold">Skor Karyawan: {score.toFixed(2)}</span>
+				<div className="h-2 w-full max-w-[60%] bg-blue-100 rounded-full overflow-hidden">
+					<div
+						className="h-full bg-blue-500"
+						style={{ width: `${scorePercentage}%` }}
+					/>
+				</div>
+			</div>
+			<div className="flex justify-between items-center">
+				<span className="text-slate-600">
+					Skor Standar: {standard.toFixed(2)}
+				</span>
+				<div className="h-2 w-full max-w-[60%] bg-gray-200 rounded-full overflow-hidden">
+					<div
+						className="h-full bg-gray-400"
+						style={{ width: `${standardPercentage}%` }}
+					/>
+				</div>
+			</div>
+		</div>
+	);
+};
+
+const ScoreIndicator = ({ score }: { score: number }) => {
+	if (score >= 4.0) {
+		return <TrendingUp className="h-5 w-5 text-green-500" />;
+	}
+	if (score >= 3.0) {
+		return <Minus className="h-5 w-5 text-amber-500" />;
+	}
+	return <TrendingDown className="h-5 w-5 text-red-500" />;
+};
 
 // --- Main Page Component ---
-export default function FillQuestionnairePage() {
-	const router = useRouter();
+export default function ResultDetailPage() {
 	const params = useParams();
-	const questionnaireId = params.questionnaireId as string;
+	const employeeId = params.employeeId as string;
 
-	const [data, setData] = useState<QuestionnaireData | null>(null);
+	const [employeeInfo, setEmployeeInfo] = useState<EmployeeInfo | null>(null);
+	const [detailData, setDetailData] = useState<CompetencyDetail[]>([]);
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
-	const [formSchema, setFormSchema] = useState<DynamicFormSchema | null>(null);
-	const [currentStep, setCurrentStep] = useState(0);
-	const [isBackConfirmOpen, setIsBackConfirmOpen] = useState(false);
-
-	const [fontSize, setFontSize] = useState<FontSize>("text-sm");
-	const [fontWeight, setFontWeight] = useState<FontWeight>("font-normal");
-	const [isInfoOpen, setIsInfoOpen] = useState(false);
-
-	const form = useForm<FormValues>({
-		resolver: formSchema ? zodResolver(formSchema) : undefined,
-		mode: "onChange",
-	});
-
-	const {
-		formState: { isDirty },
-	} = form;
 
 	useEffect(() => {
-		if (!questionnaireId) return;
 		const fetchData = async () => {
+			if (!employeeId) return;
+			setIsLoading(true);
+			setError(null);
 			try {
-				setIsLoading(true);
-				const res = await fetch(
-					`/api/employee/questionnaires/${questionnaireId}`
-				);
-				if (!res.ok) {
-					const errorData = await res.json();
-					throw new Error(errorData.message || "Gagal memuat kuesioner.");
-				}
-				const questionnaireData: QuestionnaireData = await res.json();
-				setData(questionnaireData);
-				setIsInfoOpen(true);
+				const [detailsRes, infoRes] = await Promise.all([
+					fetch(`/api/admin/competency-results/${employeeId}`),
+					fetch(`/api/admin/employees/${employeeId}`),
+				]);
 
-				const shape: Record<string, z.ZodString> = {};
-				Object.values(questionnaireData.groupedQuestions).forEach(
-					(subCompetencies) => {
-						Object.values(subCompetencies).forEach((questions) => {
-							questions.forEach((q) => {
-								shape[q.id] = z.string().min(1, { message: "Wajib diisi." });
-							});
-						});
-					}
-				);
-				setFormSchema(z.object(shape) as DynamicFormSchema);
+				if (!detailsRes.ok || !infoRes.ok) {
+					const errorData = !detailsRes.ok
+						? await detailsRes.json()
+						: await infoRes.json();
+					throw new Error(errorData.message || "Gagal memuat data detail.");
+				}
+
+				const details = await detailsRes.json();
+				const info = await infoRes.json();
+
+				setDetailData(details);
+				setEmployeeInfo(info);
 			} catch (err) {
-				setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
+				const errorMessage =
+					err instanceof Error ? err.message : "Terjadi kesalahan.";
+				setError(errorMessage);
+				toast.error("Gagal Memuat Data", { description: errorMessage });
 			} finally {
 				setIsLoading(false);
 			}
 		};
 		fetchData();
-	}, [questionnaireId]);
+	}, [employeeId]);
 
-	const competencyKeys = useMemo(
-		() => (data ? Object.keys(data.groupedQuestions) : []),
-		[data]
-	);
-	const isLastStep = currentStep === competencyKeys.length - 1;
+	const { overallAverageScore, strongestCompetency, mainDevelopmentArea } =
+		useMemo(() => {
+			if (!detailData || detailData.length === 0) {
+				return {
+					overallAverageScore: 0,
+					strongestCompetency: "-",
+					mainDevelopmentArea: "-",
+				};
+			}
+			const totalScore = detailData.reduce(
+				(sum, comp) => sum + comp.calculatedScore,
+				0
+			);
+			const avg = totalScore / detailData.length;
+			const sortedByScore = [...detailData].sort(
+				(a, b) => b.calculatedScore - a.calculatedScore
+			);
+			const sortedByGap = [...detailData].sort((a, b) => a.gap - b.gap);
 
-	const handleBackClick = () => {
-		if (isDirty) {
-			setIsBackConfirmOpen(true);
-		} else {
-			router.back();
-		}
-	};
+			return {
+				overallAverageScore: avg,
+				strongestCompetency: sortedByScore[0]?.competency || "-",
+				mainDevelopmentArea:
+					sortedByGap[0]?.gap < 0 ? sortedByGap[0]?.competency : "Tidak ada",
+			};
+		}, [detailData]);
 
-	const handleNext = async () => {
-		const currentCompetencyKey = competencyKeys[currentStep];
-		const subCompetencies = data?.groupedQuestions[currentCompetencyKey];
-		if (!subCompetencies) return;
-
-		const fieldsToValidate = Object.values(subCompetencies).flatMap(
-			(questions) => questions.map((q) => q.id)
-		);
-		const isValid = await form.trigger(
-			fieldsToValidate as FieldPath<FormValues>[]
-		);
-
-		if (isValid && !isLastStep) {
-			setCurrentStep((prev) => prev + 1);
-		} else if (!isValid) {
-			toast.error("Validasi Gagal", {
-				description: "Harap lengkapi semua jawaban pada halaman ini.",
-			});
-		}
-	};
-
-	const handlePrevious = () => {
-		if (currentStep > 0) {
-			setCurrentStep((prev) => prev - 1);
-		}
-	};
-
-	const onSubmit = form.handleSubmit(async (values) => {
-		const payload = {
-			questionnaireId,
-			answers: Object.entries(values).map(([questionId, value]) => ({
-				questionId,
-				value,
-			})),
-		};
-		const promise = fetch("/api/employee/questionnaires/submit", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(payload),
-		}).then(async (res) => {
-			if (!res.ok)
-				throw new Error(
-					(await res.json()).message || "Gagal mengirim jawaban."
-				);
-			return res.json();
+	const allRecommendations = useMemo(() => {
+		const recommendations = new Set<string>();
+		detailData.forEach((comp) => {
+			if (comp.recommendationNeeded) {
+				comp.subCompetencies.forEach((sub) => {
+					sub.recommendations.forEach((rec) => {
+						if (isValidRecommendation(rec)) {
+							recommendations.add(rec);
+						}
+					});
+				});
+			}
 		});
+		return Array.from(recommendations);
+	}, [detailData]);
 
-		toast.promise(promise, {
-			loading: "Mengirim jawaban Anda...",
-			success: (data) => {
-				setTimeout(() => {
-					router.push("/questionnaire");
-					setTimeout(
-						() =>
-							toast.success("Terima kasih!", {
-								description: "Jawaban Anda telah berhasil diproses.",
-							}),
-						500
-					);
-				}, 1500);
-				return data.message;
-			},
-			error: (err: Error) => err.message,
-		});
-	});
-
-	if (isLoading || !data) {
+	if (isLoading) {
 		return (
 			<div className="container mx-auto py-10">
-				<Skeleton className="w-full h-96" />
+				<Skeleton className="h-screen w-full" />
 			</div>
 		);
 	}
@@ -203,109 +234,108 @@ export default function FillQuestionnairePage() {
 		);
 	}
 
-	const currentCompetencyKey = competencyKeys[currentStep];
-	const currentSubCompetencies = data.groupedQuestions[currentCompetencyKey];
-	const infoKey = data.title.includes("Manajerial")
-		? "Managerial"
-		: "Kompetensi";
-	const currentInfo = questionnaireInfo[infoKey];
-
 	return (
-		<>
-			<Toaster position="top-center" richColors />
-			<div className="container mx-auto py-10 space-y-6">
-				<div className="flex justify-between items-center">
-					<div className="flex-1">
-						<Button
-							variant="ghost"
-							onClick={handleBackClick}
-							className="mb-4 pl-1"
-						>
-							<ArrowLeft className="mr-2 h-4 w-4" />
-							Kembali
-						</Button>
-						<h1 className="text-3xl font-bold">{data.title}</h1>
-						<p className="text-muted-foreground">{data.description}</p>
-					</div>
-					<div className="flex items-center gap-2 bg-white border rounded-lg p-1 shadow-sm">
-						<div className="flex items-center border-r pr-1">
-							<Button
-								variant={fontSize === "text-sm" ? "default" : "ghost"}
-								size="icon"
-								className="h-8 w-8"
-								onClick={() => setFontSize("text-sm")}
-							>
-								<Type className="h-4 w-4" />
-							</Button>
-							<Button
-								variant={fontSize === "text-base" ? "default" : "ghost"}
-								size="icon"
-								className="h-8 w-8"
-								onClick={() => setFontSize("text-base")}
-							>
-								<Baseline className="h-4 w-4" />
-							</Button>
-							<Button
-								variant={fontSize === "text-lg" ? "default" : "ghost"}
-								size="icon"
-								className="h-8 w-8"
-								onClick={() => setFontSize("text-lg")}
-							>
-								<CaseUpper className="h-4 w-4" />
-							</Button>
-						</div>
-						<Button
-							variant={fontWeight === "font-medium" ? "default" : "ghost"}
-							size="icon"
-							className="h-8 w-8"
-							onClick={() =>
-								setFontWeight((prev) =>
-									prev === "font-normal" ? "font-medium" : "font-normal"
-								)
-							}
-						>
-							<Bold className="h-4 w-4" />
-						</Button>
-						<Button
-							variant="ghost"
-							className="h-8"
-							onClick={() => setIsInfoOpen(true)}
-						>
-							Keterangan
-						</Button>
-					</div>
-				</div>
+		<div className="container mx-auto py-10 space-y-8">
+			<BackButton className="mb-4" />
 
-				<FormProvider {...form}>
-					<form onSubmit={onSubmit}>
-						<QuestionnaireForm
-							currentCompetencyKey={currentCompetencyKey}
-							subCompetencies={currentSubCompetencies}
-							fontSize={fontSize}
-							fontWeight={fontWeight}
-						/>
-						<QuestionnaireNavigation
-							currentStep={currentStep}
-							totalSteps={competencyKeys.length}
-							isLastStep={isLastStep}
-							onNext={handleNext}
-							onPrevious={handlePrevious}
-							onSubmit={onSubmit}
-						/>
-					</form>
-				</FormProvider>
+			<div className="bg-white p-6 rounded-lg border shadow-sm space-y-6">
+				<div className="space-y-1">
+					<h1 className="text-3xl font-bold">
+						Detail Hasil Kompetensi: {employeeInfo?.fullName}
+					</h1>
+					<p className="text-lg text-muted-foreground">
+						{employeeInfo?.position.name} - {employeeInfo?.department.name}
+					</p>
+				</div>
+				<div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+					<DetailCard
+						icon={Star}
+						title="Skor Rata-Rata"
+						value={overallAverageScore.toFixed(2)}
+						className="bg-blue-50 border-blue-200"
+					/>
+					<DetailCard
+						icon={TrendingDown}
+						title="Area Pengembangan Utama"
+						value={mainDevelopmentArea}
+						className="bg-red-50 border-red-200"
+					/>
+					<DetailCard
+						icon={Lightbulb}
+						title="Kompetensi Terkuat"
+						value={strongestCompetency}
+						className="bg-green-50 border-green-200"
+					/>
+				</div>
 			</div>
 
-			<BackConfirmDialog
-				isOpen={isBackConfirmOpen}
-				onOpenChange={setIsBackConfirmOpen}
-				onConfirm={() => router.back()}
-			/>
-			<InfoDialog
-				isOpen={isInfoOpen}
-				onOpenChange={setIsInfoOpen}
-				content={currentInfo}
-			/>
-		</>
+			<Accordion type="multiple" className="w-full space-y-4">
+				{detailData.map((competency) => (
+					<AccordionItem
+						value={competency.competency}
+						key={competency.competency}
+						className="bg-white rounded-lg border shadow-sm px-4"
+					>
+						<AccordionTrigger className="font-semibold text-lg hover:no-underline">
+							<div className="flex items-center gap-4">
+								<ScoreIndicator score={competency.calculatedScore} />
+								<span>
+									{competency.competency} - Skor:{" "}
+									{competency.calculatedScore.toFixed(2)}
+								</span>
+							</div>
+						</AccordionTrigger>
+						<AccordionContent className="pt-4 pl-1">
+							<div className="grid lg:grid-cols-2 gap-4">
+								{competency.subCompetencies.map((sub) => (
+									<div
+										key={sub.name}
+										className="p-4 border rounded-md bg-slate-50 space-y-3"
+									>
+										<h4 className="font-semibold text-base">{sub.name}</h4>
+										<ScoreBar
+											score={competency.calculatedScore}
+											standard={competency.standardScore}
+										/>
+										<Accordion type="single" collapsible className="w-full">
+											<AccordionItem value="questions" className="border-b-0">
+												<AccordionTrigger className="text-sm py-1 text-muted-foreground">
+													Lihat Jawaban Detail
+												</AccordionTrigger>
+												<AccordionContent className="pt-2 pl-4 border-l-2">
+													<ul className="space-y-2 text-sm text-slate-700">
+														{sub.questions.map((q) => (
+															<li key={q.id}>
+																<strong>{q.value}/5</strong> - {q.text}
+															</li>
+														))}
+													</ul>
+												</AccordionContent>
+											</AccordionItem>
+										</Accordion>
+									</div>
+								))}
+							</div>
+						</AccordionContent>
+					</AccordionItem>
+				))}
+			</Accordion>
+
+			{allRecommendations.length > 0 && (
+				<div>
+					<h3 className="text-xl font-semibold mb-4">Rekomendasi Pelatihan</h3>
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+						{allRecommendations.map((rec) => (
+							<div
+								key={rec}
+								className="p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900"
+							>
+								{rec}
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+		</div>
 	);
 }

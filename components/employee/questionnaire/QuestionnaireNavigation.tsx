@@ -40,34 +40,37 @@ export default function QuestionnaireNavigation({
 		totalSteps > 0 ? ((currentStep + 1) / totalSteps) * 100 : 0;
 
 	return (
-		<div className="mt-8 flex justify-between items-center">
+		<div className="flex items-center justify-between mt-8">
 			<Button
 				type="button"
 				variant="outline"
 				onClick={onPrevious}
 				disabled={currentStep === 0}
+				className="cursor-pointer"
 			>
-				<ArrowLeft className="mr-2 h-4 w-4" />
+				<ArrowLeft className="w-4 h-4 mr-2" />
 				Sebelumnya
 			</Button>
 
 			<div className="flex-1 mx-4 md:mx-8">
 				<Progress value={progressValue} />
-				<p className="text-sm text-center text-muted-foreground mt-2">
-					Kompetensi {currentStep + 1} dari {totalSteps}
-				</p>
 			</div>
 
 			{!isLastStep ? (
-				<Button type="button" onClick={onNext}>
+				<Button type="button" onClick={onNext} className="cursor-pointer">
 					Selanjutnya
-					<ArrowRight className="ml-2 h-4 w-4" />
+					<ArrowRight className="w-4 h-4 ml-2" />
 				</Button>
 			) : (
 				<AlertDialog>
 					<AlertDialogTrigger asChild>
-						<Button type="button" size="lg" disabled={formState.isSubmitting}>
-							<Send className="mr-2 h-4 w-4" />
+						<Button
+							type="button"
+							size="lg"
+							disabled={formState.isSubmitting}
+							className="cursor-pointer"
+						>
+							<Send className="w-4 h-4 mr-2" />
 							Kirim Jawaban
 						</Button>
 					</AlertDialogTrigger>
@@ -80,8 +83,10 @@ export default function QuestionnaireNavigation({
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
-							<AlertDialogCancel>Batal</AlertDialogCancel>
-							<AlertDialogAction onClick={onSubmit}>
+							<AlertDialogCancel className="cursor-pointer">
+								Batal
+							</AlertDialogCancel>
+							<AlertDialogAction onClick={onSubmit} className="cursor-pointer">
 								Ya, Kirim Jawaban
 							</AlertDialogAction>
 						</AlertDialogFooter>

@@ -22,7 +22,6 @@ export const GET = withAuthorization(
 		}
 
 		try {
-			// --- PERUBAHAN LOGIKA 1: Ambil jobRoleId Karyawan ---
 			const employee = await prisma.employee.findUnique({
 				where: { employeeId },
 				select: {
@@ -43,7 +42,6 @@ export const GET = withAuthorization(
 				);
 			}
 
-			// --- PERUBAHAN LOGIKA 2: Ambil Pertanyaan Berdasarkan jobRoleId ---
 			const questionnaire = await prisma.questionnaire.findUnique({
 				where: { id: questionnaireId },
 				select: {
@@ -52,9 +50,6 @@ export const GET = withAuthorization(
 					description: true,
 					questions: {
 						where: {
-							// Filter baru:
-							// 1. Ambil pertanyaan yang tidak terikat ke JobRole manapun (umum)
-							// 2. ATAU ambil pertanyaan yang terikat spesifik ke jobRoleId karyawan ini
 							OR: [
 								{ jobRoles: { none: {} } },
 								{ jobRoles: { some: { id: jobRoleId } } },
@@ -80,7 +75,6 @@ export const GET = withAuthorization(
 				);
 			}
 
-			// Sisa logika untuk mengelompokkan pertanyaan tetap sama
 			const groupedQuestions = questionnaire.questions.reduce((acc, q) => {
 				const competencyKey = q.competency;
 				const subCompetencyKey = q.subCompetency;

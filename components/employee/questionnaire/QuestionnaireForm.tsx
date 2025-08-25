@@ -41,16 +41,17 @@ const FormattedQuestionLabel = ({
 }) => {
 	const parts = text.split(";");
 	return (
-		<div className="flex flex-row justify-between w-full gap-4">
+		<FormLabel
+			className={cn(
+				"flex flex-col items-start gap-2 leading-relaxed text-left",
+				fontSize,
+				fontWeight
+			)}
+		>
 			{parts.map((part, index) => (
-				<span
-					key={index}
-					className={cn("flex-1 text-center", fontSize, fontWeight)}
-				>
-					{part.trim()}
-				</span>
+				<span key={index}>{part.trim()}</span>
 			))}
-		</div>
+		</FormLabel>
 	);
 };
 
@@ -63,21 +64,22 @@ const RatingScale = ({
 		<RadioGroup
 			onValueChange={field.onChange}
 			defaultValue={field.value}
-			className="grid grid-cols-5 items-center pt-4 mt-4 border-t"
+			className="flex items-center pt-2"
 		>
 			{[1, 2, 3, 4, 5].map((value) => (
-				<FormItem key={value} className="flex justify-center">
+				<FormItem key={value}>
 					<FormLabel
 						htmlFor={`${field.name}-${value}`}
-						className="flex flex-col items-center justify-center space-y-2 cursor-pointer p-2 rounded-full w-12 h-12 hover:bg-slate-100"
+						className="flex flex-col items-center justify-center space-y-1 cursor-pointer px-4 py-2 rounded-md hover:bg-slate-100"
 					>
-						<span className="text-sm font-normal select-none">{value}</span>
 						<FormControl>
 							<RadioGroupItem
 								value={String(value)}
 								id={`${field.name}-${value}`}
 							/>
 						</FormControl>
+
+						<span className="text-sm font-medium select-none">{value}</span>
 					</FormLabel>
 				</FormItem>
 			))}

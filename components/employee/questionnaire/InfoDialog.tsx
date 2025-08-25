@@ -29,15 +29,20 @@ export default function InfoDialog({
 				<AlertDialogHeader>
 					<AlertDialogTitle>{content.title}</AlertDialogTitle>
 					<AlertDialogDescription asChild>
-						<ul className="list-disc space-y-2 pl-4 pt-2 text-sm">
+						<ul className="pt-2 pl-4 space-y-2 text-sm list-disc">
 							{content.points.map((point, index) => (
-								<li key={index}>{point}</li>
+								<li key={index} className="text-slate-600">
+									{point}
+								</li>
 							))}
 						</ul>
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogAction onClick={() => onOpenChange(false)}>
+					<AlertDialogAction
+						onClick={() => onOpenChange(false)}
+						className="cursor-pointer"
+					>
 						Saya Mengerti
 					</AlertDialogAction>
 				</AlertDialogFooter>

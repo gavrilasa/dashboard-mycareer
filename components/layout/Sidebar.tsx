@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react"; // [!code focus]
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -13,6 +13,17 @@ import {
 import { LogOut } from "lucide-react";
 import { PERMISSIONS, Resource, Action } from "@/lib/permissions";
 import { Role } from "@prisma/client";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 const hasPermission = (
 	role: Role,
@@ -57,6 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 	const { data: session } = useSession();
 	const trigger = useRef<HTMLButtonElement>(null);
 	const sidebar = useRef<HTMLElement>(null);
+	const [isConfirmingSignOut, setIsConfirmingSignOut] = useState(false);
 
 	useEffect(() => {
 		const clickHandler = ({ target }: MouseEvent) => {
@@ -116,14 +128,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 				/>
 			</div>
 
-			<div className="no-scrollbar flex flex-col overflow-y-auto duration-300 ease-linear">
+			<div className="flex flex-col overflow-y-auto duration-300 ease-linear no-scrollbar">
 				<nav className="px-4">
 					{filteredMenuGroups.map((group) => (
 						<div key={group.title}>
 							<h3 className="mb-2 ml-2 text-xs font-semibold text-gray-400 uppercase">
 								{group.title}
 							</h3>
-							<ul className="mb-6 flex flex-col gap-1">
+							<ul className="flex flex-col gap-1 mb-6">
 								{group.items.map((item) => (
 									<NavLink key={item.label} {...item} />
 								))}
@@ -133,14 +145,35 @@ export const Sidebar: React.FC<SidebarProps> = ({
 				</nav>
 			</div>
 
-			<div className="mt-auto p-4">
-				<button
-					onClick={() => signOut({ callbackUrl: "/login" })}
-					className="flex w-full items-center justify-center gap-3 rounded-md border border-red-600 px-4 py-2 text-base font-medium text-red-600 duration-200 hover:bg-red-600 hover:text-white"
+			<div className="p-4 mt-auto">
+				<AlertDialog
+					open={isConfirmingSignOut}
+					onOpenChange={setIsConfirmingSignOut}
 				>
-					<LogOut size={16} />
-					<span>Sign Out</span>
-				</button>
+					<AlertDialogTrigger asChild>
+						<button className="flex items-center justify-center w-full gap-3 px-4 py-2 text-base font-medium text-red-600 duration-200 border border-red-600 rounded-md cursor-pointer hover:bg-red-600 hover:text-white">
+							<LogOut size={16} />
+							<span>Sign Out</span>
+						</button>
+					</AlertDialogTrigger>
+					<AlertDialogContent>
+						<AlertDialogHeader>
+							<AlertDialogTitle>Konfirmasi Sign Out</AlertDialogTitle>
+							<AlertDialogDescription>
+								Apakah Anda yakin ingin keluar dari sesi ini?
+							</AlertDialogDescription>
+						</AlertDialogHeader>
+						<AlertDialogFooter>
+							<AlertDialogCancel>Batal</AlertDialogCancel>
+							<AlertDialogAction
+								className="bg-red-600 cursor-pointer hover:bg-red-700"
+								onClick={() => signOut({ callbackUrl: "/login" })}
+							>
+								Ya, Keluar
+							</AlertDialogAction>
+						</AlertDialogFooter>
+					</AlertDialogContent>
+				</AlertDialog>
 			</div>
 		</aside>
 	);
