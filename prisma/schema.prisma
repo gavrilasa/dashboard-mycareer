@@ -146,8 +146,6 @@ model Position {
   level        Level        @relation(fields: [levelId], references: [id])
   employees    Employee[]
   jobVacancies JobVacancy[]
-  fromPosition CareerPath[] @relation("FromPosition")
-  toPosition   CareerPath[] @relation("ToPosition")
   jobRoleId    String
   jobRole      JobRole      @relation(fields: [jobRoleId], references: [id])
 
@@ -241,14 +239,15 @@ model CareerPreference {
 }
 
 model CareerPath {
-  id             String   @id @default(cuid())
-  fromPositionId String
-  toPositionId   String
-  pathType       PathType
-  fromPosition   Position @relation("FromPosition", fields: [fromPositionId], references: [id], onDelete: Cascade)
-  toPosition     Position @relation("ToPosition", fields: [toPositionId], references: [id], onDelete: Cascade)
+  id            String   @id @default(cuid())
+  fromJobRoleId String
+  toJobRoleId   String
+  pathType      PathType
 
-  @@unique([fromPositionId, toPositionId])
+  fromJobRole JobRole @relation("FromJobRole", fields: [fromJobRoleId], references: [id], onDelete: Cascade)
+  toJobRole   JobRole @relation("ToJobRole", fields: [toJobRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([fromJobRoleId, toJobRoleId])
   @@map("CareerPaths")
 }
 
@@ -376,4 +375,7 @@ model JobRole {
   questions           Question[]
   positions           Position[]
   competencyStandards CompetencyStandard[]
+
+  fromJobRole CareerPath[] @relation("FromJobRole")
+  toJobRole   CareerPath[] @relation("ToJobRole")
 }

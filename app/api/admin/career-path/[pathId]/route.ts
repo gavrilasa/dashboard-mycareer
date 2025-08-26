@@ -4,77 +4,52 @@ import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 import { Prisma } from "@prisma/client";
 
-// FIX: Skema update sekarang mencakup semua field yang dapat diedit.
 const updateCareerPathSchema = z
 	.object({
-		fromPositionId: z.string().min(1, "ID Posisi asal tidak valid."),
-		toPositionId: z.string().min(1, "ID Posisi tujuan tidak valid."),
+		fromJobRoleId: z.string().min(1, "ID Job Role asal tidak valid."),
+		toJobRoleId: z.string().min(1, "ID Job Role tujuan tidak valid."),
 		pathType: z.enum(["ALIGN", "CROSS"]),
 	})
-	.refine((data) => data.fromPositionId !== data.toPositionId, {
-		message: "Posisi asal dan tujuan tidak boleh sama.",
-		path: ["toPositionId"],
+	.refine((data) => data.fromJobRoleId !== data.toJobRoleId, {
+		message: "Job Role asal dan tujuan tidak boleh sama.",
+		path: ["toJobRoleId"],
 	});
+
+interface HandlerContext {
+	params: { pathId: string };
+}
 
 export const PUT = withAuthorization(
 	{ resource: "careerPath", action: "update" },
-	async (request: NextRequest) => {
+	async (request: NextRequest, _args, { params }: HandlerContext) => {
 		try {
-			const pathId = request.nextUrl.pathname.split("/").pop();
-			if (!pathId) {
-				return NextResponse.json(
-					{ message: "ID Jenjang Karier tidak ditemukan di URL." },
-					{ status: 400 }
-				);
-			}
+			const { pathId } = params;
 
 			const body = await request.json();
 			const parsedData = updateCareerPathSchema.parse(body);
-			const { fromPositionId, toPositionId, pathType } = parsedData;
+			const { fromJobRoleId, toJobRoleId, pathType } = parsedData;
 
-			// 1. Periksa apakah jenjang karier yang akan diedit ada
-			const existingPath = await prisma.careerPath.findUnique({
-				where: { id: pathId },
+			const potentialDuplicate = await prisma.careerPath.findFirst({
+				where: {
+					fromJobRoleId,
+					toJobRoleId,
+					NOT: { id: pathId },
+				},
 			});
-			if (!existingPath) {
+
+			if (potentialDuplicate) {
 				return NextResponse.json(
-					{ message: "Jenjang karier tidak ditemukan." },
-					{ status: 404 }
+					{ message: "Kombinasi jenjang karier ini sudah ada." },
+					{ status: 409 }
 				);
 			}
 
-			// 2. Periksa apakah pembaruan akan menciptakan duplikat
-			if (
-				existingPath.fromPositionId !== fromPositionId ||
-				existingPath.toPositionId !== toPositionId
-			) {
-				const potentialDuplicate = await prisma.careerPath.findFirst({
-					where: {
-						fromPositionId,
-						toPositionId,
-						// Pastikan kita tidak membandingkan dengan record itu sendiri
-						NOT: { id: pathId },
-					},
-				});
-				if (potentialDuplicate) {
-					return NextResponse.json(
-						{ message: "Kombinasi jenjang karier ini sudah ada." },
-						{ status: 409 }
-					);
-				}
-			}
-
-			// 3. Lakukan pembaruan
 			const updatedCareerPath = await prisma.careerPath.update({
 				where: { id: pathId },
 				data: {
-					fromPositionId,
-					toPositionId,
+					fromJobRoleId,
+					toJobRoleId,
 					pathType,
-				},
-				include: {
-					fromPosition: { select: { id: true, name: true } },
-					toPosition: { select: { id: true, name: true } },
 				},
 			});
 
@@ -110,36 +85,18 @@ export const PUT = withAuthorization(
 	}
 );
 
-// Fungsi DELETE sudah benar dan tidak memerlukan perubahan.
 export const DELETE = withAuthorization(
 	{ resource: "careerPath", action: "delete" },
-	async (request: NextRequest) => {
+	async (_request: NextRequest, _args, { params }: HandlerContext) => {
 		try {
-			const pathId = request.nextUrl.pathname.split("/").pop();
-			if (!pathId) {
-				return NextResponse.json(
-					{ message: "ID Jenjang Karier tidak ditemukan di URL." },
-					{ status: 400 }
-				);
-			}
-
-			const cuidRegex = /^c[^\s-]{8,}$/i;
-			if (!cuidRegex.test(pathId)) {
-				return NextResponse.json(
-					{ message: "Format ID Jenjang Karier tidak valid." },
-					{ status: 400 }
-				);
-			}
-
+			const { pathId } = params; // Mengambil pathId dari context
 			await prisma.careerPath.delete({ where: { id: pathId } });
-
 			return new NextResponse(null, { status: 204 });
 		} catch (error) {
 			if (
 				error instanceof Prisma.PrismaClientKnownRequestError &&
 				error.code === "P2025"
 			) {
-				// Ini adalah error yang diharapkan jika record tidak ditemukan, jadi kita bisa anggap "berhasil"
 				return new NextResponse(null, { status: 204 });
 			}
 			console.error("DELETE /api/admin/career-path/[pathId] Error:", error);

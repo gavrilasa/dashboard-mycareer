@@ -26,7 +26,7 @@ export const GET = withAuthorization(
 				positionWhere = { departmentId: userDepartmentId };
 			}
 
-			const [branches, departments, positions, levels] =
+			const [branches, departments, positions, levels, jobRoles] =
 				await prisma.$transaction([
 					prisma.branch.findMany({
 						where: branchWhere,
@@ -44,6 +44,9 @@ export const GET = withAuthorization(
 						where: levelWhere,
 						orderBy: { name: "asc" },
 					}),
+					prisma.jobRole.findMany({
+						orderBy: { name: "asc" },
+					}),
 				]);
 
 			return NextResponse.json({
@@ -51,6 +54,7 @@ export const GET = withAuthorization(
 				departments,
 				positions,
 				levels,
+				jobRoles,
 			});
 		} catch (error) {
 			console.error("Error fetching master data:", error);

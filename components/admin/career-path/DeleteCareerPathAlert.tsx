@@ -1,3 +1,5 @@
+// File: /components/admin/career-path/DeleteCareerPathAlert.tsx
+
 "use client";
 
 import {
@@ -12,10 +14,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
+// --- Type Definition (Diperbarui) ---
 interface CareerPath {
 	id: string;
-	fromPosition: { name: string };
-	toPosition: { name: string };
+	fromJobRole: { name: string };
+	toJobRole: { name: string };
 }
 
 interface DeleteCareerPathAlertProps {
@@ -44,7 +47,7 @@ export function DeleteCareerPathAlert({
 		toast.promise(promise, {
 			loading: "Menghapus...",
 			success: () => {
-				onSuccess(); // Panggil fungsi onSuccess untuk refresh data
+				onSuccess();
 				return "Jenjang karier berhasil dihapus.";
 			},
 			error: (err) => err.message,
@@ -59,11 +62,11 @@ export function DeleteCareerPathAlert({
 					<AlertDialogDescription>
 						Tindakan ini akan menghapus jenjang karier dari{" "}
 						<span className="font-semibold">
-							{pathToDelete?.fromPosition.name}
+							{pathToDelete?.fromJobRole.name}
 						</span>{" "}
 						ke{" "}
 						<span className="font-semibold">
-							{pathToDelete?.toPosition.name}
+							{pathToDelete?.toJobRole.name}
 						</span>{" "}
 						secara permanen.
 					</AlertDialogDescription>

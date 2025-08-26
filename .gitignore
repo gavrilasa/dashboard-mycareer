@@ -46,8 +46,11 @@ next-env.d.ts
 /prisma/seed-questionnaires.ts
 /prisma/seed-standards.ts
 /prisma/seed-recommendations.ts
+/prisma/seed-career-paths.ts
+
 
 # data
 /data/dataStandards.ts
 /data/dataQuestionnaire.ts
 /data/dataRecommedations.ts
+/data/dataCareerPath.ts

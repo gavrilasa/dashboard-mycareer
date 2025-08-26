@@ -1,3 +1,5 @@
+// File: /components/admin/career-path/CreateCareerPathDialog.tsx
+
 "use client";
 
 import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
@@ -29,17 +31,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
 
-// --- Type Definitions ---
+// --- Type Definitions (Diperbarui) ---
 interface MasterDataItem {
 	id: string;
 	name: string;
-	branchId?: string;
-	departmentId?: string;
 }
 interface MasterData {
-	branches: MasterDataItem[];
-	departments: MasterDataItem[];
-	positions: MasterDataItem[];
+	jobRoles: MasterDataItem[];
 }
 
 interface CreateCareerPathDialogProps {
@@ -50,19 +48,15 @@ interface CreateCareerPathDialogProps {
 }
 
 const createFormSchema = z.object({
-	fromBranchId: z.string().min(1, "Cabang asal wajib dipilih."),
-	fromDepartmentId: z.string().min(1, "Departemen asal wajib dipilih."),
-	fromPositionId: z.string().min(1, "Posisi asal wajib dipilih."),
+	fromJobRoleId: z.string().min(1, "Job Role asal wajib dipilih."),
 	toPositions: z
 		.array(
 			z.object({
-				branchId: z.string().min(1, "Cabang tujuan wajib dipilih."),
-				departmentId: z.string().min(1, "Departemen tujuan wajib dipilih."),
-				toPositionId: z.string().min(1, "Posisi tujuan wajib dipilih."),
+				toJobRoleId: z.string().min(1, "Job Role tujuan wajib dipilih."),
 				pathType: z.enum(["ALIGN", "CROSS"]),
 			})
 		)
-		.min(1, "Minimal satu posisi tujuan harus ditambahkan."),
+		.min(1, "Minimal satu Job Role tujuan harus ditambahkan."),
 });
 type CreateFormValues = z.infer<typeof createFormSchema>;
 
@@ -75,12 +69,8 @@ export function CreateCareerPathDialog({
 	const form = useForm<CreateFormValues>({
 		resolver: zodResolver(createFormSchema),
 		defaultValues: {
-			fromBranchId: "",
-			fromDepartmentId: "",
-			fromPositionId: "",
-			toPositions: [
-				{ branchId: "", departmentId: "", toPositionId: "", pathType: "ALIGN" },
-			],
+			fromJobRoleId: "",
+			toPositions: [{ toJobRoleId: "", pathType: "ALIGN" }],
 		},
 	});
 
@@ -91,12 +81,13 @@ export function CreateCareerPathDialog({
 
 	const onSubmit: SubmitHandler<CreateFormValues> = async (values) => {
 		const payload = {
-			fromPositionId: values.fromPositionId,
+			fromJobRoleId: values.fromJobRoleId,
 			toPositions: values.toPositions.map((p) => ({
-				toPositionId: p.toPositionId,
+				toJobRoleId: p.toJobRoleId,
 				pathType: p.pathType,
 			})),
 		};
+
 		const promise = fetch("/api/admin/career-path", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
@@ -111,19 +102,16 @@ export function CreateCareerPathDialog({
 			loading: "Menyimpan...",
 			success: (data) => {
 				onSuccess();
+				form.reset();
 				return data.message || "Jenjang karier berhasil disimpan.";
 			},
 			error: (err) => err.message,
 		});
 	};
 
-	const fromBranchId = form.watch("fromBranchId");
-	const fromDepartmentId = form.watch("fromDepartmentId");
-	const toPositionsWatched = form.watch("toPositions");
-
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
+			<DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 md:p-6">
 				<DialogHeader>
 					<DialogTitle className="text-xl font-semibold">
 						Buat Jenjang Karier Baru
@@ -133,97 +121,24 @@ export function CreateCareerPathDialog({
 				<Form {...form}>
 					<form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
 						<div className="p-4 space-y-4 bg-transparent border shadow-sm rounded-xl border-slate-200 md:p-6">
-							<h3 className="text-lg font-semibold">Dari Posisi</h3>
-							<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-								<FormField
-									name="fromBranchId"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Cabang Asal</FormLabel>
-											<Select
-												onValueChange={(v) => {
-													field.onChange(v);
-													form.setValue("fromDepartmentId", "");
-													form.setValue("fromPositionId", "");
-												}}
-												value={field.value}
-											>
-												<FormControl>
-													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Pilih Cabang" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													{masterData.branches.map((b) => (
-														<SelectItem key={b.id} value={b.id}>
-															<span className="block truncate">{b.name}</span>
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-								<FormField
-									name="fromDepartmentId"
-									control={form.control}
-									render={({ field }) => (
-										<FormItem>
-											<FormLabel>Departemen Asal</FormLabel>
-											<Select
-												onValueChange={(v) => {
-													field.onChange(v);
-													form.setValue("fromPositionId", "");
-												}}
-												value={field.value}
-												disabled={!fromBranchId}
-											>
-												<FormControl>
-													<SelectTrigger className="w-full">
-														<SelectValue placeholder="Pilih Departemen" />
-													</SelectTrigger>
-												</FormControl>
-												<SelectContent>
-													{masterData.departments
-														.filter((d) => d.branchId === fromBranchId)
-														.map((d) => (
-															<SelectItem key={d.id} value={d.id}>
-																<span className="block truncate">{d.name}</span>
-															</SelectItem>
-														))}
-												</SelectContent>
-											</Select>
-											<FormMessage />
-										</FormItem>
-									)}
-								/>
-							</div>
 							<FormField
-								name="fromPositionId"
+								name="fromJobRoleId"
 								control={form.control}
 								render={({ field }) => (
 									<FormItem>
-										<FormLabel>Posisi Asal</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											value={field.value}
-											disabled={!fromDepartmentId}
-										>
+										<FormLabel>Karir Asal</FormLabel>
+										<Select onValueChange={field.onChange} value={field.value}>
 											<FormControl>
 												<SelectTrigger className="w-full">
-													<SelectValue placeholder="Pilih Posisi" />
+													<SelectValue placeholder="Pilih Karir Asal" />
 												</SelectTrigger>
 											</FormControl>
 											<SelectContent>
-												{masterData.positions
-													.filter((p) => p.departmentId === fromDepartmentId)
-													.map((p) => (
-														<SelectItem key={p.id} value={p.id}>
-															<span className="block truncate">{p.name}</span>
-														</SelectItem>
-													))}
+												{masterData.jobRoles?.map((jr) => (
+													<SelectItem key={jr.id} value={jr.id}>
+														<span className="block truncate">{jr.name}</span>
+													</SelectItem>
+												))}
 											</SelectContent>
 										</Select>
 										<FormMessage />
@@ -235,19 +150,13 @@ export function CreateCareerPathDialog({
 						{/* TO POSITIONS */}
 						<div className="space-y-4">
 							<div className="flex items-center justify-between">
-								<h3 className="text-lg font-semibold">Ke Posisi</h3>
+								<h3 className="text-lg font-semibold">Ke Karir Tujuan</h3>
 								<Button
 									type="button"
 									variant="outline"
 									size="sm"
-									onClick={() =>
-										append({
-											branchId: "",
-											departmentId: "",
-											toPositionId: "",
-											pathType: "ALIGN",
-										})
-									}
+									onClick={() => append({ toJobRoleId: "", pathType: "ALIGN" })}
+									className="cursor-pointer"
 								>
 									<Plus className="w-4 h-4 mr-2" /> Tambah Tujuan
 								</Button>
@@ -261,7 +170,7 @@ export function CreateCareerPathDialog({
 										type="button"
 										variant="ghost"
 										size="icon"
-										className="absolute top-3 right-3 text-muted-foreground hover:text-destructive"
+										className="absolute cursor-pointer top-2 right-2 text-muted-foreground hover:text-destructive"
 										onClick={() => remove(index)}
 									>
 										<X className="w-4 h-4" />
@@ -269,121 +178,25 @@ export function CreateCareerPathDialog({
 
 									<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 										<FormField
-											name={`toPositions.${index}.branchId`}
+											name={`toPositions.${index}.toJobRoleId`}
 											control={form.control}
 											render={({ field: f }) => (
 												<FormItem>
-													<FormLabel>Cabang Tujuan</FormLabel>
-													<Select
-														onValueChange={(v) => {
-															f.onChange(v);
-															form.setValue(
-																`toPositions.${index}.departmentId`,
-																""
-															);
-															form.setValue(
-																`toPositions.${index}.toPositionId`,
-																""
-															);
-														}}
-														value={f.value}
-													>
+													<FormLabel>Karir Tujuan</FormLabel>
+													<Select onValueChange={f.onChange} value={f.value}>
 														<FormControl>
 															<SelectTrigger className="w-full">
-																<SelectValue placeholder="Pilih Cabang" />
+																<SelectValue placeholder="Pilih Karir Tujuan" />
 															</SelectTrigger>
 														</FormControl>
 														<SelectContent>
-															{masterData.branches.map((b) => (
-																<SelectItem key={b.id} value={b.id}>
+															{masterData.jobRoles?.map((jr) => (
+																<SelectItem key={jr.id} value={jr.id}>
 																	<span className="block truncate">
-																		{b.name}
+																		{jr.name}
 																	</span>
 																</SelectItem>
 															))}
-														</SelectContent>
-													</Select>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-										<FormField
-											name={`toPositions.${index}.departmentId`}
-											control={form.control}
-											render={({ field: f }) => (
-												<FormItem>
-													<FormLabel>Departemen Tujuan</FormLabel>
-													<Select
-														onValueChange={(v) => {
-															f.onChange(v);
-															form.setValue(
-																`toPositions.${index}.toPositionId`,
-																""
-															);
-														}}
-														value={f.value}
-														disabled={!toPositionsWatched?.[index]?.branchId}
-													>
-														<FormControl>
-															<SelectTrigger className="w-full">
-																<SelectValue placeholder="Pilih Departemen" />
-															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															{masterData.departments
-																.filter(
-																	(d) =>
-																		d.branchId ===
-																		toPositionsWatched?.[index]?.branchId
-																)
-																.map((d) => (
-																	<SelectItem key={d.id} value={d.id}>
-																		<span className="block truncate">
-																			{d.name}
-																		</span>
-																	</SelectItem>
-																))}
-														</SelectContent>
-													</Select>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-									</div>
-
-									<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-										<FormField
-											name={`toPositions.${index}.toPositionId`}
-											control={form.control}
-											render={({ field: f }) => (
-												<FormItem>
-													<FormLabel>Posisi Tujuan</FormLabel>
-													<Select
-														onValueChange={f.onChange}
-														value={f.value}
-														disabled={
-															!toPositionsWatched?.[index]?.departmentId
-														}
-													>
-														<FormControl>
-															<SelectTrigger className="w-full">
-																<SelectValue placeholder="Pilih Posisi" />
-															</SelectTrigger>
-														</FormControl>
-														<SelectContent>
-															{masterData.positions
-																.filter(
-																	(p) =>
-																		p.departmentId ===
-																		toPositionsWatched?.[index]?.departmentId
-																)
-																.map((p) => (
-																	<SelectItem key={p.id} value={p.id}>
-																		<span className="block truncate">
-																			{p.name}
-																		</span>
-																	</SelectItem>
-																))}
 														</SelectContent>
 													</Select>
 													<FormMessage />
@@ -421,10 +234,15 @@ export function CreateCareerPathDialog({
 								type="button"
 								variant="outline"
 								onClick={() => onOpenChange(false)}
+								className="cursor-pointer"
 							>
 								Batal
 							</Button>
-							<Button type="submit" disabled={form.formState.isSubmitting}>
+							<Button
+								type="submit"
+								disabled={form.formState.isSubmitting}
+								className="cursor-pointer"
+							>
 								{form.formState.isSubmitting ? "Menyimpan..." : "Simpan"}
 							</Button>
 						</DialogFooter>
