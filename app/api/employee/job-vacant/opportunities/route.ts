@@ -3,17 +3,17 @@ import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 import { PathType, VacancyPeriod } from "@prisma/client";
 
-// Urutan section harus sama persis dengan di endpoint status
-const SECTIONS_ORDER: { interestType: PathType; period: VacancyPeriod }[] = [
-	{ interestType: "ALIGN", period: "SHORT_TERM" },
-	{ interestType: "ALIGN", period: "LONG_TERM" },
-	{ interestType: "CROSS", period: "SHORT_TERM" },
-	{ interestType: "CROSS", period: "LONG_TERM" },
+// Urutan tahapan yang harus dilalui karyawan
+const STAGES_ORDER: { pathType: PathType; period: VacancyPeriod }[] = [
+	{ pathType: "ALIGN", period: "SHORT_TERM" },
+	{ pathType: "ALIGN", period: "LONG_TERM" },
+	{ pathType: "CROSS", period: "SHORT_TERM" },
+	{ pathType: "CROSS", period: "LONG_TERM" },
 ];
 
 export const GET = withAuthorization(
 	{ resource: "jobVacant", action: "read" },
-	async (_req: NextRequest, { session }) => {
+	async (req: NextRequest, { session }) => {
 		const employeeId = session?.user?.employeeId;
 		if (!employeeId) {
 			return NextResponse.json(
@@ -25,80 +25,119 @@ export const GET = withAuthorization(
 		try {
 			const employee = await prisma.employee.findUnique({
 				where: { employeeId },
-				select: { positionId: true },
+				select: {
+					position: { select: { jobRoleId: true } },
+					careerPreference: { select: { isWillingToRelocate: true } },
+					gkmHistory: true,
+					questionnaireResponses: { take: 1 },
+				},
 			});
 
-			if (!employee?.positionId) {
+			if (!employee?.position?.jobRoleId) {
 				return NextResponse.json(
-					{ message: "Posisi karyawan saat ini tidak ditemukan." },
+					{ message: "Data Job Role Anda tidak ditemukan." },
 					{ status: 404 }
 				);
 			}
 
-			// 1. Cari tahu section mana yang aktif
+			if (
+				!employee.careerPreference ||
+				employee.careerPreference.isWillingToRelocate === null
+			) {
+				return NextResponse.json({
+					stage: "AWAITING_RELOCATION",
+					opportunities: [],
+				});
+			}
+
+			const isProfileComplete =
+				employee.gkmHistory && employee.questionnaireResponses.length > 0;
+
+			if (!isProfileComplete) {
+				const allRelevantPaths = await prisma.careerPath.findMany({
+					where: { fromJobRoleId: employee.position.jobRoleId },
+					select: { toJobRoleId: true },
+				});
+				const targetJobRoleIds = allRelevantPaths.map(
+					(path) => path.toJobRoleId
+				);
+
+				const opportunities = await prisma.jobVacancy.findMany({
+					where: {
+						isPublished: true,
+						jobRoleId: { in: targetJobRoleIds },
+					},
+					include: { jobRole: { select: { name: true } } },
+				});
+
+				return NextResponse.json({
+					stage: "INCOMPLETE_PROFILE",
+					opportunities,
+				});
+			}
+
 			const existingInterests = await prisma.jobInterest.findMany({
 				where: { employeeId },
 				select: { interestType: true, period: true },
 			});
 
-			let activeSection = null;
-			for (const section of SECTIONS_ORDER) {
+			let nextStageInfo: {
+				pathType: PathType;
+				period: VacancyPeriod;
+			} | null = null;
+			for (const stage of STAGES_ORDER) {
 				const isCompleted = existingInterests.some(
 					(cs) =>
-						cs.interestType === section.interestType &&
-						cs.period === section.period
+						cs.interestType === stage.pathType && cs.period === stage.period
 				);
 				if (!isCompleted) {
-					activeSection = section;
+					nextStageInfo = stage;
 					break;
 				}
 			}
 
-			// Jika semua section sudah selesai, kembalikan array kosong
-			if (!activeSection) {
-				return NextResponse.json({ section: null, opportunities: [] });
+			if (!nextStageInfo) {
+				return NextResponse.json({ stage: "COMPLETED", opportunities: [] });
 			}
 
-			// 2. Ambil semua CareerPath yang relevan untuk section aktif
-			const relevantCareerPaths = await prisma.careerPath.findMany({
-				where: {
-					fromPositionId: employee.positionId,
-					pathType: activeSection.interestType,
-				},
-				select: {
-					toPositionId: true,
-				},
-			});
-
-			const targetPositionIds = relevantCareerPaths.map(
-				(path) => path.toPositionId
+			const hasCompletedAllAlign = existingInterests.some(
+				(i) => i.interestType === "ALIGN" && i.period === "LONG_TERM"
+			);
+			const isEnteringCross = nextStageInfo.pathType === "CROSS";
+			const hasStartedCross = existingInterests.some(
+				(i) => i.interestType === "CROSS"
 			);
 
-			if (targetPositionIds.length === 0) {
+			if (isEnteringCross && !hasStartedCross && hasCompletedAllAlign) {
 				return NextResponse.json({
-					section: activeSection,
+					stage: "GUIDED_TRANSITION",
 					opportunities: [],
 				});
 			}
 
-			// 3. Ambil semua JobVacancy yang cocok dengan CareerPath dan periode
+			// FIX: Logika diubah untuk mencocokkan 'period' dari CareerPath
+			const relevantPaths = await prisma.careerPath.findMany({
+				where: {
+					fromJobRoleId: employee.position.jobRoleId,
+					pathType: nextStageInfo.pathType,
+					period: nextStageInfo.period, // <-- Kunci perubahan ada di sini
+				},
+				select: { toJobRoleId: true },
+			});
+			const targetJobRoleIds = relevantPaths.map((path) => path.toJobRoleId);
+
 			const opportunities = await prisma.jobVacancy.findMany({
 				where: {
 					isPublished: true,
-					period: activeSection.period,
-					positionId: {
-						in: targetPositionIds,
-					},
+					jobRoleId: { in: targetJobRoleIds },
 				},
-				include: {
-					position: { select: { name: true } },
-					department: { select: { name: true } },
-					branch: { select: { name: true } },
-				},
+				include: { jobRole: { select: { name: true } } },
 			});
 
+			const currentStage = `GUIDED_${nextStageInfo.pathType}`;
+
 			return NextResponse.json({
-				section: activeSection,
+				stage: currentStage,
 				opportunities,
 			});
 		} catch (error) {

@@ -11,6 +11,7 @@ import {
 	ConfirmationDialog,
 	FormIncompleteAlert,
 } from "@/components/employee/job-vacant/ActionDialogs";
+import { RelocationCard } from "@/components/employee/job-vacant/RelocationCard";
 import {
 	Card,
 	CardContent,
@@ -18,45 +19,37 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { CheckCircle } from "lucide-react";
-import { PathType, VacancyPeriod } from "@prisma/client";
+import { Button } from "@/components/ui/button";
+import { CheckCircle, ArrowRight } from "lucide-react";
 
-// --- Type Definitions ---
-interface Section {
-	interestType: PathType;
-	period: VacancyPeriod;
-}
-
-interface StatusResponse {
-	completedSections: Section[];
-	nextSection: Section | null;
-	isCompleted: boolean;
-}
+type Stage =
+	| "LOADING"
+	| "AWAITING_RELOCATION"
+	| "INCOMPLETE_PROFILE"
+	| "GUIDED_ALIGN"
+	| "GUIDED_TRANSITION"
+	| "GUIDED_CROSS"
+	| "COMPLETED";
 
 interface OpportunitiesResponse {
-	section: Section;
+	stage: Stage;
 	opportunities: Opportunity[];
 }
 
-const SECTION_TITLES: Record<PathType, Record<VacancyPeriod, string>> = {
-	ALIGN: {
-		SHORT_TERM: "Minat Karier Sejalur (1-3 Tahun ke Depan)",
-		LONG_TERM: "Minat Karier Sejalur (Lebih dari 3 Tahun)",
-	},
-	CROSS: {
-		SHORT_TERM: "Minat Karier Lintas Jalur (1-3 Tahun ke Depan)",
-		LONG_TERM: "Minat Karier Lintas Jalur (Lebih dari 3 Tahun)",
-	},
-};
+// FIX: Interface untuk detail incomplete profile
+interface IncompleteDetails {
+	form: boolean;
+	questionnaire: boolean;
+}
 
-// --- Helper Components ---
 const LoadingState = () => (
-	<div className="space-y-4">
-		<Skeleton className="h-8 w-1/3" />
+	<div className="space-y-6">
+		<Skeleton className="h-10 w-1/2" />
+		<Skeleton className="h-4 w-3/4" />
 		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-			<Skeleton className="h-56 w-full" />
-			<Skeleton className="h-56 w-full" />
-			<Skeleton className="h-56 w-full" />
+			{[...Array(3)].map((_, i) => (
+				<Skeleton key={i} className="h-56 w-full" />
+			))}
 		</div>
 	</div>
 );
@@ -76,111 +69,105 @@ const CompletionState = () => (
 	</Card>
 );
 
-const EmptyState = ({ sectionTitle }: { sectionTitle: string }) => (
-	<Card>
+const TransitionState = ({ onNextStage }: { onNextStage: () => void }) => (
+	<Card className="w-full max-w-lg mx-auto text-center">
 		<CardHeader>
-			<CardTitle>{sectionTitle}</CardTitle>
+			<div className="mx-auto bg-blue-100 p-3 rounded-full">
+				<ArrowRight className="h-10 w-10 text-blue-600" />
+			</div>
+			<CardTitle className="mt-4 text-2xl">
+				Tahap Selanjutnya: Karier Lintas Jalur
+			</CardTitle>
+			<CardDescription>
+				Anda telah menyelesaikan pemilihan minat karier sejalur. Sekarang, mari
+				kita lihat peluang di jalur karier yang berbeda (Cross).
+			</CardDescription>
 		</CardHeader>
 		<CardContent>
-			<p className="text-center text-gray-500 py-10">
-				Tidak ada peluang karier yang tersedia untuk kategori ini saat ini.
-				Silakan hubungi HRD untuk informasi lebih lanjut.
-			</p>
+			<Button onClick={onNextStage}>Lanjutkan ke Jenjang Karier Cross</Button>
 		</CardContent>
 	</Card>
 );
 
-// --- Main Page Component ---
 export default function JobVacantPage() {
-	const [currentSection, setCurrentSection] = useState<Section | null>(null);
+	const [stage, setStage] = useState<Stage>("LOADING");
 	const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-	const [isLoading, setIsLoading] = useState(true);
-	const [isCompleted, setIsCompleted] = useState(false);
-
 	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	// FIX: State baru untuk menyimpan detail error dengan tipe yang tepat
+	const [incompleteDetails, setIncompleteDetails] = useState<IncompleteDetails>(
+		{
+			form: false,
+			questionnaire: false,
+		}
+	);
+
 	const [dialogState, setDialogState] = useState<{
 		type: "confirm" | "alert" | "closed";
 		data: Opportunity | null;
 	}>({ type: "closed", data: null });
 
-	const fetchStatusAndOpportunities = useCallback(async () => {
-		setIsLoading(true);
-		try {
-			const statusRes = await fetch("/api/employee/job-vacant/status");
-			if (!statusRes.ok) throw new Error("Gagal memuat status progres Anda.");
-
-			const statusData: StatusResponse = await statusRes.json();
-
-			if (statusData.isCompleted) {
-				setIsCompleted(true);
-				setIsLoading(false);
-				return;
-			}
-
-			if (statusData.nextSection) {
-				setCurrentSection(statusData.nextSection);
-				const opportunitiesRes = await fetch(
-					"/api/employee/job-vacant/opportunities"
+	const fetchOpportunities = useCallback(
+		async (currentStage: Stage | "INITIAL" = "INITIAL") => {
+			setStage("LOADING");
+			try {
+				const res = await fetch(
+					`/api/employee/job-vacant/opportunities?stage=${currentStage}`
 				);
-				if (!opportunitiesRes.ok)
-					throw new Error("Gagal memuat peluang karier.");
+				if (!res.ok) throw new Error("Gagal memuat data peluang karier.");
 
-				const opportunitiesData: OpportunitiesResponse =
-					await opportunitiesRes.json();
-				setOpportunities(opportunitiesData.opportunities);
-			} else {
-				setIsCompleted(true); // Fallback jika tidak ada section berikutnya
+				const data: OpportunitiesResponse = await res.json();
+				setOpportunities(data.opportunities);
+				setStage(data.stage);
+			} catch (error) {
+				toast.error("Terjadi Kesalahan", {
+					description:
+						error instanceof Error ? error.message : "Tidak dapat memuat data.",
+				});
+				setStage("INCOMPLETE_PROFILE");
 			}
-		} catch (error) {
-			toast.error("Terjadi Kesalahan", {
-				description:
-					error instanceof Error ? error.message : "Tidak dapat memuat data.",
-			});
-		} finally {
-			setIsLoading(false);
-		}
-	}, []);
+		},
+		[]
+	);
 
 	useEffect(() => {
-		fetchStatusAndOpportunities();
-	}, [fetchStatusAndOpportunities]);
+		fetchOpportunities("INITIAL");
+	}, [fetchOpportunities]);
 
-	const handleInterestClick = (opportunityId: string) => {
-		const opportunity = opportunities.find((o) => o.id === opportunityId);
-		if (opportunity) {
-			setDialogState({ type: "confirm", data: opportunity });
-		}
+	const handleInterestClick = (opportunity: Opportunity) => {
+		setDialogState({ type: "confirm", data: opportunity });
 	};
 
 	const handleConfirmInterest = async () => {
-		if (!dialogState.data || !currentSection) return;
+		if (!dialogState.data) return;
 
 		setIsSubmitting(true);
+		const opportunityId = dialogState.data.id;
 		setDialogState({ type: "closed", data: null });
 
 		try {
 			const response = await fetch("/api/employee/job-vacant/interest", {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({
-					jobVacancyId: dialogState.data.id,
-					interestType: currentSection.interestType,
-					period: currentSection.period,
-				}),
+				body: JSON.stringify({ jobVacancyId: opportunityId }),
 			});
 
 			if (!response.ok) {
 				const errorData = await response.json();
-				if (errorData.code === "FORM_INCOMPLETE") {
+				// FIX: Ganti FORM_INCOMPLETE dengan PROFILE_INCOMPLETE dan tangkap detail error
+				if (errorData.code === "PROFILE_INCOMPLETE") {
+					setIncompleteDetails(
+						errorData.details || { form: false, questionnaire: false }
+					);
 					setDialogState({ type: "alert", data: null });
 				} else {
 					throw new Error(errorData.message || "Gagal menyimpan pilihan.");
 				}
 			} else {
 				toast.success("Pilihan Disimpan", {
-					description: "Memuat section berikutnya...",
+					description: "Memuat tahap berikutnya...",
 				});
-				fetchStatusAndOpportunities(); // Refresh untuk memuat section selanjutnya
+				fetchOpportunities(stage);
 			}
 		} catch (error) {
 			toast.error("Gagal Menyimpan", {
@@ -192,64 +179,82 @@ export default function JobVacantPage() {
 		}
 	};
 
-	if (isLoading) {
-		return (
-			<div className="container mx-auto py-10">
-				<LoadingState />
-			</div>
-		);
-	}
+	const renderContent = () => {
+		// FIX: Tampilkan komponen Card jika stage adalah AWAITING_RELOCATION
+		if (stage === "AWAITING_RELOCATION") {
+			return <RelocationCard onSave={() => fetchOpportunities("INITIAL")} />;
+		}
 
-	if (isCompleted) {
-		return (
-			<div className="container mx-auto py-10 flex items-center justify-center">
-				<CompletionState />
-			</div>
-		);
-	}
+		if (stage === "LOADING") return <LoadingState />;
+		if (stage === "COMPLETED") return <CompletionState />;
+		if (stage === "GUIDED_TRANSITION") {
+			return (
+				<TransitionState
+					onNextStage={() => fetchOpportunities("GUIDED_CROSS")}
+				/>
+			);
+		}
 
-	const sectionTitle = currentSection
-		? SECTION_TITLES[currentSection.interestType][currentSection.period]
-		: "";
+		const titles: Record<string, string> = {
+			INCOMPLETE_PROFILE: "Peluang Karier Untuk Anda",
+			GUIDED_ALIGN: "Tahap 1: Jenjang Karier Sejalur (Align)",
+			GUIDED_CROSS: "Tahap 2: Jenjang Karier Lintas Jalur (Cross)",
+		};
+
+		const currentTitle = titles[stage] || "Peluang Karier";
+
+		return (
+			<section>
+				<h2 className="text-2xl font-bold mb-4">{currentTitle}</h2>
+				{stage === "INCOMPLETE_PROFILE" && (
+					<p className="mb-6 text-muted-foreground">
+						Berikut adalah semua peluang yang relevan dengan posisi Anda saat
+						ini. Lengkapi Form Data Diri dan Kuesioner untuk mendapatkan alur
+						pemilihan minat karier yang terpandu.
+					</p>
+				)}
+				{opportunities.length > 0 ? (
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+						{opportunities.map((opp) => (
+							<JobVacancyCard
+								key={opp.id}
+								opportunity={opp}
+								onInterestClick={() => handleInterestClick(opp)}
+								isSubmitting={isSubmitting}
+							/>
+						))}
+					</div>
+				) : (
+					<p className="text-center text-gray-500 py-10">
+						Tidak ada peluang yang tersedia untuk tahap ini.
+					</p>
+				)}
+			</section>
+		);
+	};
 
 	return (
 		<>
 			<Toaster position="top-center" richColors />
-			<div className="container mx-auto py-10 space-y-8">
-				{opportunities.length > 0 ? (
-					<section>
-						<h2 className="text-2xl font-bold mb-4">{sectionTitle}</h2>
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-							{opportunities.map((opp) => (
-								<JobVacancyCard
-									key={opp.id}
-									opportunity={opp}
-									onInterestClick={handleInterestClick}
-									isSubmitting={isSubmitting}
-								/>
-							))}
-						</div>
-					</section>
-				) : (
-					<EmptyState sectionTitle={sectionTitle} />
-				)}
-			</div>
+			<div className="container mx-auto py-10">{renderContent()}</div>
 
 			<ConfirmationDialog
 				open={dialogState.type === "confirm"}
-				onOpenChange={(open) =>
+				onOpenChange={(open: boolean) =>
 					!open && setDialogState({ type: "closed", data: null })
 				}
 				onConfirm={handleConfirmInterest}
-				positionName={dialogState.data?.position?.name || ""}
-				category={sectionTitle}
+				positionName={dialogState.data?.jobRole?.name || ""}
+				category="pilihan Anda"
 			/>
 
+			{/* FIX: Kirim detail ke komponen Alert dengan props yang benar */}
 			<FormIncompleteAlert
 				open={dialogState.type === "alert"}
-				onOpenChange={(open) =>
+				onOpenChange={(open: boolean) =>
 					!open && setDialogState({ type: "closed", data: null })
 				}
+				incompleteDetails={incompleteDetails}
 			/>
 		</>
 	);

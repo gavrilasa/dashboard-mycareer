@@ -1,5 +1,3 @@
-// File: /components/admin/career-path/EditCareerPathDialog.tsx
-
 "use client";
 
 import { useEffect } from "react";
@@ -30,8 +28,9 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
+import { PathType, VacancyPeriod } from "@prisma/client";
 
-// --- Type Definitions (Diperbarui) ---
+// --- Type Definitions ---
 interface MasterDataItem {
 	id: string;
 	name: string;
@@ -44,8 +43,7 @@ interface CareerPath {
 	fromJobRoleId: string;
 	toJobRoleId: string;
 	pathType: "ALIGN" | "CROSS";
-	fromJobRole: { name: string };
-	toJobRole: { name: string };
+	period: "SHORT_TERM" | "LONG_TERM"; // Pastikan period ada di tipe ini
 }
 
 interface EditCareerPathDialogProps {
@@ -56,11 +54,13 @@ interface EditCareerPathDialogProps {
 	onSuccess: () => void;
 }
 
+// Skema Zod diperbarui untuk menyertakan 'period'
 const editSchema = z
 	.object({
 		fromJobRoleId: z.string().min(1, "Job Role asal wajib dipilih."),
 		toJobRoleId: z.string().min(1, "Job Role tujuan wajib dipilih."),
-		pathType: z.enum(["ALIGN", "CROSS"]),
+		pathType: z.enum([PathType.ALIGN, PathType.CROSS]),
+		period: z.enum([VacancyPeriod.SHORT_TERM, VacancyPeriod.LONG_TERM]),
 	})
 	.refine((data) => data.fromJobRoleId !== data.toJobRoleId, {
 		message: "Job Role asal dan tujuan tidak boleh sama.",
@@ -85,6 +85,7 @@ export function EditCareerPathDialog({
 				fromJobRoleId: editingPath.fromJobRoleId,
 				toJobRoleId: editingPath.toJobRoleId,
 				pathType: editingPath.pathType,
+				period: editingPath.period, // Set nilai period saat form dibuka
 			});
 		}
 	}, [editingPath, form]);
@@ -92,16 +93,10 @@ export function EditCareerPathDialog({
 	const onSubmit: SubmitHandler<EditFormValues> = async (values) => {
 		if (!editingPath) return;
 
-		const payload = {
-			fromJobRoleId: values.fromJobRoleId,
-			toJobRoleId: values.toJobRoleId,
-			pathType: values.pathType,
-		};
-
 		const promise = fetch(`/api/admin/career-path/${editingPath.id}`, {
 			method: "PUT",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(payload),
+			body: JSON.stringify(values), // Kirim semua values, termasuk period
 		}).then(async (res) => {
 			if (!res.ok) {
 				throw new Error((await res.json()).message || "Gagal menyimpan data.");
@@ -195,6 +190,32 @@ export function EditCareerPathDialog({
 										<SelectContent>
 											<SelectItem value="ALIGN">Align</SelectItem>
 											<SelectItem value="CROSS">Cross</SelectItem>
+										</SelectContent>
+									</Select>
+									<FormMessage />
+								</FormItem>
+							)}
+						/>
+						{/* Tambahkan FormField untuk 'period' */}
+						<FormField
+							name="period"
+							control={form.control}
+							render={({ field }) => (
+								<FormItem>
+									<FormLabel>Periode</FormLabel>
+									<Select onValueChange={field.onChange} value={field.value}>
+										<FormControl>
+											<SelectTrigger className="w-full">
+												<SelectValue placeholder="Pilih Periode" />
+											</SelectTrigger>
+										</FormControl>
+										<SelectContent>
+											<SelectItem value={VacancyPeriod.SHORT_TERM}>
+												Short Term
+											</SelectItem>
+											<SelectItem value={VacancyPeriod.LONG_TERM}>
+												Long Term
+											</SelectItem>
 										</SelectContent>
 									</Select>
 									<FormMessage />

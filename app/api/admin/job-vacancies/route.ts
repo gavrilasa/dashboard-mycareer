@@ -1,17 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
-import { Prisma, VacancyPeriod } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
+// FIX: Skema Zod disederhanakan, menghapus 'period' dan 'requirements'
 const createVacancySchema = z.object({
-	title: z.string().min(3, "Judul minimal 3 karakter."),
+	jobRoleId: z.string().min(1, "Job Role wajib dipilih."),
 	description: z.string().optional(),
-	requirements: z.string().optional(),
-	period: z.enum([VacancyPeriod.SHORT_TERM, VacancyPeriod.LONG_TERM]),
-	branchId: z.string().min(1, "Cabang wajib dipilih."),
-	departmentId: z.string().min(1, "Departemen wajib dipilih."),
-	positionId: z.string().min(1, "Posisi wajib dipilih."),
+	isPublished: z.boolean().default(false),
 });
 
 export const GET = withAuthorization(
@@ -25,10 +22,9 @@ export const GET = withAuthorization(
 
 		const finalWhere: Prisma.JobVacancyWhereInput = { ...whereClause };
 		if (search) {
-			finalWhere.OR = [
-				{ title: { contains: search, mode: "insensitive" } },
-				{ position: { name: { contains: search, mode: "insensitive" } } },
-			];
+			finalWhere.jobRole = {
+				name: { contains: search, mode: "insensitive" },
+			};
 		}
 
 		try {
@@ -38,9 +34,7 @@ export const GET = withAuthorization(
 					skip,
 					take: limit,
 					include: {
-						branch: { select: { name: true } },
-						department: { select: { name: true } },
-						position: { select: { name: true } },
+						jobRole: { select: { name: true } },
 						_count: {
 							select: { interestedEmployees: true },
 						},
@@ -66,7 +60,6 @@ export const GET = withAuthorization(
 	}
 );
 
-// POST: Membuat lowongan baru
 export const POST = withAuthorization(
 	{ resource: "jobVacant", action: "create" },
 	async (req: NextRequest) => {
@@ -74,11 +67,14 @@ export const POST = withAuthorization(
 			const body = await req.json();
 			const parsedData = createVacancySchema.parse(body);
 
+			// FIX: Logika pembuatan disederhanakan sesuai skema baru.
+			// 'period' dan 'requirements' tidak lagi disertakan.
 			const newVacancy = await prisma.jobVacancy.create({
 				data: {
-					...parsedData,
+					jobRoleId: parsedData.jobRoleId,
 					description: parsedData.description ?? "",
-					requirements: parsedData.requirements ?? "",
+					isPublished: parsedData.isPublished,
+					requirements: "", // Menyediakan nilai default kosong
 				},
 			});
 

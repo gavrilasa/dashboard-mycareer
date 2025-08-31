@@ -2,12 +2,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 import { z } from "zod";
-import { Prisma, PathType, VacancyPeriod } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 
 const interestSchema = z.object({
 	jobVacancyId: z.string().cuid(),
-	interestType: z.enum([PathType.ALIGN, PathType.CROSS]),
-	period: z.enum([VacancyPeriod.SHORT_TERM, VacancyPeriod.LONG_TERM]),
 });
 
 export const POST = withAuthorization(
@@ -24,28 +22,79 @@ export const POST = withAuthorization(
 		try {
 			const body = await req.json();
 			const parsedData = interestSchema.parse(body);
+			const { jobVacancyId } = parsedData;
 
-			const formStatus = await prisma.gkmHistory.findUnique({
+			const employee = await prisma.employee.findUnique({
 				where: { employeeId },
+				select: {
+					position: { select: { jobRoleId: true } },
+					gkmHistory: true,
+					questionnaireResponses: { take: 1 },
+				},
 			});
 
-			if (!formStatus) {
+			// --- FIX: Logika Pengecekan Cerdas ---
+			const isFormComplete = !!employee?.gkmHistory;
+			const isQuestionnaireComplete =
+				(employee?.questionnaireResponses?.length ?? 0) > 0;
+
+			if (!isFormComplete || !isQuestionnaireComplete) {
+				return NextResponse.json(
+					{
+						message: "Profil Anda belum lengkap.",
+						code: "PROFILE_INCOMPLETE",
+						// Kirim detail bagian mana yang belum lengkap
+						details: {
+							form: !isFormComplete,
+							questionnaire: !isQuestionnaireComplete,
+						},
+					},
+					{ status: 403 }
+				);
+			}
+
+			if (!employee.position?.jobRoleId) {
+				return NextResponse.json(
+					{ message: "Data posisi Anda tidak ditemukan." },
+					{ status: 404 }
+				);
+			}
+
+			const vacancy = await prisma.jobVacancy.findUnique({
+				where: { id: jobVacancyId },
+				select: { jobRoleId: true },
+			});
+
+			if (!vacancy) {
+				return NextResponse.json(
+					{ message: "Lowongan yang dipilih tidak valid." },
+					{ status: 404 }
+				);
+			}
+
+			const careerPath = await prisma.careerPath.findFirst({
+				where: {
+					fromJobRoleId: employee.position.jobRoleId,
+					toJobRoleId: vacancy.jobRoleId,
+				},
+			});
+
+			if (!careerPath) {
 				return NextResponse.json(
 					{
 						message:
-							"Anda harus melengkapi Formulir Data Diri terlebih dahulu sebelum dapat menyatakan minat.",
-						code: "FORM_INCOMPLETE",
+							"Tidak ditemukan jenjang karier yang valid untuk lowongan ini.",
 					},
-					{ status: 403 }
+					{ status: 404 }
 				);
 			}
 
 			const newInterest = await prisma.jobInterest.create({
 				data: {
 					employeeId: employeeId,
-					jobVacancyId: parsedData.jobVacancyId,
-					interestType: parsedData.interestType,
-					period: parsedData.period,
+					jobVacancyId: jobVacancyId,
+					interestType: careerPath.pathType,
+					period: careerPath.period,
 				},
 			});
 

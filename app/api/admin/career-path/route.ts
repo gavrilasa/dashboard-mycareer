@@ -1,25 +1,24 @@
-// File: app/api/admin/career-path/route.ts
-
 import { NextResponse, NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
-import { Prisma } from "@prisma/client";
+import { Prisma, PathType, VacancyPeriod } from "@prisma/client";
 
-// Skema Zod untuk membuat jenjang karier baru, sekarang berdasarkan JobRole
+// FIX: Skema Zod diperbarui untuk menyertakan 'period'
 const createCareerPathSchema = z.object({
 	fromJobRoleId: z.string().min(1, "Job Role asal tidak valid."),
 	toPositions: z
 		.array(
 			z.object({
 				toJobRoleId: z.string().min(1, "Job Role tujuan tidak valid."),
-				pathType: z.enum(["ALIGN", "CROSS"]),
+				pathType: z.enum([PathType.ALIGN, PathType.CROSS]),
+				period: z.enum([VacancyPeriod.SHORT_TERM, VacancyPeriod.LONG_TERM]),
 			})
 		)
 		.min(1, "Minimal satu posisi tujuan harus ditambahkan."),
 });
 
-// GET Handler - Diperbarui untuk menggunakan JobRole
+// GET Handler (tidak ada perubahan)
 export const GET = withAuthorization(
 	{ resource: "careerPath", action: "read" },
 	async (request: NextRequest) => {
@@ -85,7 +84,7 @@ export const GET = withAuthorization(
 	}
 );
 
-// POST Handler - Diperbarui untuk menggunakan JobRole
+// POST Handler (diperbarui)
 export const POST = withAuthorization(
 	{ resource: "careerPath", action: "create" },
 	async (request: NextRequest) => {
@@ -94,7 +93,6 @@ export const POST = withAuthorization(
 			const parsedData = createCareerPathSchema.parse(body);
 			const { fromJobRoleId, toPositions } = parsedData;
 
-			// Mencegah jenjang karier ke diri sendiri
 			if (toPositions.some((p) => p.toJobRoleId === fromJobRoleId)) {
 				return NextResponse.json(
 					{
@@ -105,28 +103,33 @@ export const POST = withAuthorization(
 				);
 			}
 
-			// Cek duplikasi
+			// Cek duplikasi dengan mempertimbangkan periode
 			const existingPaths = await prisma.careerPath.findMany({
 				where: {
 					fromJobRoleId,
-					toJobRoleId: { in: toPositions.map((p) => p.toJobRoleId) },
+					OR: toPositions.map((p) => ({
+						toJobRoleId: p.toJobRoleId,
+						period: p.period,
+					})),
 				},
 			});
 
 			if (existingPaths.length > 0) {
 				return NextResponse.json(
 					{
-						message: "Satu atau lebih jenjang karier yang diajukan sudah ada.",
+						message:
+							"Satu atau lebih jenjang karier yang diajukan (dengan periode yang sama) sudah ada.",
 					},
 					{ status: 409 } // Conflict
 				);
 			}
 
-			// Buat entri baru
+			// FIX: Siapkan data untuk createMany dengan menyertakan 'period'
 			const dataToCreate = toPositions.map((pos) => ({
 				fromJobRoleId,
 				toJobRoleId: pos.toJobRoleId,
 				pathType: pos.pathType,
+				period: pos.period, // <-- Menyimpan period
 			}));
 
 			await prisma.careerPath.createMany({

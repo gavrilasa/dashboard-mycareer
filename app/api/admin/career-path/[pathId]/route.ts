@@ -2,13 +2,15 @@ import { NextResponse, NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
-import { Prisma } from "@prisma/client";
+import { Prisma, PathType, VacancyPeriod } from "@prisma/client";
 
+// Skema Zod diperbarui untuk menyertakan 'period'
 const updateCareerPathSchema = z
 	.object({
 		fromJobRoleId: z.string().min(1, "ID Job Role asal tidak valid."),
 		toJobRoleId: z.string().min(1, "ID Job Role tujuan tidak valid."),
-		pathType: z.enum(["ALIGN", "CROSS"]),
+		pathType: z.enum([PathType.ALIGN, PathType.CROSS]),
+		period: z.enum([VacancyPeriod.SHORT_TERM, VacancyPeriod.LONG_TERM]),
 	})
 	.refine((data) => data.fromJobRoleId !== data.toJobRoleId, {
 		message: "Job Role asal dan tujuan tidak boleh sama.",
@@ -27,13 +29,15 @@ export const PUT = withAuthorization(
 
 			const body = await request.json();
 			const parsedData = updateCareerPathSchema.parse(body);
-			const { fromJobRoleId, toJobRoleId, pathType } = parsedData;
 
+			// Cek duplikasi, pastikan tidak ada jenjang karier lain
+			// dengan kombinasi from, to, dan period yang sama.
 			const potentialDuplicate = await prisma.careerPath.findFirst({
 				where: {
-					fromJobRoleId,
-					toJobRoleId,
-					NOT: { id: pathId },
+					fromJobRoleId: parsedData.fromJobRoleId,
+					toJobRoleId: parsedData.toJobRoleId,
+					period: parsedData.period,
+					NOT: { id: pathId }, // Abaikan path yang sedang diedit
 				},
 			});
 
@@ -44,13 +48,10 @@ export const PUT = withAuthorization(
 				);
 			}
 
+			// Lakukan update dengan semua data yang sudah divalidasi
 			const updatedCareerPath = await prisma.careerPath.update({
 				where: { id: pathId },
-				data: {
-					fromJobRoleId,
-					toJobRoleId,
-					pathType,
-				},
+				data: parsedData,
 			});
 
 			return NextResponse.json({
@@ -89,7 +90,7 @@ export const DELETE = withAuthorization(
 	{ resource: "careerPath", action: "delete" },
 	async (_request: NextRequest, _args, { params }: HandlerContext) => {
 		try {
-			const { pathId } = params; // Mengambil pathId dari context
+			const { pathId } = params;
 			await prisma.careerPath.delete({ where: { id: pathId } });
 			return new NextResponse(null, { status: 204 });
 		} catch (error) {

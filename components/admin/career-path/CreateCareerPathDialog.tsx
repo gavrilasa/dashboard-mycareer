@@ -1,5 +1,3 @@
-// File: /components/admin/career-path/CreateCareerPathDialog.tsx
-
 "use client";
 
 import { useForm, useFieldArray, SubmitHandler } from "react-hook-form";
@@ -30,8 +28,9 @@ import {
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Plus, X } from "lucide-react";
+import { VacancyPeriod, PathType } from "@prisma/client"; // Import enum dari Prisma
 
-// --- Type Definitions (Diperbarui) ---
+// --- Type Definitions ---
 interface MasterDataItem {
 	id: string;
 	name: string;
@@ -47,13 +46,15 @@ interface CreateCareerPathDialogProps {
 	onSuccess: () => void;
 }
 
+// FIX: Menggunakan z.enum() dan memperbaiki posisi pesan error
 const createFormSchema = z.object({
 	fromJobRoleId: z.string().min(1, "Job Role asal wajib dipilih."),
 	toPositions: z
 		.array(
 			z.object({
 				toJobRoleId: z.string().min(1, "Job Role tujuan wajib dipilih."),
-				pathType: z.enum(["ALIGN", "CROSS"]),
+				pathType: z.enum([PathType.ALIGN, PathType.CROSS]),
+				period: z.enum([VacancyPeriod.SHORT_TERM, VacancyPeriod.LONG_TERM]),
 			})
 		)
 		.min(1, "Minimal satu Job Role tujuan harus ditambahkan."),
@@ -70,7 +71,13 @@ export function CreateCareerPathDialog({
 		resolver: zodResolver(createFormSchema),
 		defaultValues: {
 			fromJobRoleId: "",
-			toPositions: [{ toJobRoleId: "", pathType: "ALIGN" }],
+			toPositions: [
+				{
+					toJobRoleId: "",
+					pathType: "ALIGN",
+					period: VacancyPeriod.SHORT_TERM,
+				},
+			],
 		},
 	});
 
@@ -85,6 +92,7 @@ export function CreateCareerPathDialog({
 			toPositions: values.toPositions.map((p) => ({
 				toJobRoleId: p.toJobRoleId,
 				pathType: p.pathType,
+				period: p.period,
 			})),
 		};
 
@@ -147,7 +155,6 @@ export function CreateCareerPathDialog({
 							/>
 						</div>
 
-						{/* TO POSITIONS */}
 						<div className="space-y-4">
 							<div className="flex items-center justify-between">
 								<h3 className="text-lg font-semibold">Ke Karir Tujuan</h3>
@@ -155,7 +162,13 @@ export function CreateCareerPathDialog({
 									type="button"
 									variant="outline"
 									size="sm"
-									onClick={() => append({ toJobRoleId: "", pathType: "ALIGN" })}
+									onClick={() =>
+										append({
+											toJobRoleId: "",
+											pathType: "ALIGN",
+											period: VacancyPeriod.SHORT_TERM,
+										})
+									}
 									className="cursor-pointer"
 								>
 									<Plus className="w-4 h-4 mr-2" /> Tambah Tujuan
@@ -176,7 +189,7 @@ export function CreateCareerPathDialog({
 										<X className="w-4 h-4" />
 									</Button>
 
-									<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+									<div className="grid grid-cols-1 gap-6 md:grid-cols-3">
 										<FormField
 											name={`toPositions.${index}.toJobRoleId`}
 											control={form.control}
@@ -218,6 +231,31 @@ export function CreateCareerPathDialog({
 														<SelectContent>
 															<SelectItem value="ALIGN">Align</SelectItem>
 															<SelectItem value="CROSS">Cross</SelectItem>
+														</SelectContent>
+													</Select>
+													<FormMessage />
+												</FormItem>
+											)}
+										/>
+										<FormField
+											name={`toPositions.${index}.period`}
+											control={form.control}
+											render={({ field: f }) => (
+												<FormItem>
+													<FormLabel>Periode</FormLabel>
+													<Select onValueChange={f.onChange} value={f.value}>
+														<FormControl>
+															<SelectTrigger className="w-full">
+																<SelectValue placeholder="Pilih Periode" />
+															</SelectTrigger>
+														</FormControl>
+														<SelectContent>
+															<SelectItem value={VacancyPeriod.SHORT_TERM}>
+																Short Term
+															</SelectItem>
+															<SelectItem value={VacancyPeriod.LONG_TERM}>
+																Long Term
+															</SelectItem>
 														</SelectContent>
 													</Select>
 													<FormMessage />

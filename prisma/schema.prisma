@@ -106,48 +106,45 @@ model Employee {
 }
 
 model Branch {
-  id           String       @id
-  name         String       @unique
-  location     String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  employees    Employee[]
-  departments  Department[]
-  positions    Position[]
-  jobVacancies JobVacancy[]
-  users        User[]
+  id          String       @id
+  name        String       @unique
+  location    String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  employees   Employee[]
+  departments Department[]
+  positions   Position[]
+  users       User[]
 }
 
 model Department {
-  id           String       @id
-  name         String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  branchId     String
-  branch       Branch       @relation(fields: [branchId], references: [id])
-  employees    Employee[]
-  positions    Position[]
-  jobVacancies JobVacancy[]
-  users        User[]
+  id        String     @id
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  branchId  String
+  branch    Branch     @relation(fields: [branchId], references: [id])
+  employees Employee[]
+  positions Position[]
+  users     User[]
 
   @@unique([name, branchId])
 }
 
 model Position {
-  id           String       @id
+  id           String     @id
   name         String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
   branchId     String
-  branch       Branch       @relation(fields: [branchId], references: [id])
+  branch       Branch     @relation(fields: [branchId], references: [id])
   departmentId String
-  department   Department   @relation(fields: [departmentId], references: [id])
+  department   Department @relation(fields: [departmentId], references: [id])
   levelId      String
-  level        Level        @relation(fields: [levelId], references: [id])
+  level        Level      @relation(fields: [levelId], references: [id])
   employees    Employee[]
-  jobVacancies JobVacancy[]
   jobRoleId    String
-  jobRole      JobRole      @relation(fields: [jobRoleId], references: [id])
+  jobRole      JobRole    @relation(fields: [jobRoleId], references: [id])
 
   @@unique([name, departmentId, branchId])
 }
@@ -229,43 +226,39 @@ model BestEmployeeScore {
 }
 
 model CareerPreference {
-  id                String   @id @default(cuid())
-  preferredMentor   String?
-  preferredTraining String?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  employeeId        String   @unique
-  employee          Employee @relation(fields: [employeeId], references: [employeeId])
+  id                  String   @id @default(cuid())
+  preferredMentor     String?
+  preferredTraining   String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  employeeId          String   @unique
+  employee            Employee @relation(fields: [employeeId], references: [employeeId])
+  isWillingToRelocate Boolean?
 }
 
 model CareerPath {
-  id            String   @id @default(cuid())
+  id            String        @id @default(cuid())
   fromJobRoleId String
   toJobRoleId   String
   pathType      PathType
+  period        VacancyPeriod
 
   fromJobRole JobRole @relation("FromJobRole", fields: [fromJobRoleId], references: [id], onDelete: Cascade)
   toJobRole   JobRole @relation("ToJobRole", fields: [toJobRoleId], references: [id], onDelete: Cascade)
 
-  @@unique([fromJobRoleId, toJobRoleId])
+  @@unique([fromJobRoleId, toJobRoleId, period])
   @@map("CareerPaths")
 }
 
 model JobVacancy {
   id                  String        @id @default(cuid())
-  title               String
   description         String
   requirements        String
   isPublished         Boolean       @default(false)
-  period              VacancyPeriod
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
-  branchId            String
-  departmentId        String
-  positionId          String
-  branch              Branch        @relation(fields: [branchId], references: [id])
-  department          Department    @relation(fields: [departmentId], references: [id])
-  position            Position      @relation(fields: [positionId], references: [id])
+  jobRoleId           String
+  jobRole             JobRole       @relation(fields: [jobRoleId], references: [id])
   interestedEmployees JobInterest[]
 }
 
@@ -378,4 +371,5 @@ model JobRole {
 
   fromJobRole CareerPath[] @relation("FromJobRole")
   toJobRole   CareerPath[] @relation("ToJobRole")
+  JobVacancy  JobVacancy[]
 }

@@ -56,27 +56,44 @@ export function ConfirmationDialog({
 interface FormIncompleteAlertProps {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
+	incompleteDetails: {
+		form: boolean;
+		questionnaire: boolean;
+	};
 }
 
 export function FormIncompleteAlert({
 	open,
 	onOpenChange,
+	incompleteDetails,
 }: FormIncompleteAlertProps) {
+	const { form, questionnaire } = incompleteDetails;
+
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
 			<AlertDialogContent>
 				<AlertDialogHeader>
-					<AlertDialogTitle>Formulir Belum Lengkap</AlertDialogTitle>
+					<AlertDialogTitle>Profil Belum Lengkap</AlertDialogTitle>
 					<AlertDialogDescription>
-						Anda harus melengkapi Formulir Data Diri terlebih dahulu sebelum
-						dapat menyatakan minat. Silakan lengkapi form Anda.
+						Anda harus melengkapi data berikut sebelum dapat menyatakan minat:
+						<ul className="list-disc pl-5 mt-2 space-y-1">
+							{form && <li>Formulir Data Diri</li>}
+							{questionnaire && <li>Kuesioner Kompetensi</li>}
+						</ul>
 					</AlertDialogDescription>
 				</AlertDialogHeader>
-				<AlertDialogFooter>
+				<AlertDialogFooter className="grid-cols-1 gap-2 sm:flex">
 					<AlertDialogCancel>Tutup</AlertDialogCancel>
-					<AlertDialogAction asChild>
-						<Link href="/form">Lengkapi Form</Link>
-					</AlertDialogAction>
+					{questionnaire && (
+						<AlertDialogAction asChild>
+							<Link href="/questionnaire">Isi Kuesioner</Link>
+						</AlertDialogAction>
+					)}
+					{form && (
+						<AlertDialogAction asChild>
+							<Link href="/form">Lengkapi Form</Link>
+						</AlertDialogAction>
+					)}
 				</AlertDialogFooter>
 			</AlertDialogContent>
 		</AlertDialog>

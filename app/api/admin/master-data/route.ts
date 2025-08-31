@@ -26,28 +26,44 @@ export const GET = withAuthorization(
 				positionWhere = { departmentId: userDepartmentId };
 			}
 
-			const [branches, departments, positions, levels, jobRoles] =
-				await prisma.$transaction([
-					prisma.branch.findMany({
-						where: branchWhere,
-						orderBy: { id: "asc" },
-					}),
-					prisma.department.findMany({
-						where: departmentWhere,
-						orderBy: { name: "asc" },
-					}),
-					prisma.position.findMany({
-						where: positionWhere,
-						orderBy: { name: "asc" },
-					}),
-					prisma.level.findMany({
-						where: levelWhere,
-						orderBy: { name: "asc" },
-					}),
-					prisma.jobRole.findMany({
-						orderBy: { name: "asc" },
-					}),
-				]);
+			const [
+				branches,
+				departments,
+				positions,
+				levels,
+				jobRoles,
+				distinctToJobRoles,
+			] = await prisma.$transaction([
+				prisma.branch.findMany({
+					where: branchWhere,
+					orderBy: { id: "asc" },
+				}),
+				prisma.department.findMany({
+					where: departmentWhere,
+					orderBy: { name: "asc" },
+				}),
+				prisma.position.findMany({
+					where: positionWhere,
+					orderBy: { name: "asc" },
+				}),
+				prisma.level.findMany({
+					where: levelWhere,
+					orderBy: { name: "asc" },
+				}),
+				prisma.jobRole.findMany({
+					orderBy: { name: "asc" },
+				}),
+				prisma.careerPath.findMany({
+					distinct: ["toJobRoleId"],
+					select: {
+						toJobRole: { select: { id: true, name: true } },
+					},
+				}),
+			]);
+
+			const jobRolesForVacancy = distinctToJobRoles.map(
+				(path) => path.toJobRole
+			);
 
 			return NextResponse.json({
 				branches,
@@ -55,6 +71,7 @@ export const GET = withAuthorization(
 				positions,
 				levels,
 				jobRoles,
+				jobRolesForVacancy,
 			});
 		} catch (error) {
 			console.error("Error fetching master data:", error);

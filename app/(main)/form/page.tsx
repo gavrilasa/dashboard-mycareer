@@ -232,8 +232,7 @@ export default function EmployeeFormPage() {
 					data.committeeHistories?.length > 0 ||
 					data.projectHistories?.length > 0 ||
 					data.gkmHistory ||
-					data.bestEmployeeScore ||
-					data.careerPreference;
+					data.bestEmployeeScore;
 				if (hasExistingData) {
 					setIsSubmitted(true);
 					return;

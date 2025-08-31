@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
 import { ColumnDef } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
@@ -18,34 +19,27 @@ import {
 } from "@/components/ui/dialog";
 import { Edit, Plus, Eye } from "lucide-react";
 import { JobVacancyForm } from "@/components/admin/job-vacant/JobVacancyForm";
-import { InterestedEmployeesDialog } from "@/components/admin/job-vacant/InterestedEmployeesDialog";
-// import { DeleteVacancyAlert } from "@/components/admin/job-vacant/DeleteVacancyAlert";
 
-// --- Type Definitions ---
+// --- Type Definitions (Diperbarui) ---
 interface JobVacancy {
 	id: string;
-	title: string;
 	isPublished: boolean;
-	branch: { name: string } | null;
-	department: { name: string } | null;
-	position: { name: string } | null;
+	jobRole: { name: string } | null;
 	_count: { interestedEmployees: number };
 }
 
+// FIX: Tipe MasterData disesuaikan dengan apa yang dibutuhkan oleh form baru
 interface MasterDataItem {
 	id: string;
 	name: string;
-	branchId?: string;
-	departmentId?: string;
 }
 interface MasterData {
-	branches: MasterDataItem[];
-	departments: MasterDataItem[];
-	positions: MasterDataItem[];
+	jobRolesForVacancy?: MasterDataItem[];
 }
 
 export default function JobVacanciesPage() {
 	const { data: session } = useSession();
+	const router = useRouter();
 	const [data, setData] = useState<JobVacancy[]>([]);
 	const [pagination, setPagination] = useState({
 		totalRecords: 0,
@@ -60,12 +54,12 @@ export default function JobVacanciesPage() {
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
 	const [isFormModalOpen, setIsFormModalOpen] = useState(false);
-	const [isInterestModalOpen, setIsInterestModalOpen] = useState(false);
 	const [selectedVacancy, setSelectedVacancy] = useState<JobVacancy | null>(
 		null
 	);
 
-	const { canCreate, canEdit, canDelete } = useMemo(() => {
+	// FIX: Menghapus 'canDelete' yang tidak digunakan
+	const { canCreate, canEdit } = useMemo(() => {
 		if (!session?.user?.role)
 			return { canCreate: false, canEdit: false, canDelete: false };
 		const permissions = PERMISSIONS[session.user.role]?.jobVacant || [];
@@ -127,31 +121,18 @@ export default function JobVacanciesPage() {
 		setIsFormModalOpen(true);
 	};
 
-	const handleOpenInterestModal = (vacancy: JobVacancy) => {
-		setSelectedVacancy(vacancy);
-		setIsInterestModalOpen(true);
-	};
-
 	const handleCloseModals = () => {
 		setIsFormModalOpen(false);
-		setIsInterestModalOpen(false);
 		setSelectedVacancy(null);
 	};
 
 	const columns = useMemo<ColumnDef<JobVacancy>[]>(
 		() => [
-			{ accessorKey: "title", header: "Judul", size: 30 },
 			{
-				accessorKey: "position.name",
-				header: "Posisi",
-				cell: ({ row }) => row.original.position?.name || "-",
-				size: 20,
-			},
-			{
-				accessorKey: "branch.name",
-				header: "Cabang",
-				cell: ({ row }) => row.original.branch?.name || "-",
-				size: 15,
+				accessorKey: "jobRole.name",
+				header: "Job Role",
+				cell: ({ row }) => row.original.jobRole?.name || "-",
+				size: 55,
 			},
 			{
 				accessorKey: "isPublished",
@@ -161,13 +142,13 @@ export default function JobVacanciesPage() {
 						{row.original.isPublished ? "Published" : "Draft"}
 					</Badge>
 				),
-				size: 10,
+				size: 15,
 			},
 			{
 				accessorKey: "_count.interestedEmployees",
 				header: "Peminat",
 				cell: ({ row }) => row.original._count.interestedEmployees,
-				size: 10,
+				size: 15,
 			},
 			{
 				id: "actions",
@@ -176,7 +157,9 @@ export default function JobVacanciesPage() {
 				cell: ({ row }) => (
 					<div className="flex items-center justify-center gap-2">
 						<Button
-							onClick={() => handleOpenInterestModal(row.original)}
+							onClick={() =>
+								router.push(`/admin/job-vacancies/${row.original.id}`)
+							}
 							variant="ghost"
 							size="icon"
 							className="h-8 w-8"
@@ -193,12 +176,11 @@ export default function JobVacanciesPage() {
 								<Edit size={16} />
 							</Button>
 						)}
-						{/* {canDelete && <Button onClick={() => {}} variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive"><Trash2 size={16} /></Button>} */}
 					</div>
 				),
 			},
 		],
-		[canEdit, canDelete]
+		[canEdit, router]
 	);
 
 	return (
@@ -228,7 +210,7 @@ export default function JobVacanciesPage() {
 			</div>
 
 			<Dialog open={isFormModalOpen} onOpenChange={setIsFormModalOpen}>
-				<DialogContent className="sm:max-w-3xl">
+				<DialogContent className="sm:max-w-xl">
 					<DialogHeader>
 						<DialogTitle>
 							{selectedVacancy ? "Edit Lowongan" : "Buat Lowongan Baru"}
@@ -245,13 +227,6 @@ export default function JobVacanciesPage() {
 					/>
 				</DialogContent>
 			</Dialog>
-
-			<InterestedEmployeesDialog
-				open={isInterestModalOpen}
-				onOpenChange={setIsInterestModalOpen}
-				jobVacancyId={selectedVacancy?.id || null}
-				vacancyTitle={selectedVacancy?.title || null}
-			/>
 		</>
 	);
 }
