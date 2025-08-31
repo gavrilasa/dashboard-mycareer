@@ -321,7 +321,7 @@ export default function JobVacancyDetailPage() {
 														asChild
 														className="cursor-pointer"
 													>
-														<Link href={`/admin/forms/${employee.employeeId}`}>
+														<Link href={`/admin/forms`}>
 															<FileText className="mr-2 h-4 w-4" /> Form
 														</Link>
 													</Button>

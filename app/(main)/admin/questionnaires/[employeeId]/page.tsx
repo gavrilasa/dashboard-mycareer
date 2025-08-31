@@ -44,6 +44,7 @@ interface SubCompetencyDetail {
 
 interface CompetencyDetail {
 	competency: string;
+	questionnaireTitle: string;
 	calculatedScore: number;
 	standardScore: number;
 	gap: number;
@@ -171,20 +172,47 @@ export default function ResultDetailPage() {
 		fetchData();
 	}, [employeeId]);
 
+	const groupedData = useMemo(() => {
+		if (!Array.isArray(detailData)) return {};
+		return detailData.reduce((acc, competency) => {
+			const title = competency.questionnaireTitle || "Kompetensi Lainnya";
+			if (!acc[title]) {
+				acc[title] = [];
+			}
+			acc[title].push(competency);
+			return acc;
+		}, {} as Record<string, CompetencyDetail[]>);
+	}, [detailData]);
+
 	const { overallAverageScore, strongestCompetency, mainDevelopmentArea } =
 		useMemo(() => {
-			if (!detailData || detailData.length === 0) {
+			if (!Array.isArray(detailData) || detailData.length === 0) {
 				return {
 					overallAverageScore: 0,
 					strongestCompetency: "-",
 					mainDevelopmentArea: "-",
 				};
 			}
-			const totalScore = detailData.reduce(
-				(sum, comp) => sum + comp.calculatedScore,
+
+			const allQuestions = detailData.flatMap((competency) =>
+				competency.subCompetencies.flatMap((sub) => sub.questions)
+			);
+
+			if (allQuestions.length === 0) {
+				return {
+					overallAverageScore: 0,
+					strongestCompetency: "-",
+					mainDevelopmentArea: "-",
+				};
+			}
+
+			const totalScore = allQuestions.reduce(
+				(sum, question) => sum + question.value,
 				0
 			);
-			const avg = totalScore / detailData.length;
+
+			const avg = totalScore / allQuestions.length;
+
 			const sortedByScore = [...detailData].sort(
 				(a, b) => b.calculatedScore - a.calculatedScore
 			);
@@ -199,6 +227,7 @@ export default function ResultDetailPage() {
 		}, [detailData]);
 
 	const allRecommendations = useMemo(() => {
+		if (!Array.isArray(detailData)) return [];
 		const recommendations = new Set<string>();
 		detailData.forEach((comp) => {
 			if (comp.recommendationNeeded) {
@@ -251,7 +280,7 @@ export default function ResultDetailPage() {
 					<DetailCard
 						icon={Star}
 						title="Skor Rata-Rata"
-						value={overallAverageScore.toFixed(2)}
+						value={(Math.trunc(overallAverageScore * 100) / 100).toFixed(2)}
 						className="bg-blue-50 border-blue-200"
 					/>
 					<DetailCard
@@ -269,57 +298,75 @@ export default function ResultDetailPage() {
 				</div>
 			</div>
 
-			<Accordion type="multiple" className="w-full space-y-4">
-				{detailData.map((competency) => (
-					<AccordionItem
-						value={competency.competency}
-						key={competency.competency}
-						className="bg-white rounded-lg border shadow-sm px-4"
-					>
-						<AccordionTrigger className="font-semibold text-lg hover:no-underline">
-							<div className="flex items-center gap-4">
-								<ScoreIndicator score={competency.calculatedScore} />
-								<span>
-									{competency.competency} - Skor:{" "}
-									{competency.calculatedScore.toFixed(2)}
-								</span>
-							</div>
-						</AccordionTrigger>
-						<AccordionContent className="pt-4 pl-1">
-							<div className="grid lg:grid-cols-2 gap-4">
-								{competency.subCompetencies.map((sub) => (
-									<div
-										key={sub.name}
-										className="p-4 border rounded-md bg-slate-50 space-y-3"
-									>
-										<h4 className="font-semibold text-base">{sub.name}</h4>
-										<ScoreBar
-											score={competency.calculatedScore}
-											standard={competency.standardScore}
-										/>
-										<Accordion type="single" collapsible className="w-full">
-											<AccordionItem value="questions" className="border-b-0">
-												<AccordionTrigger className="text-sm py-1 text-muted-foreground">
-													Lihat Jawaban Detail
-												</AccordionTrigger>
-												<AccordionContent className="pt-2 pl-4 border-l-2">
-													<ul className="space-y-2 text-sm text-slate-700">
-														{sub.questions.map((q) => (
-															<li key={q.id}>
-																<strong>{q.value}/5</strong> - {q.text}
-															</li>
-														))}
-													</ul>
-												</AccordionContent>
-											</AccordionItem>
-										</Accordion>
-									</div>
-								))}
-							</div>
-						</AccordionContent>
-					</AccordionItem>
+			<div className="space-y-6">
+				{Object.entries(groupedData).map(([title, competencies]) => (
+					<div key={title}>
+						<h2 className="text-2xl font-semibold mb-4 border-b pb-2">
+							{title}
+						</h2>
+						<Accordion type="multiple" className="w-full space-y-4">
+							{competencies.map((competency) => (
+								<AccordionItem
+									value={competency.competency}
+									key={competency.competency}
+									className="bg-white rounded-lg border shadow-sm px-4"
+								>
+									<AccordionTrigger className="font-semibold text-lg hover:no-underline">
+										<div className="flex items-center gap-4">
+											<ScoreIndicator score={competency.calculatedScore} />
+											<span>
+												{competency.competency} - Skor:{" "}
+												{competency.calculatedScore.toFixed(2)}
+											</span>
+										</div>
+									</AccordionTrigger>
+									<AccordionContent className="pt-4 pl-1">
+										<div className="grid md:grid-cols-2 gap-4">
+											{competency.subCompetencies.map((sub) => (
+												<div
+													key={sub.name}
+													className="p-4 border rounded-md bg-slate-50 space-y-3"
+												>
+													<h4 className="font-semibold text-base">
+														{sub.name}
+													</h4>
+													<ScoreBar
+														score={competency.calculatedScore}
+														standard={competency.standardScore}
+													/>
+													<Accordion
+														type="single"
+														collapsible
+														className="w-full"
+													>
+														<AccordionItem
+															value="questions"
+															className="border-b-0"
+														>
+															<AccordionTrigger className="text-sm py-1 text-muted-foreground">
+																Lihat Jawaban Detail
+															</AccordionTrigger>
+															<AccordionContent className="pt-2 pl-4 border-l-2">
+																<ul className="space-y-2 text-sm text-slate-700">
+																	{sub.questions.map((q) => (
+																		<li key={q.id}>
+																			<strong>{q.value}/5</strong> - {q.text}
+																		</li>
+																	))}
+																</ul>
+															</AccordionContent>
+														</AccordionItem>
+													</Accordion>
+												</div>
+											))}
+										</div>
+									</AccordionContent>
+								</AccordionItem>
+							))}
+						</Accordion>
+					</div>
 				))}
-			</Accordion>
+			</div>
 
 			{allRecommendations.length > 0 && (
 				<div>

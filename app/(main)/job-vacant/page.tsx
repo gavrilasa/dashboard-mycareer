@@ -22,13 +22,16 @@ import {
 import { Button } from "@/components/ui/button";
 import { CheckCircle, ArrowRight } from "lucide-react";
 
+// --- Type Definitions ---
 type Stage =
 	| "LOADING"
 	| "AWAITING_RELOCATION"
 	| "INCOMPLETE_PROFILE"
-	| "GUIDED_ALIGN"
+	| "GUIDED_ALIGN_SHORT_TERM"
+	| "GUIDED_ALIGN_LONG_TERM"
 	| "GUIDED_TRANSITION"
-	| "GUIDED_CROSS"
+	| "GUIDED_CROSS_SHORT_TERM"
+	| "GUIDED_CROSS_LONG_TERM"
 	| "COMPLETED";
 
 interface OpportunitiesResponse {
@@ -36,11 +39,7 @@ interface OpportunitiesResponse {
 	opportunities: Opportunity[];
 }
 
-// FIX: Interface untuk detail incomplete profile
-interface IncompleteDetails {
-	form: boolean;
-	questionnaire: boolean;
-}
+// --- Helper & State Components ---
 
 const LoadingState = () => (
 	<div className="space-y-6">
@@ -89,19 +88,15 @@ const TransitionState = ({ onNextStage }: { onNextStage: () => void }) => (
 	</Card>
 );
 
+// --- Main Page Component ---
 export default function JobVacantPage() {
 	const [stage, setStage] = useState<Stage>("LOADING");
 	const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-
-	// FIX: State baru untuk menyimpan detail error dengan tipe yang tepat
-	const [incompleteDetails, setIncompleteDetails] = useState<IncompleteDetails>(
-		{
-			form: false,
-			questionnaire: false,
-		}
-	);
-
+	const [incompleteDetails, setIncompleteDetails] = useState({
+		form: false,
+		questionnaire: false,
+	});
 	const [dialogState, setDialogState] = useState<{
 		type: "confirm" | "alert" | "closed";
 		data: Opportunity | null;
@@ -154,11 +149,8 @@ export default function JobVacantPage() {
 
 			if (!response.ok) {
 				const errorData = await response.json();
-				// FIX: Ganti FORM_INCOMPLETE dengan PROFILE_INCOMPLETE dan tangkap detail error
 				if (errorData.code === "PROFILE_INCOMPLETE") {
-					setIncompleteDetails(
-						errorData.details || { form: false, questionnaire: false }
-					);
+					setIncompleteDetails(errorData.details);
 					setDialogState({ type: "alert", data: null });
 				} else {
 					throw new Error(errorData.message || "Gagal menyimpan pilihan.");
@@ -180,7 +172,6 @@ export default function JobVacantPage() {
 	};
 
 	const renderContent = () => {
-		// FIX: Tampilkan komponen Card jika stage adalah AWAITING_RELOCATION
 		if (stage === "AWAITING_RELOCATION") {
 			return <RelocationCard onSave={() => fetchOpportunities("INITIAL")} />;
 		}
@@ -190,15 +181,22 @@ export default function JobVacantPage() {
 		if (stage === "GUIDED_TRANSITION") {
 			return (
 				<TransitionState
-					onNextStage={() => fetchOpportunities("GUIDED_CROSS")}
+					onNextStage={() => fetchOpportunities("GUIDED_CROSS_SHORT_TERM")}
 				/>
 			);
 		}
 
+		// FIX: Tambahkan judul untuk keempat tahap
 		const titles: Record<string, string> = {
 			INCOMPLETE_PROFILE: "Peluang Karier Untuk Anda",
-			GUIDED_ALIGN: "Tahap 1: Jenjang Karier Sejalur (Align)",
-			GUIDED_CROSS: "Tahap 2: Jenjang Karier Lintas Jalur (Cross)",
+			GUIDED_ALIGN_SHORT_TERM:
+				"Tahap 1: Jenjang Karier Sejalur (Jangka Pendek)",
+			GUIDED_ALIGN_LONG_TERM:
+				"Tahap 2: Jenjang Karier Sejalur (Jangka Panjang)",
+			GUIDED_CROSS_SHORT_TERM:
+				"Tahap 3: Jenjang Karier Lintas Jalur (Jangka Pendek)",
+			GUIDED_CROSS_LONG_TERM:
+				"Tahap 4: Jenjang Karier Lintas Jalur (Jangka Panjang)",
 		};
 
 		const currentTitle = titles[stage] || "Peluang Karier";
@@ -240,7 +238,7 @@ export default function JobVacantPage() {
 
 			<ConfirmationDialog
 				open={dialogState.type === "confirm"}
-				onOpenChange={(open: boolean) =>
+				onOpenChange={(open) =>
 					!open && setDialogState({ type: "closed", data: null })
 				}
 				onConfirm={handleConfirmInterest}
@@ -248,10 +246,9 @@ export default function JobVacantPage() {
 				category="pilihan Anda"
 			/>
 
-			{/* FIX: Kirim detail ke komponen Alert dengan props yang benar */}
 			<FormIncompleteAlert
 				open={dialogState.type === "alert"}
-				onOpenChange={(open: boolean) =>
+				onOpenChange={(open) =>
 					!open && setDialogState({ type: "closed", data: null })
 				}
 				incompleteDetails={incompleteDetails}
