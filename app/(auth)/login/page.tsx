@@ -1,6 +1,8 @@
-// app/login/page.tsx
+// app/(auth)/login/page.tsx
+
 "use client";
 
+import React, { Suspense } from "react";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,8 +20,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, AlertCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
-export default function LoginPage() {
+function LoginContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
@@ -134,5 +137,14 @@ export default function LoginPage() {
 				<div className="object-cover w-full h-full bg-center bg-cover bg-[url(https://res.cloudinary.com/dah2v3xbg/image/upload/v1754410772/authImage_1_it6mni.webp)] dark:brightness-[0.2] dark:grayscale" />
 			</div>
 		</div>
+	);
+}
+
+// Komponen utama halaman sekarang menyediakan Suspense Boundary
+export default function LoginPage() {
+	return (
+		<Suspense fallback={<Skeleton className="w-full h-screen" />}>
+			<LoginContent />
+		</Suspense>
 	);
 }

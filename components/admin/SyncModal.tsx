@@ -126,7 +126,11 @@ export const SyncModal: React.FC<SyncModalProps> = ({
 			setStep("confirm");
 		} catch (err) {
 			setErrors([
-				{ row: 0, employeeId: "N/A", error: "Gagal terhubung ke server." },
+				{
+					row: 0,
+					employeeId: "N/A",
+					error: `Gagal terhubung ke server. Error:${err}`,
+				},
 			]);
 			setStep("error");
 		}

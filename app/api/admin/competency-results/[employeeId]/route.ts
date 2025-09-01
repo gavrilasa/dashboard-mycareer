@@ -1,6 +1,29 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
+import { CompetencyResult } from "@prisma/client";
+
+// --- Type Definitions ---
+
+interface QuestionDetail {
+	id: string;
+	text: string;
+	value: number;
+}
+
+interface SubCompetencyData {
+	questions: QuestionDetail[];
+	recommendations: string[];
+}
+
+interface GroupedSubCompetencies {
+	[subCompetency: string]: SubCompetencyData;
+}
+
+interface GroupedResult {
+	details: CompetencyResult[];
+	subCompetencies: GroupedSubCompetencies;
+}
 
 interface HandlerContext {
 	params: {
@@ -75,7 +98,7 @@ export const GET = withAuthorization(
 
 			// 4. Gabungkan semua data menjadi satu objek JSON terstruktur
 			const groupedResults = competencyResults.reduce<
-				Record<string, { details: any[]; subCompetencies: any }>
+				Record<string, GroupedResult>
 			>((acc, result) => {
 				if (!acc[result.competency]) {
 					acc[result.competency] = {
@@ -117,7 +140,7 @@ export const GET = withAuthorization(
 						gap: competencyDetail.gap,
 						recommendationNeeded: competencyDetail.recommendationNeeded,
 						subCompetencies: Object.entries(data.subCompetencies).map(
-							([subCompetency, subData]: [string, any]) => ({
+							([subCompetency, subData]: [string, SubCompetencyData]) => ({
 								name: subCompetency,
 								questions: subData.questions,
 								recommendations: subData.recommendations,

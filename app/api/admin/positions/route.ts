@@ -1,9 +1,8 @@
-// app/api/admin/positions/route.ts
-
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 const createPositionSchema = z.object({
 	name: z.string().min(1, "Nama Jabatan tidak boleh kosong"),
@@ -122,9 +121,12 @@ export const POST = withAuthorization(
 			});
 
 			return NextResponse.json(newPosition, { status: 201 });
-		} catch (error: any) {
+		} catch (error: unknown) {
 			console.error("Gagal membuat posisi:", error);
-			if (error.code === "P2002") {
+			if (
+				error instanceof Prisma.PrismaClientKnownRequestError &&
+				error.code === "P2002"
+			) {
 				return NextResponse.json(
 					{
 						message: "Gagal: Posisi dengan detail tersebut mungkin sudah ada.",

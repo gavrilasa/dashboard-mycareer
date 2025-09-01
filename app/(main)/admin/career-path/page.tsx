@@ -33,6 +33,7 @@ interface CareerPath {
 	fromJobRoleId: string;
 	toJobRoleId: string;
 	pathType: "ALIGN" | "CROSS";
+	period: "SHORT_TERM" | "LONG_TERM"; // FIX: Properti 'period' ditambahkan
 	fromJobRole: { name: string };
 	toJobRole: { name: string };
 }
