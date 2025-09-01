@@ -76,13 +76,17 @@ async function executeSync() {
 	try {
 		await prisma.$transaction(
 			async (tx) => {
-				// Operasi Hapus (Delete)
+				// Operasi Hapus (Delete) - URUTAN DIPERBAIKI
 				if (toDelete.length > 0) {
 					const idsToDelete = toDelete.map((e) => e.employeeId);
-					await tx.user.deleteMany({
+
+					// Hapus employee terlebih dahulu karena mereka memiliki foreign key ke user
+					await tx.employee.deleteMany({
 						where: { employeeId: { in: idsToDelete } },
 					});
-					await tx.employee.deleteMany({
+
+					// Kemudian hapus user
+					await tx.user.deleteMany({
 						where: { employeeId: { in: idsToDelete } },
 					});
 				}
