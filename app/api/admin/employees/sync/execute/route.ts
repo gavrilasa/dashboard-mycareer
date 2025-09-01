@@ -1,25 +1,33 @@
-import { NextResponse, NextRequest } from "next/server";
+// /app/api/admin/employees/sync/execute/route.ts
+
+import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Role, EducationDegree, Gender } from "@prisma/client";
 import { hash } from "bcryptjs";
-import { ValidatedRow } from "../analyze/route";
-import { withAuthorization } from "@/lib/auth-hof";
 import pLimit from "p-limit";
+import { ValidatedRow } from "../analyze/route"; // Impor tipe dari analyze
 
-// --- Type Definitions and Helpers (Unchanged) ---
-interface ExecutePayload {
+// --- Definisi Tipe untuk Payload ---
+interface ChangeDetail {
+	field: string;
+	from: string | null | undefined;
+	to: string | null | undefined;
+}
+
+interface EmployeeUpdate {
+	employeeId: string;
+	name: string;
+	changes: ChangeDetail[];
+}
+
+interface SyncAnalysis {
 	toCreate: { employeeId: string; name: string }[];
-	toUpdate: { employeeId: string; name: string }[];
+	toUpdate: EmployeeUpdate[];
 	toDelete: { employeeId: string; name: string }[];
 	fullData: ValidatedRow[];
 }
 
-interface SyncError {
-	row: number;
-	employeeId: string;
-	error: string;
-}
-
+// Helper function to format date for the default password
 const formatDateForPassword = (date: Date): string => {
 	const d = String(date.getUTCDate()).padStart(2, "0");
 	const m = String(date.getUTCMonth() + 1).padStart(2, "0");
@@ -27,167 +35,192 @@ const formatDateForPassword = (date: Date): string => {
 	return `${d}${m}${y}`;
 };
 
-export const POST = withAuthorization(
-	{ resource: "employee", action: "upload" },
-	async (req: NextRequest) => {
-		try {
-			const { toCreate, toUpdate, toDelete, fullData } =
-				(await req.json()) as ExecutePayload;
+export async function POST(req: NextRequest) {
+	// 1. Keamanan Endpoint
+	const authHeader = req.headers.get("authorization");
+	if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+		return NextResponse.json({ message: "Akses Ditolak." }, { status: 401 });
+	}
 
-			const dataMap = new Map(
-				fullData.map((row, index) => [
-					row.employeeId,
-					{ ...row, rowIndex: index + 2 },
-				])
-			);
-			const mappingErrors: SyncError[] = [];
+	// 2. Cari satu pekerjaan di SyncProcess yang statusnya PROCESSING
+	const job = await prisma.syncProcess.findFirst({
+		where: { status: "PROCESSING" },
+	});
 
-			// --- STAGE 1: DATA PREPARATION AND ERROR GATHERING ---
+	if (!job) {
+		return NextResponse.json({
+			message: "Tidak ada tugas sinkronisasi untuk dijalankan.",
+		});
+	}
 
-			const limit = pLimit(10);
+	if (
+		!job.payload ||
+		typeof job.payload !== "object" ||
+		!("fullData" in job.payload)
+	) {
+		await prisma.syncProcess.update({
+			where: { id: job.id },
+			data: {
+				status: "FAILED",
+				error: "Payload analisis tidak valid atau hilang.",
+			},
+		});
+		return NextResponse.json(
+			{ message: "Payload tidak valid." },
+			{ status: 400 }
+		);
+	}
 
-			const usersToCreatePromises = toCreate.map((emp) => {
-				const rowData = dataMap.get(emp.employeeId);
-				if (!rowData) {
-					mappingErrors.push({
-						row: -1,
-						employeeId: emp.employeeId,
-						error: "Internal data inconsistency, mapping data not found.",
+	// --- PERBAIKAN: Menggunakan cast 'unknown' untuk type safety ---
+	const { toCreate, toUpdate, toDelete, fullData } =
+		job.payload as unknown as SyncAnalysis;
+	const dataMap = new Map(
+		fullData.map((row: ValidatedRow) => [row.employeeId, row])
+	);
+
+	try {
+		// 3. Lakukan semua operasi database di dalam satu transaksi
+		await prisma.$transaction(
+			async (tx) => {
+				// Operasi Hapus (Delete)
+				if (toDelete.length > 0) {
+					const idsToDelete = toDelete.map((e) => e.employeeId);
+					await tx.user.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
 					});
-					return null;
+					await tx.employee.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
 				}
 
-				return limit(async () => {
-					const dateOfBirth = new Date(rowData.birthDate);
-					const dobForPassword = formatDateForPassword(dateOfBirth);
-					const password = await hash(`${emp.employeeId}${dobForPassword}`, 10);
-					return {
-						employeeId: emp.employeeId,
-						password: password,
-						role: Role.EMPLOYEE,
-						branchId: rowData.branchId,
-						departmentId: rowData.departmentId,
-					};
-				});
-			});
+				// Operasi Perbarui (Update)
+				if (toUpdate.length > 0) {
+					for (const emp of toUpdate) {
+						const rowData = dataMap.get(emp.employeeId);
+						if (!rowData) continue;
 
-			// FIX: Filter out null values to ensure the array is correctly typed for Prisma.
-			const usersToCreate = (await Promise.all(usersToCreatePromises)).filter(
-				(user): user is NonNullable<typeof user> => user !== null
-			);
+						await tx.employee.update({
+							where: { employeeId: emp.employeeId },
+							data: {
+								fullName: rowData["Employee Name"],
+								dateOfBirth: new Date(rowData.birthDate),
+								hireDate: new Date(rowData.hireDate),
+								gender:
+									rowData["Gender"] === "Male" ? Gender.MALE : Gender.FEMALE,
+								branchId: rowData.branchId,
+								positionId: rowData.positionId,
+								departmentId: rowData.departmentId,
+								levelId: rowData.levelId,
+								lastEducationDegree: rowData["Pend"] as EducationDegree,
+								lastEducationSchool: rowData["Nama Sekolah/Univ"],
+								lastEducationMajor: rowData["Jurusan"],
+							},
+						});
+					}
+				}
 
-			const employeesToCreate = toCreate
-				.map((emp) => {
-					const rowData = dataMap.get(emp.employeeId);
-					if (!rowData) {
-						if (!mappingErrors.some((e) => e.employeeId === emp.employeeId)) {
-							mappingErrors.push({
-								row: -1,
+				// Operasi Buat (Create)
+				if (toCreate.length > 0) {
+					const limit = pLimit(10);
+
+					const usersToCreatePromises = toCreate.map((emp) => {
+						const rowData = dataMap.get(emp.employeeId);
+						if (!rowData) return null;
+
+						return limit(async () => {
+							const dateOfBirth = new Date(rowData.birthDate);
+							const dobForPassword = formatDateForPassword(dateOfBirth);
+							const password = await hash(
+								`${emp.employeeId}${dobForPassword}`,
+								10
+							);
+							return {
 								employeeId: emp.employeeId,
-								error: "Internal data inconsistency, mapping data not found.",
-							});
-						}
-						return null;
-					}
-					return {
-						employeeId: emp.employeeId,
-						fullName: rowData["Employee Name"],
-						dateOfBirth: new Date(rowData.birthDate),
-						hireDate: new Date(rowData.hireDate),
-						gender: rowData["Gender"] === "Male" ? Gender.MALE : Gender.FEMALE,
-						branchId: rowData.branchId,
-						positionId: rowData.positionId,
-						departmentId: rowData.departmentId,
-						levelId: rowData.levelId,
-						lastEducationDegree: rowData["Pend"] as EducationDegree,
-						lastEducationSchool: rowData["Nama Sekolah/Univ"],
-						lastEducationMajor: rowData["Jurusan"],
-					};
-					// FIX: Filter out null values here as well.
-				})
-				.filter((emp): emp is NonNullable<typeof emp> => emp !== null);
-
-			if (mappingErrors.length > 0) {
-				return NextResponse.json({ errors: mappingErrors }, { status: 400 });
-			}
-
-			// --- STAGE 2: DATABASE TRANSACTION ---
-			await prisma.$transaction(
-				async (tx) => {
-					if (toDelete.length > 0) {
-						const idsToDelete = toDelete.map((e) => e.employeeId);
-						await tx.employee.deleteMany({
-							where: { employeeId: { in: idsToDelete } },
+								password: password,
+								role: Role.EMPLOYEE,
+								branchId: rowData.branchId,
+								departmentId: rowData.departmentId,
+							};
 						});
-						await tx.user.deleteMany({
-							where: { employeeId: { in: idsToDelete } },
-						});
-					}
+					});
 
-					if (toUpdate.length > 0) {
-						await Promise.all(
-							toUpdate.map((emp) => {
-								const rowData = dataMap.get(emp.employeeId);
-								if (!rowData) return Promise.resolve();
-								return tx.employee.update({
-									where: { employeeId: emp.employeeId },
-									data: {
-										fullName: rowData["Employee Name"],
-										dateOfBirth: new Date(rowData.birthDate),
-										hireDate: new Date(rowData.hireDate),
-										gender:
-											rowData["Gender"] === "Male"
-												? Gender.MALE
-												: Gender.FEMALE,
-										branchId: rowData.branchId,
-										positionId: rowData.positionId,
-										departmentId: rowData.departmentId,
-										levelId: rowData.levelId,
-										lastEducationDegree: rowData["Pend"] as EducationDegree,
-										lastEducationSchool: rowData["Nama Sekolah/Univ"],
-										lastEducationMajor: rowData["Jurusan"],
-									},
-								});
-							})
-						);
-					}
+					const usersToCreate = (
+						await Promise.all(usersToCreatePromises)
+					).filter((u): u is NonNullable<typeof u> => u !== null);
+
+					const employeesToCreate = toCreate
+						.map((emp) => {
+							const rowData = dataMap.get(emp.employeeId);
+							if (!rowData) return null;
+							return {
+								employeeId: emp.employeeId,
+								fullName: rowData["Employee Name"],
+								dateOfBirth: new Date(rowData.birthDate),
+								hireDate: new Date(rowData.hireDate),
+								gender:
+									rowData["Gender"] === "Male" ? Gender.MALE : Gender.FEMALE,
+								branchId: rowData.branchId,
+								positionId: rowData.positionId,
+								departmentId: rowData.departmentId,
+								levelId: rowData.levelId,
+								lastEducationDegree: rowData["Pend"] as EducationDegree,
+								lastEducationSchool: rowData["Nama Sekolah/Univ"],
+								lastEducationMajor: rowData["Jurusan"],
+							};
+						})
+						.filter((e): e is NonNullable<typeof e> => e !== null);
 
 					if (usersToCreate.length > 0) {
 						await tx.user.createMany({
 							data: usersToCreate,
 							skipDuplicates: true,
 						});
+					}
+					if (employeesToCreate.length > 0) {
 						await tx.employee.createMany({
 							data: employeesToCreate,
 							skipDuplicates: true,
 						});
 					}
-				},
-				{ timeout: 180000 }
-			);
-
-			return NextResponse.json({
-				message: "Synchronization completed successfully.",
-			});
-		} catch (error) {
-			if (error instanceof Error && error.message.includes("constraint")) {
-				return NextResponse.json(
-					{
-						message:
-							"A data relation constraint was violated. Please check the validity of Branch, Department, Position, and Level IDs in your file.",
-					},
-					{ status: 400 }
-				);
+				}
+			},
+			{
+				timeout: 600000, // 10 menit
 			}
-			return NextResponse.json(
-				{
-					message:
-						error instanceof Error
-							? error.message
-							: "An unexpected error occurred.",
-				},
-				{ status: 500 }
-			);
-		}
+		);
+
+		// 4. Perbarui status menjadi SUCCESS
+		await prisma.syncProcess.update({
+			where: { id: job.id },
+			data: {
+				status: "SUCCESS",
+				endedAt: new Date(),
+			},
+		});
+
+		return NextResponse.json({
+			message: "Sinkronisasi berhasil diselesaikan.",
+		});
+	} catch (error) {
+		const errorMessage =
+			error instanceof Error
+				? error.message
+				: "Terjadi kesalahan yang tidak diketahui.";
+		console.error("Execute Sync Error:", errorMessage);
+
+		// 4. Perbarui status menjadi FAILED
+		await prisma.syncProcess.update({
+			where: { id: job.id },
+			data: {
+				status: "FAILED",
+				error: errorMessage,
+				endedAt: new Date(),
+			},
+		});
+
+		return NextResponse.json(
+			{ message: "Sinkronisasi gagal.", error: errorMessage },
+			{ status: 500 }
+		);
 	}
-);
+}

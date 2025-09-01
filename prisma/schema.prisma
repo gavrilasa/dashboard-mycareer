@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  // directUrl = env("DIRECT_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -103,6 +103,16 @@ model Employee {
   jobInterests           JobInterest[]
   questionnaireResponses QuestionnaireResponse[]
   competencyResults      CompetencyResult[]
+}
+
+model SyncProcess {
+  id        String    @id @default(cuid())
+  jobId     String?   @unique
+  status    String
+  payload   Json?
+  startedAt DateTime?
+  endedAt   DateTime?
+  error     String?
 }
 
 model Branch {
@@ -247,6 +257,7 @@ model CareerPath {
   toJobRole   JobRole @relation("ToJobRole", fields: [toJobRoleId], references: [id], onDelete: Cascade)
 
   @@unique([fromJobRoleId, toJobRoleId, period])
+  @@index([fromJobRoleId, toJobRoleId])
   @@map("CareerPaths")
 }
 
