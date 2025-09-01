@@ -73,21 +73,21 @@ function LoginContent() {
 							/>
 						</div>
 						<CardTitle className="text-3xl font-bold text-primary">
-							Welcome to <br /> My Career Journey
+							Selamat Datang di <br /> My Career Journey
 						</CardTitle>
 						<CardDescription>
-							Enter your Employee ID and password to sign in.
+							Masukkan Nomor Induk Karyawan dan Kata Sandi untuk Masuk.
 						</CardDescription>
 					</CardHeader>
 					<form onSubmit={handleSubmit}>
 						<Card className="border-none shadow-none">
 							<CardContent className="grid gap-4 p-0">
 								<div className="grid gap-3">
-									<Label htmlFor="employeeId">Employee ID</Label>
+									<Label htmlFor="employeeId">Nomor Induk Karyawan</Label>
 									<Input
 										id="employeeId"
 										type="text"
-										placeholder="Enter your employee ID"
+										placeholder="NIK"
 										required
 										value={employeeId}
 										onChange={(e) => setEmployeeId(e.target.value)}
@@ -96,11 +96,11 @@ function LoginContent() {
 									/>
 								</div>
 								<div className="grid gap-3">
-									<Label htmlFor="password">Password</Label>
+									<Label htmlFor="password">Kata Sandi</Label>
 									<Input
 										id="password"
 										type="password"
-										placeholder="Enter your password"
+										placeholder="Masukkan Kata Sandi"
 										required
 										value={password}
 										onChange={(e) => setPassword(e.target.value)}
@@ -111,7 +111,7 @@ function LoginContent() {
 								{error && (
 									<Alert variant="destructive">
 										<AlertCircle className="w-4 h-4" />
-										<AlertTitle>Login Failed</AlertTitle>
+										<AlertTitle>Gagal Masuk</AlertTitle>
 										<AlertDescription>{error}</AlertDescription>
 									</Alert>
 								)}
@@ -126,7 +126,7 @@ function LoginContent() {
 									{isLoading && (
 										<Loader2 className="w-4 h-4 mr-2 animate-spin" />
 									)}
-									Log In
+									Masuk
 								</Button>
 							</CardFooter>
 						</Card>
