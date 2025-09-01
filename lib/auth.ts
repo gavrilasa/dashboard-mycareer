@@ -1,3 +1,4 @@
+// /lib/auth.ts
 import {
 	getServerSession,
 	type NextAuthOptions,
@@ -7,11 +8,8 @@ import {
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
-/**
- * Mengambil session saat ini dari server.
- * Ini adalah fungsi utama untuk mendapatkan detail session di seluruh aplikasi.
- * @returns Promise yang resolve ke objek session atau null.
- */
+import { Role } from "@prisma/client";
+
 export const auth = (): Promise<Session | null> => {
 	return getServerSession(authOptions);
 };
@@ -34,6 +32,20 @@ export const authOptions: NextAuthOptions = {
 				});
 
 				if (user && bcrypt.compareSync(credentials.password, user.password)) {
+					if (user.role === Role.EMPLOYEE) {
+						const employee = await prisma.employee.findUnique({
+							where: { employeeId: credentials.employeeId },
+							include: {
+								level: true,
+							},
+						});
+
+						if (employee?.level?.name.toUpperCase() !== "STAFF") {
+							throw new Error(
+								"Akun Anda belum diaktivasi untuk akses sistem. Hubungi Administrator"
+							);
+						}
+					}
 					return {
 						id: user.id,
 						employeeId: user.employeeId,
@@ -77,23 +89,12 @@ export const authOptions: NextAuthOptions = {
 	},
 	secret: process.env.NEXTAUTH_SECRET,
 };
-/**
- * Tipe spesifik untuk user yang digunakan dalam logika otorisasi.
- * Pastikan tipe User di next-auth.d.ts Anda memiliki properti ini.
- */
+
 type UserForAuthorization = User & {
 	role?: string | null;
 	employeeId?: string | null;
 };
 
-/**
- * Memeriksa apakah seorang pengguna memiliki hak akses berdasarkan peran atau kepemilikan.
- * @param user Objek user dari session (session.user).
- * @param options Opsi untuk otorisasi.
- * @param options.allowedRoles Array berisi peran yang diizinkan.
- * @param options.targetEmployeeId ID dari resource karyawan yang sedang diakses.
- * @returns `true` jika diizinkan, sebaliknya `false`.
- */
 export function isAuthorized(
 	user: UserForAuthorization | undefined,
 	options: {
@@ -101,17 +102,14 @@ export function isAuthorized(
 		targetEmployeeId?: string;
 	}
 ): boolean {
-	// Pengguna harus ada untuk bisa memiliki hak akses.
 	if (!user?.role) {
 		return false;
 	}
 
-	// Izinkan akses jika peran pengguna ada di dalam daftar peran yang diizinkan.
 	if (options.allowedRoles && options.allowedRoles.includes(user.role)) {
 		return true;
 	}
 
-	// Izinkan akses jika pengguna mengakses data miliknya sendiri.
 	if (
 		options.targetEmployeeId &&
 		user.employeeId === options.targetEmployeeId
@@ -119,6 +117,5 @@ export function isAuthorized(
 		return true;
 	}
 
-	// Tolak akses secara default.
 	return false;
 }

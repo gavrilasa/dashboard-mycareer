@@ -28,115 +28,90 @@ export async function POST(req: NextRequest) {
 
 		const { responseId } = validation.data;
 
+		// 1. Ambil semua data yang diperlukan dalam satu query
 		const responseData = await prisma.questionnaireResponse.findUnique({
 			where: { id: responseId },
 			include: {
 				employee: {
 					select: {
 						employeeId: true,
-						// [!code focus:start]
-						// FIX: Mengambil jobRoleId melalui relasi Position
-						position: {
-							select: {
-								jobRoleId: true,
-							},
-						},
-						// [!code focus:end]
+						position: { select: { jobRoleId: true } },
 					},
 				},
-				questionnaire: {
-					select: {
-						title: true,
-					},
-				},
+				questionnaire: { select: { title: true } },
 				answers: {
 					include: {
-						question: {
-							select: {
-								competency: true,
-							},
-						},
+						question: { select: { competency: true } },
 					},
 				},
 			},
 		});
 
-		if (
-			!responseData ||
-			!responseData.employee ||
-			!responseData.questionnaire
-		) {
+		if (!responseData?.employee?.position?.jobRoleId) {
 			console.error(
-				`Gagal memproses: QuestionnaireResponse dengan ID ${responseId} tidak ditemukan atau data tidak lengkap.`
-			);
-			return NextResponse.json(
-				{ message: "Data respons tidak ditemukan." },
-				{ status: 404 }
-			);
-		}
-
-		// [!code focus:start]
-		// FIX: Mengambil employeeId dan jobRoleId dari struktur data yang benar
-		const { employeeId } = responseData.employee;
-		const jobRoleId = responseData.employee.position?.jobRoleId;
-
-		if (!employeeId || !jobRoleId) {
-			// [!code focus:end]
-			console.error(
-				`Gagal memproses: employeeId atau jobRoleId tidak ditemukan untuk responseId ${responseId}.`
+				`Gagal memproses: Data karyawan atau job role tidak lengkap untuk responseId ${responseId}.`
 			);
 			return NextResponse.json(
 				{
-					message:
-						"Data karyawan atau peran jabatan pada respons tidak lengkap.",
+					message: "Data respons, karyawan, atau peran jabatan tidak lengkap.",
 				},
 				{ status: 404 }
 			);
 		}
 
+		const { employeeId } = responseData.employee;
+		const jobRoleId = responseData.employee.position.jobRoleId;
 		const { title: questionnaireTitle } = responseData.questionnaire;
 
+		// 2. Agregasi skor dari jawaban di memori
 		const scoresByCompetency = responseData.answers.reduce<
-			Record<string, number[]>
+			Record<string, { total: number; count: number }>
 		>((acc, answer) => {
 			const competency = answer.question.competency;
 			if (!acc[competency]) {
-				acc[competency] = [];
+				acc[competency] = { total: 0, count: 0 };
 			}
-			acc[competency].push(parseInt(answer.value, 10));
+			acc[competency].total += parseInt(answer.value, 10);
+			acc[competency].count++;
 			return acc;
 		}, {});
 
+		const competencies = Object.keys(scoresByCompetency);
+		if (competencies.length === 0) {
+			return NextResponse.json(
+				{ message: "Tidak ada jawaban untuk diproses." },
+				{ status: 200 }
+			);
+		}
+
+		// 3. **OPTIMASI**: Ambil semua standar kompetensi yang relevan dalam satu query
+		const standards = await prisma.competencyStandard.findMany({
+			where: {
+				jobRoleId: jobRoleId,
+				competency: { in: competencies },
+			},
+		});
+
+		// Buat Map untuk lookup standar yang lebih cepat (O(1))
+		const standardsMap = new Map(
+			standards.map((s) => [s.competency, s.standardValue])
+		);
+
+		// 4. Kalkulasi hasil akhir
 		const competencyResults = [];
+		for (const competency of competencies) {
+			const standardScore = standardsMap.get(competency);
 
-		for (const competency in scoresByCompetency) {
-			const scores = scoresByCompetency[competency];
-			const n = scores.length;
-			const totalScore = scores.reduce((sum, score) => sum + score, 0);
-
-			const calculatedScore = totalScore / n;
-			// [!code focus:start]
-			// FIX: Mencari standar kompetensi menggunakan jobRoleId, bukan positionId
-			const standard = await prisma.competencyStandard.findUnique({
-				where: {
-					jobRoleId_competency: {
-						jobRoleId: jobRoleId,
-						competency,
-					},
-				},
-			});
-			// [!code focus:end]
-
-			if (!standard) {
+			if (typeof standardScore !== "number") {
 				console.warn(
 					`Peringatan: Standar untuk kompetensi "${competency}" pada job role ID "${jobRoleId}" tidak ditemukan. Kalkulasi dilewati.`
 				);
 				continue;
 			}
 
-			const standardScore = standard.standardValue;
+			const { total, count } = scoresByCompetency[competency];
+			const calculatedScore = total / count;
 			const gap = calculatedScore - standardScore;
-			const recommendationNeeded = gap < 0;
 
 			competencyResults.push({
 				employeeId,
@@ -145,24 +120,24 @@ export async function POST(req: NextRequest) {
 				calculatedScore,
 				standardScore,
 				gap,
-				recommendationNeeded,
+				recommendationNeeded: gap < 0,
 			});
 		}
 
+		// 5. Simpan hasil ke database dalam satu transaksi
 		if (competencyResults.length > 0) {
-			await prisma.competencyResult.deleteMany({
-				where: {
-					employeeId,
-					questionnaireTitle,
-					competency: {
-						in: Object.keys(scoresByCompetency),
+			await prisma.$transaction([
+				prisma.competencyResult.deleteMany({
+					where: {
+						employeeId,
+						questionnaireTitle,
+						competency: { in: competencies },
 					},
-				},
-			});
-
-			await prisma.competencyResult.createMany({
-				data: competencyResults,
-			});
+				}),
+				prisma.competencyResult.createMany({
+					data: competencyResults,
+				}),
+			]);
 			console.log(
 				`Berhasil menyimpan ${competencyResults.length} hasil kompetensi untuk responseId: ${responseId}`
 			);
