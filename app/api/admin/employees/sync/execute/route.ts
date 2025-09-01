@@ -5,9 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { Role, EducationDegree, Gender } from "@prisma/client";
 import { hash } from "bcryptjs";
 import pLimit from "p-limit";
-import { ValidatedRow } from "../analyze/route"; // Impor tipe dari analyze
+import { ValidatedRow } from "../analyze/route";
 
-// --- Definisi Tipe untuk Payload ---
+// --- Type Definitions ---
+// (Definisi tipe tetap sama)
 interface ChangeDetail {
 	field: string;
 	from: string | null | undefined;
@@ -35,14 +36,9 @@ const formatDateForPassword = (date: Date): string => {
 	return `${d}${m}${y}`;
 };
 
-export async function POST(req: NextRequest) {
-	// 1. Keamanan Endpoint
-	const authHeader = req.headers.get("authorization");
-	if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-		return NextResponse.json({ message: "Akses Ditolak." }, { status: 401 });
-	}
-
-	// 2. Cari satu pekerjaan di SyncProcess yang statusnya PROCESSING
+// --- Logika Inti untuk Eksekusi Sinkronisasi ---
+async function executeSync() {
+	// 1. Cari satu pekerjaan di SyncProcess yang statusnya PROCESSING
 	const job = await prisma.syncProcess.findFirst({
 		where: { status: "PROCESSING" },
 	});
@@ -71,7 +67,6 @@ export async function POST(req: NextRequest) {
 		);
 	}
 
-	// --- PERBAIKAN: Menggunakan cast 'unknown' untuk type safety ---
 	const { toCreate, toUpdate, toDelete, fullData } =
 		job.payload as unknown as SyncAnalysis;
 	const dataMap = new Map(
@@ -79,7 +74,6 @@ export async function POST(req: NextRequest) {
 	);
 
 	try {
-		// 3. Lakukan semua operasi database di dalam satu transaksi
 		await prisma.$transaction(
 			async (tx) => {
 				// Operasi Hapus (Delete)
@@ -189,7 +183,6 @@ export async function POST(req: NextRequest) {
 			}
 		);
 
-		// 4. Perbarui status menjadi SUCCESS
 		await prisma.syncProcess.update({
 			where: { id: job.id },
 			data: {
@@ -208,7 +201,6 @@ export async function POST(req: NextRequest) {
 				: "Terjadi kesalahan yang tidak diketahui.";
 		console.error("Execute Sync Error:", errorMessage);
 
-		// 4. Perbarui status menjadi FAILED
 		await prisma.syncProcess.update({
 			where: { id: job.id },
 			data: {
@@ -223,4 +215,22 @@ export async function POST(req: NextRequest) {
 			{ status: 500 }
 		);
 	}
+}
+
+// Handler untuk POST (digunakan oleh frontend)
+export async function POST(req: NextRequest) {
+	const authHeader = req.headers.get("authorization");
+	if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+		return NextResponse.json({ message: "Akses Ditolak." }, { status: 401 });
+	}
+	return executeSync();
+}
+
+// Handler untuk GET (digunakan oleh Vercel Cron)
+export async function GET(req: NextRequest) {
+	const authHeader = req.headers.get("authorization");
+	if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+		return NextResponse.json({ message: "Akses Ditolak." }, { status: 401 });
+	}
+	return executeSync();
 }
