@@ -137,10 +137,10 @@ export default function QuestionnaireResultsPage() {
 			{
 				accessorKey: "fullName",
 				header: "Nama",
-				size: 15,
+				size: 20,
 				meta: {
-					width: "15%",
-					truncate: false,
+					width: "20%",
+					truncate: true,
 				},
 			},
 			{
@@ -173,9 +173,9 @@ export default function QuestionnaireResultsPage() {
 			{
 				accessorKey: "overallAverageScore",
 				header: "Nilai",
-				size: 15,
+				size: 10,
 				meta: {
-					width: "15%",
+					width: "10%",
 					truncate: false,
 					align: "center",
 				},

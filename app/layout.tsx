@@ -7,8 +7,8 @@ import AuthProvider from "../components/AuthProvider";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-	title: "MyCareer Dashboard",
-	description: "Employee career management",
+	title: "My Career Journey",
+	description: "Employee Career Journey",
 };
 
 export default function RootLayout({
