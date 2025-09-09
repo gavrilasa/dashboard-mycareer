@@ -38,6 +38,7 @@ export const PERMISSIONS: Record<Role, Partial<Record<Resource, Action[]>>> = {
 	HR_BRANCH: {
 		dashboard: ["read"],
 		jobVacant: ["create", "read", "update", "delete", "publish"],
+		careerPath: ["read"],
 		questionnaire: ["read"],
 		form: ["read"],
 		employee: ["create", "read", "update", "delete"],
@@ -47,6 +48,7 @@ export const PERMISSIONS: Record<Role, Partial<Record<Resource, Action[]>>> = {
 	HD: {
 		dashboard: ["read"],
 		jobVacant: ["read"],
+		careerPath: ["read"],
 		questionnaire: ["read"],
 		form: ["read"],
 		employee: ["read"],

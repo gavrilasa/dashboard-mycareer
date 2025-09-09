@@ -3,9 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -103,6 +103,7 @@ model Employee {
   jobInterests           JobInterest[]
   questionnaireResponses QuestionnaireResponse[]
   competencyResults      CompetencyResult[]
+  ActivityLog            ActivityLog[]
 }
 
 model SyncProcess {
@@ -383,4 +384,33 @@ model JobRole {
   fromJobRole CareerPath[] @relation("FromJobRole")
   toJobRole   CareerPath[] @relation("ToJobRole")
   JobVacancy  JobVacancy[]
+}
+
+model DashboardAnalytics {
+  id                  String   @id @default(cuid())
+  date                DateTime @unique @db.Date
+  totalEmployees      Int
+  totalFormsCompleted Int
+  totalQuestionnaires Int
+  totalVacancies      Int
+  createdAt           DateTime @default(now())
+}
+
+// In prisma/schema.prisma
+
+enum ActivityType {
+  NEW_EMPLOYEE
+  FORM_COMPLETED
+  QUESTIONNAIRE_COMPLETED
+}
+
+model ActivityLog {
+  id          String       @id @default(cuid())
+  type        ActivityType
+  timestamp   DateTime     @default(now())
+  description String
+  employeeId  String?
+  employee    Employee?    @relation(fields: [employeeId], references: [employeeId])
+
+  @@index([timestamp])
 }

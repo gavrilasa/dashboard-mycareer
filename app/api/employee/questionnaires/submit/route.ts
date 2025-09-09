@@ -60,6 +60,25 @@ export const POST = withAuthorization(
 					data: answersData,
 				});
 
+				const employee = await tx.employee.findUnique({
+					where: { employeeId },
+					select: { fullName: true },
+				});
+				const questionnaire = await tx.questionnaire.findUnique({
+					where: { id: questionnaireId },
+					select: { title: true },
+				});
+
+				if (employee && questionnaire) {
+					await tx.activityLog.create({
+						data: {
+							type: "QUESTIONNAIRE_COMPLETED",
+							description: `${employee.fullName} telah menyelesaikan kuesioner: "${questionnaire.title}".`,
+							employeeId: employeeId,
+						},
+					});
+				}
+
 				return response;
 			});
 

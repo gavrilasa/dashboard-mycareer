@@ -47,7 +47,7 @@ next-env.d.ts
 /prisma/seed-standards.ts
 /prisma/seed-recommendations.ts
 /prisma/seed-career-paths.ts
-
+/prisma/seed-dashboard.ts
 
 # data
 /data/dataStandards.ts

@@ -126,6 +126,14 @@ export const POST = withAuthorization(
 				},
 			});
 
+			await prisma.activityLog.create({
+				data: {
+					type: "NEW_EMPLOYEE",
+					description: `Karyawan baru "${fullName}" telah ditambahkan.`,
+					employeeId: employeeId,
+				},
+			});
+
 			return NextResponse.json(newUser.employee, { status: 201 });
 		} catch (error) {
 			if (

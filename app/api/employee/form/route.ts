@@ -276,6 +276,21 @@ export const POST = withAuthorization(
 					create: { ...parsedData.careerPreference, employeeId },
 					update: parsedData.careerPreference,
 				});
+
+				const employee = await tx.employee.findUnique({
+					where: { employeeId },
+					select: { fullName: true },
+				});
+
+				if (employee) {
+					await tx.activityLog.create({
+						data: {
+							type: "FORM_COMPLETED",
+							description: `${employee.fullName} telah menyelesaikan Formulir Data Diri.`,
+							employeeId: employeeId,
+						},
+					});
+				}
 			});
 
 			return NextResponse.json(
