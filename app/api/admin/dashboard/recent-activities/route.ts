@@ -9,7 +9,7 @@ export const GET = withAuthorization(
 	async (_req: NextRequest) => {
 		try {
 			const activities = await prisma.activityLog.findMany({
-				take: 8,
+				take: 5,
 				orderBy: {
 					timestamp: "desc",
 				},
