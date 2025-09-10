@@ -120,7 +120,7 @@ export default function DashboardPage() {
 			<div className="container mx-auto py-8 space-y-4">
 				<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 					<div>
-						<h1 className="text-3xl font-bold">Dasbor Admin</h1>
+						<h1 className="text-2xl font-bold">Dashboard Admin</h1>
 						<p className="text-muted-foreground">
 							Ringkasan data dan analitik sistem.
 						</p>

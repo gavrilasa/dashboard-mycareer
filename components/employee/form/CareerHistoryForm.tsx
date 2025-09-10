@@ -259,15 +259,10 @@ export function CareerHistoryForm({
 											<FormControl>
 												<Input
 													type="date"
-													{...field}
-													value={
-														field.value instanceof Date
-															? field.value.toISOString().split("T")[0]
-															: ""
-													}
-													onChange={(e) =>
-														field.onChange(new Date(e.target.value))
-													}
+													// Gunakan field.value secara langsung dan pastikan string kosong jika null/undefined
+													value={field.value ?? ""}
+													// Hanya teruskan nilai string dari event
+													onChange={(e) => field.onChange(e.target.value)}
 												/>
 											</FormControl>
 											<FormMessage />
@@ -279,23 +274,14 @@ export function CareerHistoryForm({
 									name={`careerHistories.${index}.endDate`}
 									render={({ field }) => (
 										<FormItem>
-											<FormLabel>
-												Tanggal Berakhir {!isCurrentPosition && <Asterisk />}
-											</FormLabel>
+											<FormLabel>Tanggal Berakhir {/* ... */}</FormLabel>
 											<FormControl>
 												<Input
 													type="date"
-													{...field}
-													value={
-														field.value instanceof Date
-															? field.value.toISOString().split("T")[0]
-															: ""
-													}
+													value={field.value ?? ""}
 													onChange={(e) =>
-														field.onChange(
-															e.target.value ? new Date(e.target.value) : null
-														)
-													}
+														field.onChange(e.target.value || null)
+													} // Kirim null jika kosong
 												/>
 											</FormControl>
 											<FormMessage />

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import { ColumnDef } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
 
@@ -161,7 +161,11 @@ export default function JobVacancyDetailPage() {
 				accessorKey: "appliedAt",
 				header: "Tanggal Melamar",
 				cell: ({ row }) =>
-					format(new Date(row.original.appliedAt), "dd MMM yyyy"),
+					formatInTimeZone(
+						new Date(row.original.appliedAt),
+						"Asia/Jakarta",
+						"dd MMM yyyy"
+					),
 			},
 			{
 				id: "actions",
@@ -298,7 +302,11 @@ export default function JobVacancyDetailPage() {
 												)}
 											</TableCell>
 											<TableCell>
-												{format(new Date(employee.appliedAt), "dd MMM yyyy")}
+												{formatInTimeZone(
+													new Date(employee.appliedAt),
+													"Asia/Jakarta",
+													"dd MMM yyyy"
+												)}
 											</TableCell>
 											<TableCell>
 												<div className="flex gap-2">

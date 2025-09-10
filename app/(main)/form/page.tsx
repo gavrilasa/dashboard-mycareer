@@ -73,10 +73,8 @@ const formSchema = z.object({
 			branchId: z.string().min(1, { message: "Cabang wajib diisi" }),
 			departmentId: z.string().min(1, { message: "Departemen wajib diisi" }),
 			positionId: z.string().min(1, { message: "Posisi wajib diisi" }),
-			startDate: z.date().refine((d) => !isNaN(d.getTime()), {
-				message: "Tanggal mulai wajib diisi dan valid",
-			}),
-			endDate: z.date().optional().nullable(),
+			startDate: z.string().min(1, { message: "Tanggal mulai wajib diisi" }),
+			endDate: z.string().nullable().optional(),
 		})
 	),
 
@@ -87,10 +85,10 @@ const formSchema = z.object({
 				.string()
 				.min(1, { message: "Nama organisasi wajib diisi" }),
 			role: z.string().min(1, { message: "Peran organisasi wajib diisi" }),
-			startDate: z.date().refine((d) => !isNaN(d.getTime()), {
-				message: "Tanggal mulai organisasi wajib dan valid",
-			}),
-			endDate: z.date().optional().nullable(),
+			startDate: z
+				.string()
+				.min(1, { message: "Tanggal mulai organisasi wajib diisi" }),
+			endDate: z.string().nullable().optional(),
 		})
 	),
 

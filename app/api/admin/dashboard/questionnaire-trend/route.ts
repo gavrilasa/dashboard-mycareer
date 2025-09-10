@@ -6,7 +6,6 @@ import { withAuthorization } from "@/lib/auth-hof";
 import {
 	startOfDay,
 	endOfDay,
-	subDays,
 	parseISO,
 	differenceInDays,
 	eachWeekOfInterval,
@@ -21,16 +20,21 @@ export const GET = withAuthorization(
 		try {
 			const { searchParams } = new URL(req.url);
 
-			// 1. Dapatkan rentang waktu dari query params, atau default 30 hari terakhir
-			const endDateParam = searchParams.get("endDate");
+			// 1. Dapatkan rentang waktu dari query params
 			const startDateParam = searchParams.get("startDate");
+			const endDateParam = searchParams.get("endDate");
 
-			const endDate = endDateParam
-				? endOfDay(parseISO(endDateParam))
-				: endOfDay(new Date());
-			const startDate = startDateParam
-				? startOfDay(parseISO(startDateParam))
-				: startOfDay(subDays(endDate, 29));
+			// 2. Validasi: Pastikan parameter tanggal ada
+			if (!startDateParam || !endDateParam) {
+				return NextResponse.json(
+					{ message: "Parameter startDate dan endDate wajib diisi." },
+					{ status: 400 }
+				);
+			}
+
+			// 3. Gunakan parameter yang sudah divalidasi, tanpa nilai default
+			const endDate = endOfDay(parseISO(endDateParam));
+			const startDate = startOfDay(parseISO(startDateParam));
 
 			// 2. Tentukan granularitas (mingguan atau bulanan)
 			const dateDifference = differenceInDays(endDate, startDate);

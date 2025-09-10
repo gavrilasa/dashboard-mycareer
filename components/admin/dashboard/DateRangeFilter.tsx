@@ -4,9 +4,9 @@
 
 import * as React from "react";
 import { Calendar as CalendarIcon } from "lucide-react";
-import { format, subDays } from "date-fns";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { DateRange } from "react-day-picker";
-
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -32,9 +32,11 @@ export function DateRangeFilter({
 	onDateChange,
 	className,
 }: DateRangeFilterProps) {
-	const [date, setDate] = React.useState<DateRange | undefined>({
-		from: subDays(new Date(), 29),
-		to: new Date(),
+	const [date, setDate] = React.useState<DateRange | undefined>(() => {
+		const nowInAsiaJakarta = toZonedTime(new Date(), "Asia/Jakarta");
+		const to = endOfDay(nowInAsiaJakarta);
+		const from = startOfDay(subDays(to, 29));
+		return { from, to };
 	});
 	const [preset, setPreset] = React.useState<string>("30");
 
@@ -46,20 +48,23 @@ export function DateRangeFilter({
 
 	const handlePresetChange = (value: string) => {
 		setPreset(value);
-		const now = new Date();
+		const nowInAsiaJakarta = toZonedTime(new Date(), "Asia/Jakarta");
+		const to = endOfDay(nowInAsiaJakarta);
+		let from: Date;
+
 		switch (value) {
 			case "7":
-				setDate({ from: subDays(now, 6), to: now });
-				break;
-			case "30":
-				setDate({ from: subDays(now, 29), to: now });
+				from = startOfDay(subDays(nowInAsiaJakarta, 6));
 				break;
 			case "90":
-				setDate({ from: subDays(now, 89), to: now });
+				from = startOfDay(subDays(nowInAsiaJakarta, 89));
 				break;
+			case "30":
 			default:
+				from = startOfDay(subDays(nowInAsiaJakarta, 29));
 				break;
 		}
+		setDate({ from, to });
 	};
 
 	const handleDateSelect = (selectedDate: DateRange | undefined) => {

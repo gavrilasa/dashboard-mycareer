@@ -25,10 +25,8 @@ const formSchema = z.object({
 			branchId: z.string().min(1, { message: "Cabang wajib diisi" }),
 			departmentId: z.string().min(1, { message: "Departemen wajib diisi" }),
 			positionId: z.string().min(1, { message: "Posisi wajib diisi" }),
-			startDate: z.date().refine((d) => !isNaN(d.getTime()), {
-				message: "Tanggal mulai wajib diisi dan valid",
-			}),
-			endDate: z.date().optional().nullable(),
+			startDate: z.string().min(1, { message: "Tanggal mulai wajib diisi" }),
+			endDate: z.string().optional().nullable(),
 		})
 	),
 
@@ -39,10 +37,10 @@ const formSchema = z.object({
 				.string()
 				.min(1, { message: "Nama organisasi wajib diisi" }),
 			role: z.string().min(1, { message: "Peran organisasi wajib diisi" }),
-			startDate: z.date().refine((d) => !isNaN(d.getTime()), {
+			startDate: z.string().min(1, {
 				message: "Tanggal mulai organisasi wajib dan valid",
 			}),
-			endDate: z.date().optional().nullable(),
+			endDate: z.string().optional().nullable(),
 		})
 	),
 
@@ -92,11 +90,6 @@ const formSchema = z.object({
 		preferredTraining: z.string().optional().nullable(),
 	}),
 });
-
-type HistoryItemWithDate = {
-	startDate: string | Date;
-	endDate?: string | Date | null;
-};
 
 export const GET = withAuthorization(
 	{ resource: "form", action: "read" },
@@ -158,19 +151,9 @@ export const POST = withAuthorization(
 
 			const body = await req.json();
 
-			body.careerHistories.forEach((h: HistoryItemWithDate) => {
-				if (h.startDate) h.startDate = new Date(h.startDate);
-				if (h.endDate) h.endDate = new Date(h.endDate);
-			});
-			body.organizationHistories.forEach((h: HistoryItemWithDate) => {
-				if (h.startDate) h.startDate = new Date(h.startDate);
-				if (h.endDate) h.endDate = new Date(h.endDate);
-			});
-
 			const parsedData = formSchema.parse(body);
 
 			await prisma.$transaction(async (tx) => {
-				// Hapus entri yang tidak lagi ada di form
 				await tx.careerHistory.deleteMany({
 					where: {
 						employeeId,
@@ -212,23 +195,38 @@ export const POST = withAuthorization(
 					},
 				});
 
-				// Proses Upsert untuk setiap riwayat dengan benar
 				for (const history of parsedData.careerHistories) {
 					const { id, ...data } = history;
+					const processedData = {
+						...data,
+						startDate: new Date(`${data.startDate}T00:00:00.000Z`),
+						endDate: data.endDate
+							? new Date(`${data.endDate}T00:00:00.000Z`)
+							: null,
+					};
 					await tx.careerHistory.upsert({
 						where: { id: id || "" },
-						create: { ...data, employeeId },
-						update: data,
+						create: { ...processedData, employeeId },
+						update: processedData,
 					});
 				}
+
 				for (const history of parsedData.organizationHistories) {
 					const { id, ...data } = history;
+					const processedData = {
+						...data,
+						startDate: new Date(`${data.startDate}T00:00:00.000Z`),
+						endDate: data.endDate
+							? new Date(`${data.endDate}T00:00:00.000Z`)
+							: null,
+					};
 					await tx.organizationHistory.upsert({
 						where: { id: id || "" },
-						create: { ...data, employeeId },
-						update: data,
+						create: { ...processedData, employeeId },
+						update: processedData,
 					});
 				}
+
 				for (const history of parsedData.committeeHistories) {
 					const { id, ...data } = history;
 					await tx.committeeHistory.upsert({
@@ -244,26 +242,25 @@ export const POST = withAuthorization(
 						create: {
 							...data,
 							employeeId,
-							role: data.role as ProjectRole, // Type assertion
+							role: data.role as ProjectRole,
 						},
 						update: {
 							...data,
-							role: data.role as ProjectRole, // Type assertion
+							role: data.role as ProjectRole,
 						},
 					});
 				}
 
-				// Upsert data tunggal (one-to-one)
 				await tx.gkmHistory.upsert({
 					where: { employeeId },
 					create: {
 						...parsedData.gkmHistory,
 						employeeId,
-						highestRole: parsedData.gkmHistory.highestRole as GkmRole, // Type assertion
+						highestRole: parsedData.gkmHistory.highestRole as GkmRole,
 					},
 					update: {
 						...parsedData.gkmHistory,
-						highestRole: parsedData.gkmHistory.highestRole as GkmRole, // Type assertion
+						highestRole: parsedData.gkmHistory.highestRole as GkmRole,
 					},
 				});
 				await tx.bestEmployeeScore.upsert({

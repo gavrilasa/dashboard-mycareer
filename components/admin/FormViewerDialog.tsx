@@ -10,7 +10,7 @@ import {
 	DialogDescription,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from "date-fns";
+import { formatInTimeZone } from "date-fns-tz";
 import {
 	GkmRole,
 	CareerHistory,
@@ -90,13 +90,21 @@ export function FormViewerDialog({
 								<InfoRow label="ID Posisi" value={item.positionId} />
 								<InfoRow
 									label="Tanggal Mulai"
-									value={format(new Date(item.startDate), "dd MMMM yyyy")}
+									value={formatInTimeZone(
+										new Date(item.startDate),
+										"Asia/Jakarta",
+										"dd MMMM yyyy"
+									)}
 								/>
 								<InfoRow
 									label="Tanggal Selesai"
 									value={
 										item.endDate
-											? format(new Date(item.endDate), "dd MMMM yyyy")
+											? formatInTimeZone(
+													new Date(item.endDate),
+													"Asia/Jakarta",
+													"dd MMMM yyyy"
+											  )
 											: "Sekarang"
 									}
 								/>
@@ -117,13 +125,21 @@ export function FormViewerDialog({
 								<InfoRow label="Peran" value={item.role} />
 								<InfoRow
 									label="Tanggal Mulai"
-									value={format(new Date(item.startDate), "dd MMMM yyyy")}
+									value={formatInTimeZone(
+										new Date(item.startDate),
+										"Asia/Jakarta",
+										"dd MMMM yyyy"
+									)}
 								/>
 								<InfoRow
 									label="Tanggal Selesai"
 									value={
 										item.endDate
-											? format(new Date(item.endDate), "dd MMMM yyyy")
+											? formatInTimeZone(
+													new Date(item.endDate),
+													"Asia/Jakarta",
+													"dd MMMM yyyy"
+											  )
 											: "Sekarang"
 									}
 								/>

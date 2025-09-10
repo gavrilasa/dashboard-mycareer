@@ -172,7 +172,7 @@ export function OrganizationHistoryForm({
 										/>
 										<FormField
 											control={control}
-											name={`organizationHistories.${index}.startDate`}
+											name={`careerHistories.${index}.startDate`}
 											render={({ field }) => (
 												<FormItem>
 													<FormLabel>
@@ -181,15 +181,8 @@ export function OrganizationHistoryForm({
 													<FormControl>
 														<Input
 															type="date"
-															{...field}
-															value={
-																field.value instanceof Date
-																	? field.value.toISOString().split("T")[0]
-																	: ""
-															}
-															onChange={(e) =>
-																field.onChange(new Date(e.target.value))
-															}
+															value={field.value ?? ""}
+															onChange={(e) => field.onChange(e.target.value)}
 														/>
 													</FormControl>
 													<FormMessage />
@@ -198,25 +191,16 @@ export function OrganizationHistoryForm({
 										/>
 										<FormField
 											control={control}
-											name={`organizationHistories.${index}.endDate`}
+											name={`careerHistories.${index}.endDate`}
 											render={({ field }) => (
 												<FormItem>
-													<FormLabel>Tanggal Berakhir</FormLabel>
+													<FormLabel>Tanggal Berakhir {/* ... */}</FormLabel>
 													<FormControl>
 														<Input
 															type="date"
-															{...field}
-															value={
-																field.value instanceof Date
-																	? field.value.toISOString().split("T")[0]
-																	: ""
-															}
+															value={field.value ?? ""}
 															onChange={(e) =>
-																field.onChange(
-																	e.target.value
-																		? new Date(e.target.value)
-																		: null
-																)
+																field.onChange(e.target.value || null)
 															}
 														/>
 													</FormControl>
