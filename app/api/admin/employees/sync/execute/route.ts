@@ -80,12 +80,59 @@ async function executeSync() {
 				if (toDelete.length > 0) {
 					const idsToDelete = toDelete.map((e) => e.employeeId);
 
-					// Hapus employee terlebih dahulu karena mereka memiliki foreign key ke user
+					// 1. Hapus semua data yang bergantung pada Employee
+					await tx.activityLog.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+					await tx.careerHistory.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+					await tx.careerPreference.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+					await tx.committeeHistory.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+					await tx.competencyResult.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+					await tx.gkmHistory.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+					await tx.jobInterest.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+					await tx.organizationHistory.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+					await tx.projectHistory.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+					await tx.bestEmployeeScore.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+
+					// Hapus Answer terlebih dahulu, baru QuestionnaireResponse
+					const responsesToDelete = await tx.questionnaireResponse.findMany({
+						where: { employeeId: { in: idsToDelete } },
+						select: { id: true },
+					});
+					const responseIds = responsesToDelete.map((r) => r.id);
+					if (responseIds.length > 0) {
+						await tx.answer.deleteMany({
+							where: { responseId: { in: responseIds } },
+						});
+					}
+					await tx.questionnaireResponse.deleteMany({
+						where: { employeeId: { in: idsToDelete } },
+					});
+
+					// 2. Setelah semua data dependen dihapus, baru hapus Employee
 					await tx.employee.deleteMany({
 						where: { employeeId: { in: idsToDelete } },
 					});
 
-					// Kemudian hapus user
+					// 3. Terakhir, hapus User
 					await tx.user.deleteMany({
 						where: { employeeId: { in: idsToDelete } },
 					});

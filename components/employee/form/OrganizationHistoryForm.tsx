@@ -106,7 +106,7 @@ export function OrganizationHistoryForm({
 									append({
 										organization: "",
 										role: "",
-										startDate: undefined,
+										startDate: "",
 										endDate: null,
 									})
 								}
@@ -172,7 +172,7 @@ export function OrganizationHistoryForm({
 										/>
 										<FormField
 											control={control}
-											name={`careerHistories.${index}.startDate`}
+											name={`organizationHistories.${index}.startDate`} // <-- Diperbaiki
 											render={({ field }) => (
 												<FormItem>
 													<FormLabel>
@@ -191,10 +191,10 @@ export function OrganizationHistoryForm({
 										/>
 										<FormField
 											control={control}
-											name={`careerHistories.${index}.endDate`}
+											name={`organizationHistories.${index}.endDate`} // <-- Diperbaiki
 											render={({ field }) => (
 												<FormItem>
-													<FormLabel>Tanggal Berakhir {/* ... */}</FormLabel>
+													<FormLabel>Tanggal Berakhir</FormLabel>
 													<FormControl>
 														<Input
 															type="date"
