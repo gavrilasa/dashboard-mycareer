@@ -21,11 +21,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { NameValueData } from "@/types/dashboard"; // Impor tipe baru
+import { NameValueData } from "@/types/dashboard";
+import { cn } from "@/lib/utils";
 
 interface RelocationPieChartProps {
-	data: NameValueData[]; // Gunakan tipe baru
+	data: NameValueData[];
 	isLoading: boolean;
+	className?: string;
 }
 
 const COLORS: { [key: string]: string } = {
@@ -37,6 +39,7 @@ const COLORS: { [key: string]: string } = {
 export function RelocationPieChart({
 	data,
 	isLoading,
+	className,
 }: RelocationPieChartProps) {
 	const [includeNotFilled, setIncludeNotFilled] = useState(false);
 
@@ -49,7 +52,7 @@ export function RelocationPieChart({
 
 	if (isLoading) {
 		return (
-			<Card>
+			<Card className={cn("h-full", className)}>
 				<CardHeader>
 					<Skeleton className="h-6 w-3/5" />
 					<Skeleton className="h-4 w-4/5" />
@@ -62,7 +65,7 @@ export function RelocationPieChart({
 	}
 
 	return (
-		<Card>
+		<Card className={cn("h-full flex flex-col", className)}>
 			<CardHeader>
 				<CardTitle>Kesediaan Pindah Lokasi</CardTitle>
 				<CardDescription>

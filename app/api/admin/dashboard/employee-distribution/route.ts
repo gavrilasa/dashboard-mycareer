@@ -36,9 +36,7 @@ export const GET = withAuthorization(
 						employeeId: true,
 					},
 					orderBy: {
-						_count: {
-							employeeId: "desc",
-						},
+						branchId: "asc",
 					},
 				});
 
@@ -47,6 +45,7 @@ export const GET = withAuthorization(
 						id: { in: data.map((d) => d.branchId) },
 					},
 					select: { id: true, name: true },
+					orderBy: { id: "asc" },
 				});
 				const branchMap = new Map(branches.map((b) => [b.id, b.name]));
 
@@ -65,9 +64,7 @@ export const GET = withAuthorization(
 						employeeId: true,
 					},
 					orderBy: {
-						_count: {
-							employeeId: "desc",
-						},
+						departmentId: "asc",
 					},
 				});
 
@@ -76,6 +73,7 @@ export const GET = withAuthorization(
 						id: { in: data.map((d) => d.departmentId) },
 					},
 					select: { id: true, name: true },
+					orderBy: { id: "asc" },
 				});
 				const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 

@@ -21,19 +21,22 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateCountData } from "@/types/dashboard";
+import { cn } from "@/lib/utils";
 
 interface QuestionnaireTrendChartProps {
 	data: DateCountData[];
 	isLoading: boolean;
+	className?: string;
 }
 
 export function QuestionnaireTrendChart({
 	data,
 	isLoading,
+	className,
 }: QuestionnaireTrendChartProps) {
 	if (isLoading) {
 		return (
-			<Card>
+			<Card className={cn("h-full", className)}>
 				<CardHeader>
 					<Skeleton className="h-6 w-3/5" />
 					<Skeleton className="h-4 w-4/5" />
@@ -46,7 +49,7 @@ export function QuestionnaireTrendChart({
 	}
 
 	return (
-		<Card>
+		<Card className={cn("h-full flex flex-col", className)}>
 			<CardHeader>
 				<CardTitle>Tren Pengisian Kuesioner</CardTitle>
 				<CardDescription>

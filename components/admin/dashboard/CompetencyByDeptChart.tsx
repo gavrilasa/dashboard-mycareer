@@ -1,4 +1,4 @@
-// components/admin/dashboard/EmployeeDistributionChart.tsx
+// components/admin/dashboard/CompetencyByDeptChart.tsx
 
 "use client";
 
@@ -23,21 +23,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NameValueData } from "@/types/dashboard";
 import { cn } from "@/lib/utils";
 
-interface EmployeeDistributionChartProps {
+interface CompetencyByDeptChartProps {
 	data: NameValueData[];
 	isLoading: boolean;
-	title: string;
-	description: string;
-	className?: string; // Tambahkan prop className di sini
+	className?: string;
 }
 
-export function EmployeeDistributionChart({
+export function CompetencyByDeptChart({
 	data,
 	isLoading,
-	title,
-	description,
 	className,
-}: EmployeeDistributionChartProps) {
+}: CompetencyByDeptChartProps) {
 	if (isLoading) {
 		return (
 			<Card className={cn("h-full", className)}>
@@ -52,46 +48,36 @@ export function EmployeeDistributionChart({
 		);
 	}
 
-	const formatYAxisLabel = (name: string) => {
-		const prefix = "ICBP-Noodle ";
-		if (name.startsWith(prefix)) {
-			return name.substring(prefix.length);
-		}
-		return name;
-	};
+	const formatXAxisTick = (value: number) => value.toFixed(2);
 
 	return (
-		<Card className={cn("h-full flex flex-col", className)}>
+		<Card className={cn("flex flex-col", className)}>
 			<CardHeader>
-				<CardTitle>{title}</CardTitle>
-				<CardDescription>{description}</CardDescription>
+				<CardTitle>Rata-rata Skor Kompetensi per Departemen</CardTitle>
+				<CardDescription>
+					Perbandingan skor rata-rata kompetensi di setiap departemen.
+				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<div style={{ width: "100%", height: 350 }}>
+				<div style={{ width: "100%", height: 500 }}>
 					<ResponsiveContainer>
 						{data && data.length > 0 ? (
-							<BarChart
-								data={data}
-								margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-							>
-								{" "}
-								<CartesianGrid strokeDasharray="3 3" />
+							<BarChart data={data} layout="vertical" margin={{ left: 20 }}>
+								<CartesianGrid strokeDasharray="3 3" horizontal={false} />
 								<XAxis
-									dataKey="name"
-									type="category"
-									angle={-30}
-									textAnchor="end"
-									height={60}
-									tickFormatter={formatYAxisLabel}
-									fontSize={12}
-									tickLine={false}
-									axisLine={false}
+									type="number"
+									domain={[0, 5]}
+									allowDecimals={false}
+									tickFormatter={formatXAxisTick}
+									tick={{ fontSize: 12 }}
 								/>
 								<YAxis
-									type="number"
-									allowDecimals={false}
-									width={30}
-									tick={{ fontSize: 14 }}
+									type="category"
+									dataKey="name"
+									width={80}
+									tickLine={false}
+									axisLine={false}
+									fontSize={12}
 								/>
 								<Tooltip
 									cursor={{ fill: "#f3f4f6" }}
@@ -99,9 +85,17 @@ export function EmployeeDistributionChart({
 										borderRadius: "0.5rem",
 										borderColor: "#e5e7eb",
 									}}
-									formatter={(value: number) => [value, "Jumlah"]}
+									formatter={(value: number) => [
+										value.toFixed(2),
+										"Rata-rata Skor",
+									]}
 								/>
-								<Bar dataKey="value" fill="#3b82f6" barSize={30} />
+								<Bar
+									dataKey="value"
+									fill="#3b82f6"
+									barSize={30}
+									radius={[0, 4, 4, 0]}
+								/>
 							</BarChart>
 						) : (
 							<div className="flex items-center justify-center h-full text-sm text-muted-foreground">

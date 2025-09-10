@@ -8,13 +8,11 @@ export const GET = withAuthorization(
 	{ resource: "dashboard", action: "read" },
 	async (_req: NextRequest) => {
 		try {
-			// 1. Ambil 5 entri terbaru dari tabel ActivityLog
 			const activities = await prisma.activityLog.findMany({
-				take: 5,
+				take: 8,
 				orderBy: {
 					timestamp: "desc",
 				},
-				// Sertakan nama lengkap karyawan untuk ditampilkan di feed
 				include: {
 					employee: {
 						select: {

@@ -8,7 +8,6 @@ import { Toaster, toast } from "sonner";
 import { Users, FileText, ClipboardCheck, Briefcase } from "lucide-react";
 import { Role } from "@prisma/client";
 
-// Impor tipe terpusat
 import {
 	KpiData,
 	NameValueData,
@@ -22,21 +21,23 @@ import { EmployeeDistributionChart } from "@/components/admin/dashboard/Employee
 import { QuestionnaireTrendChart } from "@/components/admin/dashboard/QuestionnaireTrendChart";
 import { RelocationPieChart } from "@/components/admin/dashboard/RelocationPieChart";
 import { RecentActivityFeed } from "@/components/admin/dashboard/RecentActivityFeed";
+import { CompetencyByDeptChart } from "@/components/admin/dashboard/CompetencyByDeptChart";
 
 export default function DashboardPage() {
 	const { data: session } = useSession();
 	const [kpis, setKpis] = useState<KpiData | null>(null);
-	// Gunakan tipe yang spesifik untuk setiap state
 	const [distributionData, setDistributionData] = useState<NameValueData[]>([]);
 	const [trendData, setTrendData] = useState<DateCountData[]>([]);
 	const [relocationData, setRelocationData] = useState<NameValueData[]>([]);
 	const [activities, setActivities] = useState<Activity[]>([]);
+	const [competencyData, setCompetencyData] = useState<NameValueData[]>([]);
 
 	const [loadingKpis, setLoadingKpis] = useState(true);
 	const [loadingDistribution, setLoadingDistribution] = useState(true);
 	const [loadingTrend, setLoadingTrend] = useState(true);
 	const [loadingRelocation, setLoadingRelocation] = useState(true);
 	const [loadingActivities, setLoadingActivities] = useState(true);
+	const [loadingCompetency, setLoadingCompetency] = useState(true);
 
 	const [dateRange, setDateRange] = useState<{ from: Date; to: Date }>({
 		from: new Date(new Date().setDate(new Date().getDate() - 29)),
@@ -44,26 +45,35 @@ export default function DashboardPage() {
 	});
 
 	const fetchData = useCallback(async () => {
+		// ... (Fungsi fetchData tetap sama, tidak perlu diubah)
 		setLoadingKpis(true);
 		setLoadingDistribution(true);
 		setLoadingTrend(true);
 		setLoadingRelocation(true);
 		setLoadingActivities(true);
+		setLoadingCompetency(true);
 
 		try {
 			const startDate = dateRange.from.toISOString();
 			const endDate = dateRange.to.toISOString();
 
-			const [kpisRes, distributionRes, trendRes, relocationRes, activitiesRes] =
-				await Promise.all([
-					fetch("/api/admin/dashboard/kpis"),
-					fetch("/api/admin/dashboard/employee-distribution"),
-					fetch(
-						`/api/admin/dashboard/questionnaire-trend?startDate=${startDate}&endDate=${endDate}`
-					),
-					fetch("/api/admin/dashboard/relocation-summary"),
-					fetch("/api/admin/dashboard/recent-activities"),
-				]);
+			const [
+				kpisRes,
+				distributionRes,
+				trendRes,
+				relocationRes,
+				activitiesRes,
+				competencyRes,
+			] = await Promise.all([
+				fetch("/api/admin/dashboard/kpis"),
+				fetch("/api/admin/dashboard/employee-distribution"),
+				fetch(
+					`/api/admin/dashboard/questionnaire-trend?startDate=${startDate}&endDate=${endDate}`
+				),
+				fetch("/api/admin/dashboard/relocation-summary"),
+				fetch("/api/admin/dashboard/recent-activities"),
+				fetch("/api/admin/dashboard/competency-by-department"),
+			]);
 
 			if (!kpisRes.ok) throw new Error("Gagal memuat KPI.");
 			if (!distributionRes.ok)
@@ -71,12 +81,15 @@ export default function DashboardPage() {
 			if (!trendRes.ok) throw new Error("Gagal memuat tren kuesioner.");
 			if (!relocationRes.ok) throw new Error("Gagal memuat data relokasi.");
 			if (!activitiesRes.ok) throw new Error("Gagal memuat aktivitas terbaru.");
+			if (!competencyRes.ok)
+				throw new Error("Gagal memuat data kompetensi departemen.");
 
 			setKpis(await kpisRes.json());
 			setDistributionData(await distributionRes.json());
 			setTrendData(await trendRes.json());
 			setRelocationData(await relocationRes.json());
 			setActivities(await activitiesRes.json());
+			setCompetencyData(await competencyRes.json());
 		} catch (error) {
 			toast.error("Gagal Memuat Data Dasbor", {
 				description:
@@ -88,6 +101,7 @@ export default function DashboardPage() {
 			setLoadingTrend(false);
 			setLoadingRelocation(false);
 			setLoadingActivities(false);
+			setLoadingCompetency(false);
 		}
 	}, [dateRange]);
 
@@ -96,13 +110,14 @@ export default function DashboardPage() {
 	}, [fetchData]);
 
 	const userRole = session?.user?.role;
-	const showDistributionChart =
+	const showAggregateCharts =
 		userRole === Role.ADMIN || userRole === Role.HR_BRANCH;
 
 	return (
 		<>
 			<Toaster position="top-center" richColors />
-			<div className="container mx-auto py-8 space-y-6">
+			{/* Ubah space-y-6 menjadi space-y-4 */}
+			<div className="container mx-auto py-8 space-y-4">
 				<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 					<div>
 						<h1 className="text-3xl font-bold">Dasbor Admin</h1>
@@ -114,7 +129,8 @@ export default function DashboardPage() {
 				</div>
 
 				{/* KPI Cards */}
-				<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+				{/* Ubah gap-6 menjadi gap-4 */}
+				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 					<KpiCard
 						title="Total Karyawan Aktif"
 						value={kpis?.totalEmployees ?? 0}
@@ -141,11 +157,11 @@ export default function DashboardPage() {
 					/>
 				</div>
 
-				{/* Charts & Activities Grid */}
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-					{/* Main Charts Section */}
-					<div className="lg:col-span-2 space-y-6">
-						{showDistributionChart && (
+				{/* Bagian Grid Utama untuk Chart dan Aktivitas */}
+				<div className="space-y-4">
+					{/* Baris 1: Distribusi & Relokasi */}
+					<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+						{showAggregateCharts && (
 							<EmployeeDistributionChart
 								data={distributionData}
 								isLoading={loadingDistribution}
@@ -159,25 +175,38 @@ export default function DashboardPage() {
 										? "Jumlah absolut karyawan di setiap cabang."
 										: "Jumlah absolut karyawan di setiap departemen pada cabang Anda."
 								}
+								className="lg:col-span-2"
 							/>
 						)}
-						<QuestionnaireTrendChart
-							data={trendData}
-							isLoading={loadingTrend}
-						/>
-					</div>
-
-					{/* Side Section */}
-					<div className="space-y-6">
 						<RelocationPieChart
 							data={relocationData}
 							isLoading={loadingRelocation}
+							className={!showAggregateCharts ? "lg:col-span-3" : ""}
+						/>
+					</div>
+
+					{/* Baris 2: Tren & Aktivitas */}
+					<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+						<QuestionnaireTrendChart
+							data={trendData}
+							isLoading={loadingTrend}
+							className="lg:col-span-2"
 						/>
 						<RecentActivityFeed
 							activities={activities}
 							isLoading={loadingActivities}
 						/>
 					</div>
+
+					{/* Baris 3: Kompetensi per Departemen */}
+					{showAggregateCharts && (
+						<div className="grid grid-cols-1">
+							<CompetencyByDeptChart
+								data={competencyData}
+								isLoading={loadingCompetency}
+							/>
+						</div>
+					)}
 				</div>
 			</div>
 		</>
