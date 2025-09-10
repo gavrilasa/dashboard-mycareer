@@ -1,3 +1,5 @@
+// app/(main)/admin/positions/page.tsx
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -9,8 +11,13 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { CrudTable } from "@/components/common/CrudTable";
 import { Button } from "@/components/ui/button";
 import { Edit, Plus, Trash2 } from "lucide-react";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, SortingState } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
+import {
+	FilterPopover,
+	ActiveFilters,
+	FilterConfigItem,
+} from "@/components/common/FilterPopover";
 
 import {
 	Dialog,
@@ -104,6 +111,13 @@ export default function PositionsPage() {
 	const [page, setPage] = useState(1);
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
+	const [sorting, setSorting] = useState<SortingState>([
+		{ id: "name", desc: false },
+	]);
+	const [filters, setFilters] = useState<ActiveFilters>({
+		branchId: "",
+		departmentId: "",
+	});
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [editingPosition, setEditingPosition] = useState<Position | null>(null);
@@ -134,7 +148,14 @@ export default function PositionsPage() {
 				page: page.toString(),
 				limit: limit.toString(),
 				search: debouncedSearchTerm,
+				branchId: filters.branchId || "",
+				departmentId: filters.departmentId || "",
 			});
+			if (sorting.length > 0) {
+				params.append("sortBy", sorting[0].id);
+				params.append("sortOrder", sorting[0].desc ? "desc" : "asc");
+			}
+
 			const response = await fetch(`/api/admin/positions?${params.toString()}`);
 			if (!response.ok) {
 				const errorData = await response.json();
@@ -155,7 +176,7 @@ export default function PositionsPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [page, limit, debouncedSearchTerm]);
+	}, [page, limit, debouncedSearchTerm, filters, sorting]);
 
 	const fetchMasterData = useCallback(async () => {
 		try {
@@ -186,7 +207,7 @@ export default function PositionsPage() {
 
 	useEffect(() => {
 		setPage(1);
-	}, [limit, debouncedSearchTerm]);
+	}, [limit, debouncedSearchTerm, filters, sorting]);
 
 	const handleOpenModal = useCallback(
 		(position: Position | null = null) => {
@@ -270,7 +291,7 @@ export default function PositionsPage() {
 				accessorKey: "name",
 				header: "Nama Posisi",
 				size: 35,
-				meta: { width: "35%", truncate: true },
+				meta: { width: "35%", truncate: true, sortable: true },
 			},
 			{
 				accessorKey: "level.name",
@@ -339,6 +360,23 @@ export default function PositionsPage() {
 		[selectedBranchId, masterData.departments]
 	);
 
+	const filterConfig: FilterConfigItem[] = [
+		{
+			key: "branchId",
+			label: "Cabang",
+			placeholder: "Pilih Cabang",
+			options: masterData.branches,
+		},
+		{
+			key: "departmentId",
+			label: "Departemen",
+			placeholder: "Pilih Departemen",
+			options: masterData.departments,
+			dependsOn: "branchId",
+			dependencyMapKey: "branchId",
+		},
+	];
+
 	return (
 		<>
 			<Toaster position="top-center" richColors />
@@ -360,7 +398,16 @@ export default function PositionsPage() {
 					}}
 					limit={limit}
 					onLimitChange={setLimit}
-					// FIX: Use a ternary operator to pass null instead of false
+					sorting={sorting}
+					setSorting={setSorting}
+					filterContent={
+						<FilterPopover
+							masterData={masterData}
+							activeFilters={filters}
+							onApplyFilters={setFilters}
+							filterConfig={filterConfig}
+						/>
+					}
 					createButton={
 						canCreate ? (
 							<Button onClick={() => handleOpenModal()}>

@@ -1,4 +1,4 @@
-// gavrilasa/dashboard-mycareer/dashboard-mycareer-d0fc9fe783109164caa8848ee01e37e14fba4761/app/(main)/admin/forms/page.tsx
+// app/(main)/admin/forms/page.tsx
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -7,11 +7,16 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { CrudTable } from "@/components/common/CrudTable";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, SortingState } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
 import { PERMISSIONS } from "@/lib/permissions";
 import { Badge } from "@/components/ui/badge";
 import { FormViewerDialog } from "@/components/admin/FormViewerDialog";
+import {
+	FilterPopover,
+	ActiveFilters,
+	FilterConfigItem,
+} from "@/components/common/FilterPopover";
 import {
 	GkmRole,
 	CareerHistory,
@@ -50,6 +55,17 @@ interface FullFormData {
 	} | null;
 }
 
+interface MasterDataItem {
+	id: string;
+	name: string;
+	branchId?: string;
+}
+
+interface MasterData {
+	branches: MasterDataItem[];
+	departments: MasterDataItem[];
+}
+
 export default function AdminFormsPage() {
 	const { data: session } = useSession();
 	const [data, setData] = useState<FormSubmission[]>([]);
@@ -58,11 +74,20 @@ export default function AdminFormsPage() {
 		totalPages: 0,
 		currentPage: 1,
 	});
+	const [masterData, setMasterData] = useState<MasterData>({
+		branches: [],
+		departments: [],
+	});
 	const [loading, setLoading] = useState(true);
 	const [limit, setLimit] = useState(10);
 	const [page, setPage] = useState(1);
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
+	const [sorting, setSorting] = useState<SortingState>([]);
+	const [filters, setFilters] = useState<ActiveFilters>({
+		branchId: "",
+		departmentId: "",
+	});
 
 	const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 	const [selectedEmployee, setSelectedEmployee] = useState<{
@@ -82,6 +107,22 @@ export default function AdminFormsPage() {
 		};
 	}, [session]);
 
+	const fetchMasterData = useCallback(async () => {
+		try {
+			const res = await fetch("/api/admin/master-data");
+			if (!res.ok) throw new Error("Gagal memuat data master untuk filter.");
+			const data = await res.json();
+			setMasterData({
+				branches: data.branches,
+				departments: data.departments,
+			});
+		} catch (error) {
+			if (error instanceof Error) {
+				toast.error("Gagal Memuat Filter", { description: error.message });
+			}
+		}
+	}, []);
+
 	const fetchForms = useCallback(async () => {
 		if (!canRead) {
 			setLoading(false);
@@ -93,7 +134,15 @@ export default function AdminFormsPage() {
 				page: page.toString(),
 				limit: limit.toString(),
 				search: debouncedSearchTerm,
+				branchId: filters.branchId || "",
+				departmentId: filters.departmentId || "",
 			});
+
+			if (sorting.length > 0) {
+				params.append("sortBy", sorting[0].id);
+				params.append("sortOrder", sorting[0].desc ? "desc" : "asc");
+			}
+
 			const response = await fetch(`/api/admin/forms?${params.toString()}`);
 			if (!response.ok)
 				throw new Error(
@@ -117,14 +166,19 @@ export default function AdminFormsPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [page, limit, debouncedSearchTerm, canRead]);
+	}, [page, limit, debouncedSearchTerm, canRead, filters, sorting]);
+
+	useEffect(() => {
+		fetchMasterData();
+	}, [fetchMasterData]);
 
 	useEffect(() => {
 		fetchForms();
 	}, [fetchForms]);
+
 	useEffect(() => {
 		setPage(1);
-	}, [limit, debouncedSearchTerm]);
+	}, [limit, debouncedSearchTerm, filters, sorting]);
 
 	const handleOpenViewModal = async (employee: FormSubmission) => {
 		setSelectedEmployee({ id: employee.employeeId, name: employee.fullName });
@@ -157,13 +211,13 @@ export default function AdminFormsPage() {
 				accessorKey: "employeeId",
 				header: "ID Karyawan",
 				size: 15,
-				meta: { width: "15%", truncate: false },
+				meta: { width: "15%", truncate: false, sortable: true },
 			},
 			{
 				accessorKey: "fullName",
 				header: "Nama Lengkap",
 				size: 25,
-				meta: { width: "25%", truncate: true },
+				meta: { width: "25%", truncate: true, sortable: true },
 			},
 			{
 				accessorKey: "department.name",
@@ -217,6 +271,23 @@ export default function AdminFormsPage() {
 		];
 	}, []);
 
+	const filterConfig: FilterConfigItem[] = [
+		{
+			key: "branchId",
+			label: "Cabang",
+			placeholder: "Pilih Cabang",
+			options: masterData.branches,
+		},
+		{
+			key: "departmentId",
+			label: "Departemen",
+			placeholder: "Pilih Departemen",
+			options: masterData.departments,
+			dependsOn: "branchId",
+			dependencyMapKey: "branchId",
+		},
+	];
+
 	if (!canRead)
 		return (
 			<div className="container mx-auto py-10">
@@ -242,6 +313,16 @@ export default function AdminFormsPage() {
 					pagination={{ ...pagination, onPageChange: setPage }}
 					limit={limit}
 					onLimitChange={setLimit}
+					sorting={sorting}
+					setSorting={setSorting}
+					filterContent={
+						<FilterPopover
+							masterData={masterData}
+							activeFilters={filters}
+							onApplyFilters={setFilters}
+							filterConfig={filterConfig}
+						/>
+					}
 					createButton={null}
 				/>
 			</div>

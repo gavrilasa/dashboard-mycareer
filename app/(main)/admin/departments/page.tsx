@@ -1,12 +1,19 @@
+// app/(main)/admin/departments/page.tsx
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { CrudTable } from "@/components/common/CrudTable";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, SortingState } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
 import { PERMISSIONS } from "@/lib/permissions";
+import {
+	FilterPopover,
+	ActiveFilters,
+	FilterConfigItem,
+} from "@/components/common/FilterPopover";
 
 // --- Type Definitions ---
 interface Department {
@@ -15,11 +22,18 @@ interface Department {
 	branch: { name: string } | null;
 }
 
-// FIX: This interface is simplified as the full object is constructed directly in the component
 interface PaginationState {
 	totalRecords: number;
 	totalPages: number;
 	currentPage: number;
+}
+
+interface MasterDataItem {
+	id: string;
+	name: string;
+}
+interface MasterData {
+	branches: MasterDataItem[];
 }
 
 export default function DepartmentsPage() {
@@ -30,13 +44,19 @@ export default function DepartmentsPage() {
 		totalPages: 0,
 		currentPage: 1,
 	});
+	const [masterData, setMasterData] = useState<MasterData>({
+		branches: [],
+	});
 	const [loading, setLoading] = useState(true);
 	const [limit, setLimit] = useState(10);
 	const [page, setPage] = useState(1);
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
+	const [filters, setFilters] = useState<ActiveFilters>({ branchId: "" });
+	const [sorting, setSorting] = useState<SortingState>([
+		{ id: "name", desc: false },
+	]);
 
-	// --- RBAC Permissions Check ---
 	const canReadDepartments = useMemo(() => {
 		if (!session?.user?.role) return false;
 		return (
@@ -56,7 +76,14 @@ export default function DepartmentsPage() {
 				page: page.toString(),
 				limit: limit.toString(),
 				search: debouncedSearchTerm,
+				branchId: filters.branchId || "",
 			});
+
+			if (sorting.length > 0) {
+				params.append("sortBy", sorting[0].id);
+				params.append("sortOrder", sorting[0].desc ? "desc" : "asc");
+			}
+
 			const response = await fetch(
 				`/api/admin/departments?${params.toString()}`
 			);
@@ -79,7 +106,26 @@ export default function DepartmentsPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [page, limit, debouncedSearchTerm, canReadDepartments]);
+	}, [page, limit, debouncedSearchTerm, canReadDepartments, filters, sorting]);
+
+	const fetchMasterData = useCallback(async () => {
+		try {
+			const res = await fetch("/api/admin/master-data");
+			if (!res.ok) throw new Error("Gagal memuat data master untuk filter.");
+			const data = await res.json();
+			setMasterData({
+				branches: data.branches,
+			});
+		} catch (error) {
+			if (error instanceof Error) {
+				toast.error("Gagal Memuat Filter", { description: error.message });
+			}
+		}
+	}, []);
+
+	useEffect(() => {
+		fetchMasterData();
+	}, [fetchMasterData]);
 
 	useEffect(() => {
 		fetchDepartments();
@@ -87,22 +133,35 @@ export default function DepartmentsPage() {
 
 	useEffect(() => {
 		setPage(1);
-	}, [limit, debouncedSearchTerm]);
+	}, [limit, debouncedSearchTerm, filters, sorting]);
 
-	// --- Table Column Definitions (Read-Only) ---
 	const columns = useMemo<ColumnDef<Department>[]>(
 		() => [
-			{ accessorKey: "name", header: "Nama Departemen" },
+			{
+				accessorKey: "name",
+				header: "Nama Departemen",
+				meta: { sortable: true },
+			},
 			{
 				accessorKey: "branch.name",
+				id: "branch",
 				header: "Cabang",
 				cell: ({ row }) => row.original.branch?.name || "-",
+				meta: { sortable: true },
 			},
 		],
 		[]
 	);
 
-	// --- Conditional Rendering ---
+	const filterConfig: FilterConfigItem[] = [
+		{
+			key: "branchId",
+			label: "Cabang",
+			placeholder: "Pilih Cabang",
+			options: masterData.branches,
+		},
+	];
+
 	if (!canReadDepartments) {
 		return null;
 	}
@@ -128,6 +187,18 @@ export default function DepartmentsPage() {
 					}}
 					limit={limit}
 					onLimitChange={setLimit}
+					sorting={sorting}
+					setSorting={setSorting}
+					filterContent={
+						<FilterPopover
+							masterData={{
+								branches: masterData.branches,
+							}}
+							activeFilters={filters}
+							onApplyFilters={setFilters}
+							filterConfig={filterConfig}
+						/>
+					}
 					createButton={null}
 				/>
 			</div>

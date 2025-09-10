@@ -1,3 +1,5 @@
+// components/common/DataTable.tsx
+
 "use client";
 
 import React from "react";
@@ -7,6 +9,7 @@ import {
 	getCoreRowModel,
 	useReactTable,
 	Cell,
+	SortingState,
 } from "@tanstack/react-table";
 import {
 	Table,
@@ -16,19 +19,21 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Loader2 } from "lucide-react";
+import { Loader2, ArrowDown, ArrowUp, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface DataItem {
 	id: string | number;
 }
 
-// Extend the ColumnMeta interface to include width property
+// Extend the ColumnMeta interface to include sortable property
 declare module "@tanstack/react-table" {
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	interface ColumnMeta<TData, TValue> {
 		width?: string;
-		truncate?: boolean; // Option to enable/disable truncation per column
-		align?: "left" | "center" | "right"; // Add alignment option
+		truncate?: boolean;
+		align?: "left" | "center" | "right";
+		sortable?: boolean; // Add sortable option
 	}
 }
 
@@ -36,17 +41,26 @@ interface DataTableProps<TData extends DataItem, TValue> {
 	columns: ColumnDef<TData, TValue>[];
 	data: TData[];
 	loading?: boolean;
+	sorting?: SortingState;
+	setSorting?: React.Dispatch<React.SetStateAction<SortingState>>;
 }
 
 export function DataTable<TData extends DataItem, TValue>({
 	columns,
 	data,
 	loading = false,
+	sorting,
+	setSorting,
 }: DataTableProps<TData, TValue>) {
 	const table = useReactTable({
 		data,
 		columns,
+		state: {
+			sorting,
+		},
+		onSortingChange: setSorting,
 		getCoreRowModel: getCoreRowModel(),
+		manualSorting: true, // Set sorting to manual as it will be handled by the server
 	});
 
 	const getCellTextContent = (cell: Cell<TData, unknown>): string => {
@@ -62,14 +76,12 @@ export function DataTable<TData extends DataItem, TValue>({
 	};
 
 	const shouldTruncate = (column: ColumnDef<TData, TValue>): boolean => {
-		// Default to truncate unless explicitly disabled
 		return column.meta?.truncate !== false;
 	};
 
 	const renderCellContent = (cell: Cell<TData, unknown>) => {
 		const content = flexRender(cell.column.columnDef.cell, cell.getContext());
 
-		// If it's an action column or contains buttons, don't truncate
 		if (
 			cell.column.id === "actions" ||
 			!shouldTruncate(cell.column.columnDef)
@@ -86,12 +98,25 @@ export function DataTable<TData extends DataItem, TValue>({
 			);
 		}
 
-		// For text content, apply truncation
 		return (
 			<div className="flex items-center justify-start h-8 w-full overflow-hidden">
 				<div className="truncate w-full">{content}</div>
 			</div>
 		);
+	};
+
+	const SortIndicator = ({
+		isSorted,
+	}: {
+		isSorted: "asc" | "desc" | false;
+	}) => {
+		if (isSorted === "asc") {
+			return <ArrowUp className="ml-2 h-4 w-4" />;
+		}
+		if (isSorted === "desc") {
+			return <ArrowDown className="ml-2 h-4 w-4" />;
+		}
+		return <ChevronsUpDown className="ml-2 h-4 w-4 opacity-30" />;
 	};
 
 	return (
@@ -104,7 +129,6 @@ export function DataTable<TData extends DataItem, TValue>({
 							className="border-b border-gray-200 bg-gray-50 hover:bg-gray-50"
 						>
 							{headerGroup.headers.map((header) => {
-								// Get width from meta or fallback to size percentage
 								const width =
 									header.column.columnDef.meta?.width || `${header.getSize()}%`;
 								const align = header.column.columnDef.meta?.align || "left";
@@ -114,19 +138,36 @@ export function DataTable<TData extends DataItem, TValue>({
 										: align === "right"
 										? "text-right"
 										: "text-left";
+								const isSortable = header.column.columnDef.meta?.sortable;
 
 								return (
 									<TableHead
 										key={header.id}
 										style={{ width }}
-										className={alignClass}
+										className={cn(alignClass, isSortable && "cursor-pointer")}
+										onClick={
+											isSortable
+												? header.column.getToggleSortingHandler()
+												: undefined
+										}
 									>
-										{header.isPlaceholder
-											? null
-											: flexRender(
-													header.column.columnDef.header,
-													header.getContext()
-											  )}
+										<div
+											className={cn(
+												"flex items-center",
+												align === "center" && "justify-center",
+												align === "right" && "justify-end"
+											)}
+										>
+											{header.isPlaceholder
+												? null
+												: flexRender(
+														header.column.columnDef.header,
+														header.getContext()
+												  )}
+											{isSortable && (
+												<SortIndicator isSorted={header.column.getIsSorted()} />
+											)}
+										</div>
 									</TableHead>
 								);
 							})}
@@ -147,7 +188,6 @@ export function DataTable<TData extends DataItem, TValue>({
 								className="border-b border-gray-200"
 							>
 								{row.getVisibleCells().map((cell) => {
-									// Get width from meta or fallback to size percentage
 									const width =
 										cell.column.columnDef.meta?.width ||
 										`${cell.column.getSize()}%`;

@@ -1,3 +1,5 @@
+// app/api/admin/positions/route.ts
+
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
@@ -19,14 +21,33 @@ export const GET = withAuthorization(
 		const limit = parseInt(searchParams.get("limit") || "10");
 		const search = searchParams.get("search") || "";
 
+		// --- Filter & Sort Parameters ---
+		const branchId = searchParams.get("branchId");
+		const departmentId = searchParams.get("departmentId");
+		const sortBy = searchParams.get("sortBy") || "name";
+		const sortOrder = searchParams.get("sortOrder") || "asc";
+
 		const skip = (page - 1) * limit;
 
 		try {
-			const whereClause = {
+			const whereClause: Prisma.PositionWhereInput = {
 				name: {
 					contains: search,
 					mode: "insensitive" as const,
 				},
+			};
+
+			// --- Dynamic Filtering Logic ---
+			if (branchId) {
+				whereClause.branchId = branchId;
+			}
+			if (departmentId) {
+				whereClause.departmentId = departmentId;
+			}
+
+			// --- Dynamic Sorting Logic ---
+			const orderBy: Prisma.PositionOrderByWithRelationInput = {
+				[sortBy]: sortOrder,
 			};
 
 			const [positions, totalItems] = await prisma.$transaction([
@@ -40,11 +61,7 @@ export const GET = withAuthorization(
 						level: true,
 						jobRole: true,
 					},
-					orderBy: {
-						branch: {
-							id: "asc",
-						},
-					},
+					orderBy,
 				}),
 				prisma.position.count({ where: whereClause }),
 			]);
@@ -69,15 +86,12 @@ export const GET = withAuthorization(
 	}
 );
 
-// Handler untuk membuat posisi baru (sudah diperbaiki)
 export const POST = withAuthorization(
 	{ resource: "position", action: "create" },
 	async (req: NextRequest) => {
 		try {
 			const body = await req.json();
 
-			// --- PERBAIKI LOGIKA VALIDASI INI ---
-			// Validasi body secara langsung, tanpa destructuring atau .omit()
 			const validation = createPositionSchema.safeParse(body);
 
 			if (!validation.success) {
@@ -90,10 +104,8 @@ export const POST = withAuthorization(
 				);
 			}
 
-			// Data yang sudah divalidasi sekarang aman untuk digunakan
 			const { name, branchId, departmentId, levelId } = validation.data;
 
-			// Logika JobRole tetap sama
 			const jobRole = await prisma.jobRole.upsert({
 				where: {
 					name: name,
@@ -104,7 +116,6 @@ export const POST = withAuthorization(
 				},
 			});
 
-			// Buat ID unik untuk posisi baru di backend
 			const newPositionId = `${branchId}-${departmentId}-${Math.random()
 				.toString(16)
 				.slice(2, 8)}`;

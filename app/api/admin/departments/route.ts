@@ -1,3 +1,5 @@
+// app/api/admin/departments/route.ts
+
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
@@ -12,6 +14,11 @@ export const GET = withAuthorization(
 		const search = searchParams.get("search") || "";
 		const skip = (page - 1) * limit;
 
+		// --- Filter & Sort Parameters ---
+		const branchId = searchParams.get("branchId");
+		const sortBy = searchParams.get("sortBy") || "name";
+		const sortOrder = searchParams.get("sortOrder") || "asc";
+
 		const finalWhere: Prisma.DepartmentWhereInput = {
 			...whereClause,
 		};
@@ -19,6 +26,15 @@ export const GET = withAuthorization(
 		if (search) {
 			finalWhere.name = { contains: search, mode: "insensitive" };
 		}
+		if (branchId) {
+			finalWhere.branchId = branchId;
+		}
+
+		// --- Dynamic Sorting Logic ---
+		const orderBy: Prisma.DepartmentOrderByWithRelationInput =
+			sortBy === "branch"
+				? { branch: { name: sortOrder as Prisma.SortOrder } }
+				: { name: sortOrder as Prisma.SortOrder };
 
 		try {
 			const [departments, totalItems] = await prisma.$transaction([
@@ -29,7 +45,7 @@ export const GET = withAuthorization(
 					include: {
 						branch: { select: { name: true } }, // Sertakan nama cabang
 					},
-					orderBy: [{ branch: { id: "asc" } }, { name: "asc" }],
+					orderBy,
 				}),
 				prisma.department.count({ where: finalWhere }),
 			]);

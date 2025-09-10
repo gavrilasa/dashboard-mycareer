@@ -1,14 +1,21 @@
+// app/(main)/admin/job-vacancies/page.tsx
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, SortingState } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
 import { PERMISSIONS } from "@/lib/permissions";
 
 import { CrudTable } from "@/components/common/CrudTable";
+import {
+	FilterPopover,
+	ActiveFilters,
+	FilterConfigItem,
+} from "@/components/common/FilterPopover";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -20,7 +27,7 @@ import {
 import { Edit, Plus, Eye } from "lucide-react";
 import { JobVacancyForm } from "@/components/admin/job-vacant/JobVacancyForm";
 
-// --- Type Definitions (Diperbarui) ---
+// --- Type Definitions ---
 interface JobVacancy {
 	id: string;
 	isPublished: boolean;
@@ -28,7 +35,6 @@ interface JobVacancy {
 	_count: { interestedEmployees: number };
 }
 
-// FIX: Tipe MasterData disesuaikan dengan apa yang dibutuhkan oleh form baru
 interface MasterDataItem {
 	id: string;
 	name: string;
@@ -57,16 +63,15 @@ export default function JobVacanciesPage() {
 	const [selectedVacancy, setSelectedVacancy] = useState<JobVacancy | null>(
 		null
 	);
+	const [filters, setFilters] = useState<ActiveFilters>({ status: "" });
+	const [sorting, setSorting] = useState<SortingState>([]);
 
-	// FIX: Menghapus 'canDelete' yang tidak digunakan
 	const { canCreate, canEdit } = useMemo(() => {
-		if (!session?.user?.role)
-			return { canCreate: false, canEdit: false, canDelete: false };
+		if (!session?.user?.role) return { canCreate: false, canEdit: false };
 		const permissions = PERMISSIONS[session.user.role]?.jobVacant || [];
 		return {
 			canCreate: permissions.includes("create"),
 			canEdit: permissions.includes("update"),
-			canDelete: permissions.includes("delete"),
 		};
 	}, [session]);
 
@@ -77,7 +82,12 @@ export default function JobVacanciesPage() {
 				page: page.toString(),
 				limit: limit.toString(),
 				search: debouncedSearchTerm,
+				status: filters.status || "",
 			});
+			if (sorting.length > 0) {
+				params.append("sortBy", sorting[0].id);
+				params.append("sortOrder", sorting[0].desc ? "desc" : "asc");
+			}
 			const response = await fetch(
 				`/api/admin/job-vacancies?${params.toString()}`
 			);
@@ -97,7 +107,7 @@ export default function JobVacanciesPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [page, limit, debouncedSearchTerm]);
+	}, [page, limit, debouncedSearchTerm, filters, sorting]);
 
 	const fetchMasterData = useCallback(async () => {
 		try {
@@ -112,9 +122,16 @@ export default function JobVacanciesPage() {
 	}, []);
 
 	useEffect(() => {
-		fetchVacancies();
 		fetchMasterData();
-	}, [fetchVacancies, fetchMasterData]);
+	}, [fetchMasterData]);
+
+	useEffect(() => {
+		fetchVacancies();
+	}, [fetchVacancies]);
+
+	useEffect(() => {
+		setPage(1);
+	}, [limit, debouncedSearchTerm, filters, sorting]);
 
 	const handleOpenFormModal = (vacancy: JobVacancy | null) => {
 		setSelectedVacancy(vacancy);
@@ -145,10 +162,14 @@ export default function JobVacanciesPage() {
 				size: 15,
 			},
 			{
+				id: "interestedEmployees",
 				accessorKey: "_count.interestedEmployees",
 				header: "Peminat",
 				cell: ({ row }) => row.original._count.interestedEmployees,
 				size: 15,
+				meta: {
+					sortable: true,
+				},
 			},
 			{
 				id: "actions",
@@ -183,6 +204,18 @@ export default function JobVacanciesPage() {
 		[canEdit, router]
 	);
 
+	const filterConfig: FilterConfigItem[] = [
+		{
+			key: "status",
+			label: "Status",
+			placeholder: "Pilih Status",
+			options: [
+				{ id: "published", name: "Published" },
+				{ id: "draft", name: "Draft" },
+			],
+		},
+	];
+
 	return (
 		<>
 			<Toaster position="top-center" richColors />
@@ -199,6 +232,16 @@ export default function JobVacanciesPage() {
 					pagination={{ ...pagination, onPageChange: setPage }}
 					limit={limit}
 					onLimitChange={setLimit}
+					sorting={sorting}
+					setSorting={setSorting}
+					filterContent={
+						<FilterPopover
+							masterData={{}}
+							activeFilters={filters}
+							onApplyFilters={setFilters}
+							filterConfig={filterConfig}
+						/>
+					}
 					createButton={
 						canCreate ? (
 							<Button onClick={() => handleOpenFormModal(null)}>

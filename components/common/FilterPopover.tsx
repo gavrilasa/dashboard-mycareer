@@ -1,6 +1,8 @@
+// components/common/FilterPopover.tsx
+
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
 	Popover,
@@ -22,27 +24,41 @@ import { Filter, RotateCcw } from "lucide-react";
 export interface ActiveFilters {
 	branchId?: string;
 	departmentId?: string;
-	// Tambahkan jenis filter lain di sini jika diperlukan di masa depan
+	positionId?: string;
+	pathType?: "ALIGN" | "CROSS" | "";
+	fromJobRoleId?: string;
+	toJobRoleId?: string;
+	status?: "published" | "draft" | "";
 }
-
-type FilterType = "branch" | "department";
 
 interface MasterDataItem {
 	id: string;
 	name: string;
 	branchId?: string;
+	departmentId?: string;
 }
 
 interface MasterData {
-	branches: MasterDataItem[];
-	departments: MasterDataItem[];
+	branches?: MasterDataItem[];
+	departments?: MasterDataItem[];
+	positions?: MasterDataItem[];
+	jobRoles?: MasterDataItem[];
+}
+
+export interface FilterConfigItem {
+	key: keyof ActiveFilters;
+	label: string;
+	placeholder: string;
+	options: MasterDataItem[] | { id: string; name: string }[];
+	dependsOn?: keyof ActiveFilters;
+	dependencyMapKey?: "branchId" | "departmentId";
 }
 
 interface FilterPopoverProps {
 	masterData: MasterData;
 	activeFilters: ActiveFilters;
 	onApplyFilters: (filters: ActiveFilters) => void;
-	filterConfig: FilterType[];
+	filterConfig: FilterConfigItem[];
 }
 
 export function FilterPopover({
@@ -54,7 +70,6 @@ export function FilterPopover({
 	const [isOpen, setIsOpen] = useState(false);
 	const [tempFilters, setTempFilters] = useState<ActiveFilters>(activeFilters);
 
-	// Sinkronkan state sementara dengan filter aktif saat popover dibuka
 	useEffect(() => {
 		if (isOpen) {
 			setTempFilters(activeFilters);
@@ -67,10 +82,10 @@ export function FilterPopover({
 	};
 
 	const handleReset = () => {
-		const resetFilters = {
-			branchId: "",
-			departmentId: "",
-		};
+		const resetFilters: ActiveFilters = {};
+		filterConfig.forEach((config) => {
+			resetFilters[config.key] = "";
+		});
 		setTempFilters(resetFilters);
 		onApplyFilters(resetFilters);
 		setIsOpen(false);
@@ -83,23 +98,38 @@ export function FilterPopover({
 		const newValue = value === "all" ? "" : value;
 		setTempFilters((prev) => {
 			const newFilters = { ...prev, [filterName]: newValue };
-			// Jika filter cabang diubah, reset filter departemen
 			if (filterName === "branchId") {
 				newFilters.departmentId = "";
+				newFilters.positionId = "";
+			}
+			if (filterName === "departmentId") {
+				newFilters.positionId = "";
 			}
 			return newFilters;
 		});
 	};
 
-	const filteredDepartments = useMemo(
-		() =>
-			tempFilters.branchId
-				? masterData.departments.filter(
-						(d) => d.branchId === tempFilters.branchId
-				  )
-				: masterData.departments,
-		[tempFilters.branchId, masterData.departments]
-	);
+	const getFilteredOptions = (config: FilterConfigItem) => {
+		if (!config.dependsOn || !config.dependencyMapKey) {
+			return config.options;
+		}
+
+		const dependencyValue = tempFilters[config.dependsOn];
+		if (!dependencyValue) {
+			return [];
+		}
+
+		let sourceList: MasterDataItem[] = [];
+		if (config.key === "departmentId") {
+			sourceList = masterData.departments || [];
+		} else if (config.key === "positionId") {
+			sourceList = masterData.positions || [];
+		}
+
+		return sourceList.filter(
+			(opt) => opt[config.dependencyMapKey!] === dependencyValue
+		);
+	};
 
 	const isFilterActive = Object.values(activeFilters).some(
 		(val) => val && val.length > 0
@@ -126,52 +156,35 @@ export function FilterPopover({
 						</p>
 					</div>
 					<div className="grid gap-4">
-						{filterConfig.includes("branch") && (
-							<div className="grid grid-cols-3 items-center gap-4">
-								<Label htmlFor="branch">Cabang</Label>
+						{filterConfig.map((config) => (
+							<div
+								key={config.key}
+								className="grid grid-cols-3 items-center gap-4"
+							>
+								<Label htmlFor={config.key}>{config.label}</Label>
 								<Select
-									value={tempFilters.branchId || "all"}
+									value={tempFilters[config.key] || "all"}
 									onValueChange={(value) =>
-										handleFilterChange("branchId", value)
+										handleFilterChange(config.key, value)
+									}
+									disabled={
+										!!config.dependsOn && !tempFilters[config.dependsOn]
 									}
 								>
 									<SelectTrigger className="col-span-2 h-8">
-										<SelectValue placeholder="Pilih Cabang" />
+										<SelectValue placeholder={config.placeholder} />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="all">Semua Cabang</SelectItem>
-										{masterData.branches.map((b) => (
-											<SelectItem key={b.id} value={b.id}>
-												{b.name}
+										<SelectItem value="all">Semua</SelectItem>
+										{getFilteredOptions(config).map((option) => (
+											<SelectItem key={option.id} value={option.id}>
+												{option.name}
 											</SelectItem>
 										))}
 									</SelectContent>
 								</Select>
 							</div>
-						)}
-						{filterConfig.includes("department") && (
-							<div className="grid grid-cols-3 items-center gap-4">
-								<Label htmlFor="department">Departemen</Label>
-								<Select
-									value={tempFilters.departmentId || "all"}
-									onValueChange={(value) =>
-										handleFilterChange("departmentId", value)
-									}
-								>
-									<SelectTrigger className="col-span-2 h-8">
-										<SelectValue placeholder="Pilih Departemen" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="all">Semua Departemen</SelectItem>
-										{filteredDepartments.map((d) => (
-											<SelectItem key={d.id} value={d.id}>
-												{d.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
-						)}
+						))}
 					</div>
 					<div className="flex justify-between pt-4 border-t">
 						<Button variant="ghost" size="sm" onClick={handleReset}>

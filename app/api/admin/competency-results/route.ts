@@ -1,3 +1,4 @@
+// app/api/admin/competency-results/route.ts
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
@@ -30,6 +31,9 @@ export const GET = withAuthorization(
 			const limit = parseInt(url.searchParams.get("limit") || "10", 10);
 			const branchId = url.searchParams.get("branchId");
 			const departmentId = url.searchParams.get("departmentId");
+			const positionId = url.searchParams.get("positionId");
+			const sortBy = url.searchParams.get("sortBy") || "fullName";
+			const sortOrder = url.searchParams.get("sortOrder") || "asc";
 			const skip = (page - 1) * limit;
 
 			// **OPTIMASI: Bangun klausa 'where' yang kompleks untuk filtering di database**
@@ -37,11 +41,13 @@ export const GET = withAuthorization(
 				...whereClause,
 				...(branchId && { branchId }),
 				...(departmentId && { departmentId }),
+				...(positionId && { positionId }),
 				...(search && {
-					fullName: {
-						contains: search,
-						mode: "insensitive",
-					},
+					OR: [
+						{ fullName: { contains: search, mode: "insensitive" } },
+						{ position: { name: { contains: search, mode: "insensitive" } } },
+						{ department: { name: { contains: search, mode: "insensitive" } } },
+					],
 				}),
 				// Filter hanya karyawan yang sudah mengisi semua kuesioner yang relevan
 				AND: [
@@ -81,6 +87,11 @@ export const GET = withAuthorization(
 				],
 			};
 
+			// Dynamic Sorting Logic
+			const orderBy: Prisma.EmployeeOrderByWithRelationInput = {
+				[sortBy]: sortOrder,
+			};
+
 			// **OPTIMASI: Lakukan dua query terpisah yang jauh lebih ringan**
 			const [employeesForPage, totalEmployees] = await prisma.$transaction([
 				// 1. Ambil hanya data karyawan per halaman yang sudah lolos filter
@@ -101,9 +112,7 @@ export const GET = withAuthorization(
 							},
 						},
 					},
-					orderBy: {
-						fullName: "asc",
-					},
+					orderBy,
 				}),
 				// 2. Hitung total karyawan yang memenuhi kriteria (tanpa mengambil datanya)
 				prisma.employee.count({

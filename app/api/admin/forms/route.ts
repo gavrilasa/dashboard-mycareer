@@ -1,4 +1,4 @@
-// gavrilasa/dashboard-mycareer/dashboard-mycareer-d0fc9fe783109164caa8848ee01e37e14fba4761/app/api/admin/forms/route.ts
+// app/api/admin/forms/route.ts
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
@@ -13,6 +13,11 @@ export const GET = withAuthorization(
 		const search = searchParams.get("search") || "";
 		const skip = (page - 1) * limit;
 
+		const branchId = searchParams.get("branchId");
+		const departmentId = searchParams.get("departmentId");
+		const sortBy = searchParams.get("sortBy") || "fullName";
+		const sortOrder = searchParams.get("sortOrder") || "asc";
+
 		const finalWhere: Prisma.EmployeeWhereInput = {
 			...whereClause,
 			gkmHistory: {
@@ -20,12 +25,25 @@ export const GET = withAuthorization(
 			},
 		};
 
+		if (branchId) {
+			finalWhere.branchId = branchId;
+		}
+		if (departmentId) {
+			finalWhere.departmentId = departmentId;
+		}
+
 		if (search) {
 			finalWhere.OR = [
 				{ fullName: { contains: search, mode: "insensitive" } },
 				{ employeeId: { contains: search, mode: "insensitive" } },
+				{ department: { name: { contains: search, mode: "insensitive" } } },
 			];
 		}
+
+		const orderBy: Prisma.EmployeeOrderByWithRelationInput =
+			sortBy === "employeeId"
+				? { employeeId: sortOrder as Prisma.SortOrder }
+				: { fullName: sortOrder as Prisma.SortOrder };
 
 		try {
 			const [employees, totalItems] = await prisma.$transaction([
@@ -40,7 +58,7 @@ export const GET = withAuthorization(
 						department: { select: { name: true } },
 						position: { select: { name: true } },
 					},
-					orderBy: [{ branch: { id: "asc" } }, { fullName: "asc" }],
+					orderBy,
 				}),
 				prisma.employee.count({ where: finalWhere }),
 			]);

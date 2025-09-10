@@ -1,7 +1,9 @@
+// components/common/CrudTable.tsx
+
 "use client";
 
 import React from "react";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, SortingState } from "@tanstack/react-table";
 import { DataTable } from "./DataTable";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,6 +36,8 @@ interface CrudTableProps<TData extends DataItem, TValue> {
 	};
 	createButton?: React.ReactNode;
 	filterContent?: React.ReactNode;
+	sorting?: SortingState; // Prop untuk menerima state sorting
+	setSorting?: React.Dispatch<React.SetStateAction<SortingState>>; // Prop untuk handler sorting
 }
 
 export function CrudTable<TData extends DataItem, TValue>({
@@ -47,6 +51,8 @@ export function CrudTable<TData extends DataItem, TValue>({
 	pagination,
 	createButton,
 	filterContent,
+	sorting,
+	setSorting,
 }: CrudTableProps<TData, TValue>) {
 	const { currentPage, totalPages, totalRecords, onPageChange } = pagination;
 	const startEntry = totalRecords > 0 ? (currentPage - 1) * limit + 1 : 0;
@@ -90,7 +96,13 @@ export function CrudTable<TData extends DataItem, TValue>({
 				</div>
 			</div>
 
-			<DataTable columns={columns} data={data} loading={loading} />
+			<DataTable
+				columns={columns}
+				data={data}
+				loading={loading}
+				sorting={sorting}
+				setSorting={setSorting}
+			/>
 
 			{totalRecords > 0 && (
 				<div className="flex flex-col items-center justify-between gap-4 mt-6 md:flex-row">

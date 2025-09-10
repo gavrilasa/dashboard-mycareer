@@ -8,32 +8,38 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { CrudTable } from "@/components/common/CrudTable";
 import { Button } from "@/components/ui/button";
 import { Edit, Plus, Trash2 } from "lucide-react";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, SortingState } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
 import { PERMISSIONS } from "@/lib/permissions";
+import {
+	FilterPopover,
+	ActiveFilters,
+	FilterConfigItem,
+} from "@/components/common/FilterPopover";
 
-// Import komponen dialog yang sudah ada (akan direfaktor di langkah berikutnya)
+// Import komponen dialog
 import { CreateCareerPathDialog } from "@/components/admin/career-path/CreateCareerPathDialog";
 import { EditCareerPathDialog } from "@/components/admin/career-path/EditCareerPathDialog";
 import { DeleteCareerPathAlert } from "@/components/admin/career-path/DeleteCareerPathAlert";
+import { PathType } from "@prisma/client";
 
 // --- Type Definitions (Diperbarui) ---
 interface MasterDataItem {
 	id: string;
 	name: string;
 }
+
+// FIX: jobRoles dijadikan properti wajib agar sesuai dengan tipe yang diharapkan oleh komponen Dialog
 interface MasterData {
-	branches: MasterDataItem[];
-	departments: MasterDataItem[];
-	positions: MasterDataItem[];
 	jobRoles: MasterDataItem[];
 }
+
 interface CareerPath {
 	id: string;
 	fromJobRoleId: string;
 	toJobRoleId: string;
 	pathType: "ALIGN" | "CROSS";
-	period: "SHORT_TERM" | "LONG_TERM"; // FIX: Properti 'period' ditambahkan
+	period: "SHORT_TERM" | "LONG_TERM";
 	fromJobRole: { name: string };
 	toJobRole: { name: string };
 }
@@ -48,9 +54,6 @@ export default function CareerPathPage() {
 	const { data: session } = useSession();
 	const [data, setData] = useState<CareerPath[]>([]);
 	const [masterData, setMasterData] = useState<MasterData>({
-		branches: [],
-		departments: [],
-		positions: [],
 		jobRoles: [],
 	});
 	const [pagination, setPagination] = useState<PaginationInfo>({
@@ -63,6 +66,14 @@ export default function CareerPathPage() {
 	const [page, setPage] = useState(1);
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
+	const [filters, setFilters] = useState<ActiveFilters>({
+		pathType: "",
+		fromJobRoleId: "",
+		toJobRoleId: "",
+	});
+	const [sorting, setSorting] = useState<SortingState>([
+		{ id: "createdAt", desc: true },
+	]);
 
 	const [modalState, setModalState] = useState<{
 		mode: "create" | "edit" | "closed";
@@ -89,7 +100,15 @@ export default function CareerPathPage() {
 				page: page.toString(),
 				limit: limit.toString(),
 				search: debouncedSearchTerm,
+				pathType: filters.pathType || "",
+				fromJobRoleId: filters.fromJobRoleId || "",
+				toJobRoleId: filters.toJobRoleId || "",
 			});
+			if (sorting.length > 0) {
+				params.append("sortBy", sorting[0].id);
+				params.append("sortOrder", sorting[0].desc ? "desc" : "asc");
+			}
+
 			const response = await fetch(
 				`/api/admin/career-path?${params.toString()}`
 			);
@@ -106,13 +125,14 @@ export default function CareerPathPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [page, limit, debouncedSearchTerm]);
+	}, [page, limit, debouncedSearchTerm, filters, sorting]);
 
 	const fetchMasterData = useCallback(async () => {
 		try {
 			const response = await fetch("/api/admin/master-data");
 			if (!response.ok) throw new Error("Gagal memuat data master");
-			setMasterData(await response.json());
+			const fetchedData = await response.json();
+			setMasterData({ jobRoles: fetchedData.jobRoles || [] });
 		} catch (error) {
 			toast.error("Error Memuat Master Data", {
 				description: (error as Error).message,
@@ -124,6 +144,10 @@ export default function CareerPathPage() {
 		fetchCareerPaths();
 		fetchMasterData();
 	}, [fetchCareerPaths, fetchMasterData]);
+
+	useEffect(() => {
+		setPage(1);
+	}, [limit, debouncedSearchTerm, filters, sorting]);
 
 	const handleOpenModal = useCallback(
 		(path: CareerPath | null = null) => {
@@ -206,6 +230,30 @@ export default function CareerPathPage() {
 		[canEdit, canDelete, handleOpenModal, handleDeleteConfirm]
 	);
 
+	const filterConfig: FilterConfigItem[] = [
+		{
+			key: "pathType",
+			label: "Tipe",
+			placeholder: "Pilih Tipe",
+			options: [
+				{ id: PathType.ALIGN, name: "Align" },
+				{ id: PathType.CROSS, name: "Cross" },
+			],
+		},
+		{
+			key: "fromJobRoleId",
+			label: "Karir Asal",
+			placeholder: "Pilih Karir Asal",
+			options: masterData.jobRoles || [],
+		},
+		{
+			key: "toJobRoleId",
+			label: "Karir Tujuan",
+			placeholder: "Pilih Karir Tujuan",
+			options: masterData.jobRoles || [],
+		},
+	];
+
 	return (
 		<>
 			<Toaster position="top-center" richColors />
@@ -225,6 +273,16 @@ export default function CareerPathPage() {
 					}}
 					limit={limit}
 					onLimitChange={setLimit}
+					sorting={sorting}
+					setSorting={setSorting}
+					filterContent={
+						<FilterPopover
+							masterData={masterData}
+							activeFilters={filters}
+							onApplyFilters={setFilters}
+							filterConfig={filterConfig}
+						/>
+					}
 					createButton={
 						canCreate ? (
 							<Button

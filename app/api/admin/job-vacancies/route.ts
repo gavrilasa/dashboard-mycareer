@@ -1,10 +1,11 @@
+// app/api/admin/job-vacancies/route.ts
+
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
-// FIX: Skema Zod disederhanakan, menghapus 'period' dan 'requirements'
 const createVacancySchema = z.object({
 	jobRoleId: z.string().min(1, "Job Role wajib dipilih."),
 	description: z.string().optional(),
@@ -20,10 +21,34 @@ export const GET = withAuthorization(
 		const search = searchParams.get("search") || "";
 		const skip = (page - 1) * limit;
 
+		// --- Filter & Sort Parameters ---
+		const status = searchParams.get("status"); // 'published' or 'draft'
+		const sortBy = searchParams.get("sortBy");
+		const sortOrder = searchParams.get("sortOrder") || "desc";
+
 		const finalWhere: Prisma.JobVacancyWhereInput = { ...whereClause };
+
 		if (search) {
 			finalWhere.jobRole = {
 				name: { contains: search, mode: "insensitive" },
+			};
+		}
+
+		if (status === "published") {
+			finalWhere.isPublished = true;
+		} else if (status === "draft") {
+			finalWhere.isPublished = false;
+		}
+
+		// --- Dynamic Sorting Logic ---
+		let orderBy: Prisma.JobVacancyOrderByWithRelationInput = {
+			createdAt: "desc",
+		};
+		if (sortBy === "interestedEmployees") {
+			orderBy = {
+				interestedEmployees: {
+					_count: sortOrder as Prisma.SortOrder,
+				},
 			};
 		}
 
@@ -39,7 +64,7 @@ export const GET = withAuthorization(
 							select: { interestedEmployees: true },
 						},
 					},
-					orderBy: { createdAt: "desc" },
+					orderBy,
 				}),
 				prisma.jobVacancy.count({ where: finalWhere }),
 			]);
@@ -67,14 +92,12 @@ export const POST = withAuthorization(
 			const body = await req.json();
 			const parsedData = createVacancySchema.parse(body);
 
-			// FIX: Logika pembuatan disederhanakan sesuai skema baru.
-			// 'period' dan 'requirements' tidak lagi disertakan.
 			const newVacancy = await prisma.jobVacancy.create({
 				data: {
 					jobRoleId: parsedData.jobRoleId,
 					description: parsedData.description ?? "",
 					isPublished: parsedData.isPublished,
-					requirements: "", // Menyediakan nilai default kosong
+					requirements: "",
 				},
 			});
 

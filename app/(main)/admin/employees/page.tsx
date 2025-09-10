@@ -1,3 +1,5 @@
+// app/(main)/admin/employees/page.tsx
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -21,13 +23,19 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+	FilterPopover,
+	ActiveFilters,
+	FilterConfigItem,
+} from "@/components/common/FilterPopover";
 import { Edit, Plus, RefreshCcw, Trash2 } from "lucide-react";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, SortingState } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
 import { PERMISSIONS } from "@/lib/permissions";
 import { SyncModal } from "@/components/admin/SyncModal";
 import { EmployeeForm } from "@/components/admin/EmployeeForm";
 
+// --- Type Definitions ---
 interface Employee {
 	id: string;
 	employeeId: string;
@@ -52,6 +60,17 @@ interface PaginatedApiResponse {
 	};
 }
 
+interface MasterDataItem {
+	id: string;
+	name: string;
+	branchId?: string;
+}
+
+interface MasterData {
+	branches: MasterDataItem[];
+	departments: MasterDataItem[];
+}
+
 export default function EmployeesPage() {
 	const { data: session } = useSession();
 	const [data, setData] = useState<Employee[]>([]);
@@ -60,11 +79,20 @@ export default function EmployeesPage() {
 		totalPages: 0,
 		currentPage: 1,
 	});
+	const [masterData, setMasterData] = useState<MasterData>({
+		branches: [],
+		departments: [],
+	});
 	const [loading, setLoading] = useState(true);
 	const [limit, setLimit] = useState(10);
 	const [page, setPage] = useState(1);
 	const [searchTerm, setSearchTerm] = useState("");
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
+	const [sorting, setSorting] = useState<SortingState>([]);
+	const [filters, setFilters] = useState<ActiveFilters>({
+		branchId: "",
+		departmentId: "",
+	});
 
 	const [isModalOpen, setIsModalOpen] = useState(false);
 	const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
@@ -90,6 +118,22 @@ export default function EmployeesPage() {
 		};
 	}, [session]);
 
+	const fetchMasterData = useCallback(async () => {
+		try {
+			const res = await fetch("/api/admin/master-data");
+			if (!res.ok) throw new Error("Gagal memuat data master untuk filter.");
+			const data = await res.json();
+			setMasterData({
+				branches: data.branches,
+				departments: data.departments,
+			});
+		} catch (error) {
+			if (error instanceof Error) {
+				toast.error("Gagal Memuat Filter", { description: error.message });
+			}
+		}
+	}, []);
+
 	const fetchEmployees = useCallback(async () => {
 		setLoading(true);
 		try {
@@ -97,7 +141,15 @@ export default function EmployeesPage() {
 				page: page.toString(),
 				limit: limit.toString(),
 				search: debouncedSearchTerm,
+				branchId: filters.branchId || "",
+				departmentId: filters.departmentId || "",
 			});
+
+			if (sorting.length > 0) {
+				params.append("sortBy", sorting[0].id);
+				params.append("sortOrder", sorting[0].desc ? "desc" : "asc");
+			}
+
 			const response = await fetch(`/api/admin/employees?${params.toString()}`);
 			if (!response.ok) {
 				const errorData = await response.json();
@@ -121,7 +173,11 @@ export default function EmployeesPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [page, limit, debouncedSearchTerm]);
+	}, [page, limit, debouncedSearchTerm, sorting, filters]);
+
+	useEffect(() => {
+		fetchMasterData();
+	}, [fetchMasterData]);
 
 	useEffect(() => {
 		fetchEmployees();
@@ -129,7 +185,7 @@ export default function EmployeesPage() {
 
 	useEffect(() => {
 		setPage(1);
-	}, [limit, debouncedSearchTerm]);
+	}, [limit, debouncedSearchTerm, sorting, filters]);
 
 	const handleOpenEditModal = useCallback(async (employee: Employee) => {
 		try {
@@ -197,6 +253,7 @@ export default function EmployeesPage() {
 				meta: {
 					width: "15%",
 					truncate: false,
+					sortable: true,
 				},
 			},
 			{
@@ -206,6 +263,7 @@ export default function EmployeesPage() {
 				meta: {
 					width: "25%",
 					truncate: true,
+					sortable: true,
 				},
 			},
 			{
@@ -279,6 +337,23 @@ export default function EmployeesPage() {
 		return baseColumns;
 	}, [canEdit, canDelete, handleOpenEditModal, handleDeleteConfirm]);
 
+	const filterConfig: FilterConfigItem[] = [
+		{
+			key: "branchId",
+			label: "Cabang",
+			placeholder: "Pilih Cabang",
+			options: masterData.branches,
+		},
+		{
+			key: "departmentId",
+			label: "Departemen",
+			placeholder: "Pilih Departemen",
+			options: masterData.departments,
+			dependsOn: "branchId",
+			dependencyMapKey: "branchId",
+		},
+	];
+
 	return (
 		<>
 			<Toaster position="top-center" richColors />
@@ -301,6 +376,16 @@ export default function EmployeesPage() {
 						totalRecords: pagination.totalRecords,
 						onPageChange: setPage,
 					}}
+					sorting={sorting}
+					setSorting={setSorting}
+					filterContent={
+						<FilterPopover
+							masterData={masterData}
+							activeFilters={filters}
+							onApplyFilters={setFilters}
+							filterConfig={filterConfig}
+						/>
+					}
 					createButton={
 						<div className="flex gap-2">
 							{canUpload && (

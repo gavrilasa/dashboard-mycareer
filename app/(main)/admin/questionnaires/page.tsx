@@ -1,14 +1,17 @@
+// app/(main)/admin/questionnaires/page.tsx
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useDebounce } from "@/hooks/useDebounce";
-import { ColumnDef } from "@tanstack/react-table";
+import { ColumnDef, SortingState } from "@tanstack/react-table";
 import { Toaster, toast } from "sonner";
 import { CrudTable } from "@/components/common/CrudTable";
 import {
 	FilterPopover,
 	ActiveFilters,
+	FilterConfigItem,
 } from "@/components/common/FilterPopover";
 import { Button } from "@/components/ui/button";
 import { Eye } from "lucide-react";
@@ -28,11 +31,13 @@ interface MasterDataItem {
 	id: string;
 	name: string;
 	branchId?: string;
+	departmentId?: string;
 }
 
 interface MasterData {
 	branches: MasterDataItem[];
 	departments: MasterDataItem[];
+	positions: MasterDataItem[];
 }
 
 interface ApiResponse {
@@ -51,6 +56,7 @@ export default function QuestionnaireResultsPage() {
 	const [masterData, setMasterData] = useState<MasterData>({
 		branches: [],
 		departments: [],
+		positions: [],
 	});
 	const [loading, setLoading] = useState(true);
 	const [limit, setLimit] = useState(10);
@@ -64,7 +70,11 @@ export default function QuestionnaireResultsPage() {
 	const [filters, setFilters] = useState<ActiveFilters>({
 		branchId: "",
 		departmentId: "",
+		positionId: "",
 	});
+	const [sorting, setSorting] = useState<SortingState>([
+		{ id: "fullName", desc: false },
+	]);
 
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -73,10 +83,7 @@ export default function QuestionnaireResultsPage() {
 			const res = await fetch("/api/admin/master-data");
 			if (!res.ok) throw new Error("Gagal memuat data master untuk filter.");
 			const data = await res.json();
-			setMasterData({
-				branches: data.branches,
-				departments: data.departments,
-			});
+			setMasterData(data);
 		} catch (error) {
 			if (error instanceof Error) {
 				toast.error("Gagal Memuat Filter", { description: error.message });
@@ -93,7 +100,14 @@ export default function QuestionnaireResultsPage() {
 				search: debouncedSearchTerm,
 				branchId: filters.branchId || "",
 				departmentId: filters.departmentId || "",
+				positionId: filters.positionId || "",
 			});
+
+			if (sorting.length > 0) {
+				params.append("sortBy", sorting[0].id);
+				params.append("sortOrder", sorting[0].desc ? "desc" : "asc");
+			}
+
 			const response = await fetch(
 				`/api/admin/competency-results?${params.toString()}`
 			);
@@ -122,7 +136,7 @@ export default function QuestionnaireResultsPage() {
 		} finally {
 			setLoading(false);
 		}
-	}, [page, limit, debouncedSearchTerm, filters]);
+	}, [page, limit, debouncedSearchTerm, filters, sorting]);
 
 	useEffect(() => {
 		fetchMasterData();
@@ -131,6 +145,10 @@ export default function QuestionnaireResultsPage() {
 	useEffect(() => {
 		fetchResults();
 	}, [fetchResults]);
+
+	useEffect(() => {
+		setPage(1);
+	}, [limit, debouncedSearchTerm, filters, sorting]);
 
 	const columns = useMemo<ColumnDef<SummaryResult>[]>(
 		() => [
@@ -141,6 +159,7 @@ export default function QuestionnaireResultsPage() {
 				meta: {
 					width: "20%",
 					truncate: true,
+					sortable: true,
 				},
 			},
 			{
@@ -207,6 +226,31 @@ export default function QuestionnaireResultsPage() {
 		[router]
 	);
 
+	const filterConfig: FilterConfigItem[] = [
+		{
+			key: "branchId",
+			label: "Cabang",
+			placeholder: "Pilih Cabang",
+			options: masterData.branches,
+		},
+		{
+			key: "departmentId",
+			label: "Departemen",
+			placeholder: "Pilih Departemen",
+			options: masterData.departments,
+			dependsOn: "branchId",
+			dependencyMapKey: "branchId",
+		},
+		{
+			key: "positionId",
+			label: "Jabatan",
+			placeholder: "Pilih Jabatan",
+			options: masterData.positions,
+			dependsOn: "departmentId",
+			dependencyMapKey: "departmentId",
+		},
+	];
+
 	return (
 		<>
 			<Toaster position="top-center" richColors />
@@ -228,12 +272,14 @@ export default function QuestionnaireResultsPage() {
 					}}
 					limit={limit}
 					onLimitChange={setLimit}
+					sorting={sorting}
+					setSorting={setSorting}
 					filterContent={
 						<FilterPopover
 							masterData={masterData}
 							activeFilters={filters}
 							onApplyFilters={setFilters}
-							filterConfig={["branch", "department"]}
+							filterConfig={filterConfig}
 						/>
 					}
 				/>

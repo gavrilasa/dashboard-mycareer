@@ -1,3 +1,5 @@
+// app/api/admin/career-path/route.ts
+
 import { NextResponse, NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +20,7 @@ const createCareerPathSchema = z.object({
 		.min(1, "Minimal satu posisi tujuan harus ditambahkan."),
 });
 
-// GET Handler (tidak ada perubahan)
+// GET Handler (diperbarui dengan filter dan sorting)
 export const GET = withAuthorization(
 	{ resource: "careerPath", action: "read" },
 	async (request: NextRequest) => {
@@ -31,6 +33,11 @@ export const GET = withAuthorization(
 			);
 			const search = searchParams.get("search") || "";
 			const skip = (page - 1) * limit;
+
+			// --- Filter Parameters ---
+			const pathType = searchParams.get("pathType");
+			const fromJobRoleId = searchParams.get("fromJobRoleId");
+			const toJobRoleId = searchParams.get("toJobRoleId");
 
 			const where: Prisma.CareerPathWhereInput = search
 				? {
@@ -47,15 +54,23 @@ export const GET = withAuthorization(
 				  }
 				: {};
 
+			// --- Dynamic Filtering Logic ---
+			if (pathType) {
+				where.pathType = pathType as PathType;
+			}
+			if (fromJobRoleId) {
+				where.fromJobRoleId = fromJobRoleId;
+			}
+			if (toJobRoleId) {
+				where.toJobRoleId = toJobRoleId;
+			}
+
 			const [data, totalRecords] = await prisma.$transaction([
 				prisma.careerPath.findMany({
 					where,
 					skip,
 					take: limit,
-					orderBy: [
-						{ fromJobRole: { name: "asc" } },
-						{ toJobRole: { name: "asc" } },
-					],
+					orderBy: { fromJobRole: { name: "asc" } }, // Sorting default berdasarkan Karir Asal (A-Z)
 					include: {
 						fromJobRole: { select: { id: true, name: true } },
 						toJobRole: { select: { id: true, name: true } },
