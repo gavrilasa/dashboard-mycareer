@@ -15,7 +15,8 @@ const createPositionSchema = z.object({
 
 export const GET = withAuthorization(
 	{ resource: "position", action: "read" },
-	async (req: NextRequest) => {
+	async (req: NextRequest, { whereClause }) => {
+		// Pass whereClause here
 		const { searchParams } = new URL(req.url);
 		const page = parseInt(searchParams.get("page") || "1");
 		const limit = parseInt(searchParams.get("limit") || "10");
@@ -30,19 +31,23 @@ export const GET = withAuthorization(
 		const skip = (page - 1) * limit;
 
 		try {
-			const whereClause: Prisma.PositionWhereInput = {
-				name: {
+			// Start with the whereClause from the middleware
+			const finalWhere: Prisma.PositionWhereInput = { ...whereClause };
+
+			// Add search term if it exists
+			if (search) {
+				finalWhere.name = {
 					contains: search,
 					mode: "insensitive" as const,
-				},
-			};
+				};
+			}
 
 			// --- Dynamic Filtering Logic ---
 			if (branchId) {
-				whereClause.branchId = branchId;
+				finalWhere.branchId = branchId;
 			}
 			if (departmentId) {
-				whereClause.departmentId = departmentId;
+				finalWhere.departmentId = departmentId;
 			}
 
 			// --- Dynamic Sorting Logic ---
@@ -52,7 +57,7 @@ export const GET = withAuthorization(
 
 			const [positions, totalItems] = await prisma.$transaction([
 				prisma.position.findMany({
-					where: whereClause,
+					where: finalWhere, // Use the merged where clause
 					skip,
 					take: limit,
 					include: {
@@ -63,7 +68,7 @@ export const GET = withAuthorization(
 					},
 					orderBy,
 				}),
-				prisma.position.count({ where: whereClause }),
+				prisma.position.count({ where: finalWhere }), // Use the same where clause for counting
 			]);
 
 			const totalPages = Math.ceil(totalItems / limit);
