@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
+import { Role } from "@prisma/client";
 
 const createVacancySchema = z.object({
 	jobRoleId: z.string().min(1, "Job Role wajib dipilih."),
@@ -14,48 +15,81 @@ const createVacancySchema = z.object({
 
 export const GET = withAuthorization(
 	{ resource: "jobVacant", action: "read" },
-	async (req: NextRequest, { whereClause }) => {
+	async (req: NextRequest, { session, whereClause }) => {
 		const { searchParams } = new URL(req.url);
 		const page = parseInt(searchParams.get("page") || "1", 10);
 		const limit = parseInt(searchParams.get("limit") || "10", 10);
 		const search = searchParams.get("search") || "";
 		const skip = (page - 1) * limit;
 
-		// --- Filter & Sort Parameters ---
-		const status = searchParams.get("status"); // 'published' or 'draft'
+		const status = searchParams.get("status");
 		const sortBy = searchParams.get("sortBy");
 		const sortOrder = searchParams.get("sortOrder") || "desc";
 
-		const finalWhere: Prisma.JobVacancyWhereInput = { ...whereClause };
-
-		if (search) {
-			finalWhere.jobRole = {
-				name: { contains: search, mode: "insensitive" },
-			};
-		}
-
-		if (status === "published") {
-			finalWhere.isPublished = true;
-		} else if (status === "draft") {
-			finalWhere.isPublished = false;
-		}
-
-		// --- Dynamic Sorting Logic ---
-		let orderBy: Prisma.JobVacancyOrderByWithRelationInput = {
-			createdAt: "desc",
-		};
-		if (sortBy === "interestedEmployees") {
-			orderBy = {
-				interestedEmployees: {
-					_count: sortOrder as Prisma.SortOrder,
-				},
-			};
-		}
+		// Inisialisasi finalWhere sebagai objek kosong
+		const finalWhere: Prisma.JobVacancyWhereInput = {};
 
 		try {
+			// --- Logika Baru: Filter jobRoleId untuk peran terbatas ---
+			if (
+				session?.user?.role === Role.HR_BRANCH ||
+				session?.user?.role === Role.HD
+			) {
+				// Ambil semua posisi yang relevan dengan branch/department pengguna
+				const relevantPositions = await prisma.position.findMany({
+					where: whereClause, // Gunakan whereClause HANYA untuk query Position
+					select: { jobRoleId: true },
+				});
+
+				// Jika tidak ada posisi, berarti tidak ada lowongan yang relevan
+				if (relevantPositions.length === 0) {
+					return NextResponse.json({
+						data: [],
+						pagination: {
+							totalItems: 0,
+							totalPages: 0,
+							currentPage: page,
+							limit,
+						},
+					});
+				}
+
+				// Dapatkan daftar jobRoleId yang unik
+				const relevantJobRoleIds = [
+					...new Set(relevantPositions.map((p) => p.jobRoleId)),
+				];
+
+				// Terapkan filter ke finalWhere
+				finalWhere.jobRoleId = { in: relevantJobRoleIds };
+			}
+
+			// --- Gabungkan dengan filter lain ---
+			if (search) {
+				finalWhere.jobRole = {
+					name: { contains: search, mode: "insensitive" },
+				};
+			}
+
+			if (status === "published") {
+				finalWhere.isPublished = true;
+			} else if (status === "draft") {
+				finalWhere.isPublished = false;
+			}
+
+			let orderBy: Prisma.JobVacancyOrderByWithRelationInput = {
+				createdAt: "desc",
+			};
+			if (sortBy === "interestedEmployees") {
+				orderBy = {
+					interestedEmployees: {
+						_count: sortOrder as Prisma.SortOrder,
+					},
+				};
+			}
+
 			const [vacancies, totalItems] = await prisma.$transaction([
 				prisma.jobVacancy.findMany({
-					where: finalWhere,
+					where: finalWhere, // Gunakan finalWhere yang sudah benar
 					skip,
 					take: limit,
 					include: {
