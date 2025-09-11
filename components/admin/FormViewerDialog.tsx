@@ -1,4 +1,4 @@
-// components/admin/forms/FormViewerDialog.tsx
+// components/admin/FormViewerDialog.tsx
 
 "use client";
 
@@ -19,9 +19,15 @@ import {
 	ProjectHistory,
 } from "@prisma/client";
 
-// --- Type Definitions ---
+// --- Definisi Tipe ---
+type CareerHistoryWithRelations = CareerHistory & {
+	position: { name: string } | null;
+	department: { name: string } | null;
+	branch: { name: string } | null;
+};
+
 interface FullFormData {
-	careerHistories: CareerHistory[];
+	careerHistories: CareerHistoryWithRelations[];
 	organizationHistories: OrganizationHistory[];
 	committeeHistories: CommitteeHistory[];
 	projectHistories: ProjectHistory[];
@@ -86,8 +92,9 @@ export function FormViewerDialog({
 					{formData.careerHistories?.length > 0 ? (
 						formData.careerHistories.map((item) => (
 							<div key={item.id} className="mb-4 pl-4 border-l-2">
-								{/* Note: Branch, Department, and Position names would require a join in the API call. Displaying IDs for now. */}
-								<InfoRow label="ID Posisi" value={item.positionId} />
+								<InfoRow label="Posisi" value={item.position?.name} />
+								<InfoRow label="Departemen" value={item.department?.name} />
+								<InfoRow label="Cabang" value={item.branch?.name} />
 								<InfoRow
 									label="Tanggal Mulai"
 									value={formatInTimeZone(

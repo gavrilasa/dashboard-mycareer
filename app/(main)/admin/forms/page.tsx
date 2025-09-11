@@ -42,8 +42,15 @@ interface PaginationState {
 	currentPage: number;
 }
 
+// PERBAIKAN: Tipe ini sekarang harus cocok dengan yang ada di FormViewerDialog
+type CareerHistoryWithRelations = CareerHistory & {
+	position: { name: string } | null;
+	department: { name: string } | null;
+	branch: { name: string } | null;
+};
+
 interface FullFormData {
-	careerHistories: CareerHistory[];
+	careerHistories: CareerHistoryWithRelations[]; // Menggunakan tipe yang sudah diperbarui
 	organizationHistories: OrganizationHistory[];
 	committeeHistories: CommitteeHistory[];
 	projectHistories: ProjectHistory[];
