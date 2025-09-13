@@ -97,9 +97,17 @@ export default function JobVacanciesPage() {
 				);
 			const result = await response.json();
 			setData(result.data || []);
-			setPagination(
-				result.pagination || { totalRecords: 0, totalPages: 0, currentPage: 1 }
-			);
+
+			// PERBAIKAN: Petakan properti dari API ke state dengan benar
+			if (result.pagination) {
+				setPagination({
+					totalRecords: result.pagination.totalItems,
+					totalPages: result.pagination.totalPages,
+					currentPage: result.pagination.currentPage,
+				});
+			} else {
+				setPagination({ totalRecords: 0, totalPages: 0, currentPage: 1 });
+			}
 		} catch (error) {
 			toast.error("Error Memuat Data", {
 				description: (error as Error).message,

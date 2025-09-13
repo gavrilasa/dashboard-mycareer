@@ -155,7 +155,7 @@ model Position {
   level        Level      @relation(fields: [levelId], references: [id])
   employees    Employee[]
   jobRoleId    String
-  jobRole      JobRole    @relation(fields: [jobRoleId], references: [id])
+  jobRole      JobRole    @relation(fields: [jobRoleId], references: [id], onDelete: Cascade)
 
   @@unique([name, departmentId, branchId])
 }
@@ -270,7 +270,7 @@ model JobVacancy {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
   jobRoleId           String
-  jobRole             JobRole       @relation(fields: [jobRoleId], references: [id])
+  jobRole             JobRole       @relation(fields: [jobRoleId], references: [id], onDelete: Cascade)
   interestedEmployees JobInterest[]
 }
 
@@ -342,7 +342,7 @@ model CompetencyStandard {
   competency    String
   standardValue Float
   jobRoleId     String
-  jobRole       JobRole @relation(fields: [jobRoleId], references: [id])
+  jobRole       JobRole @relation(fields: [jobRoleId], references: [id], onDelete: Cascade)
 
   @@unique([jobRoleId, competency])
 }
@@ -395,8 +395,6 @@ model DashboardAnalytics {
   totalVacancies      Int
   createdAt           DateTime @default(now())
 }
-
-// In prisma/schema.prisma
 
 enum ActivityType {
   NEW_EMPLOYEE
