@@ -2,7 +2,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState } from "react";
 import {
 	Dialog,
 	DialogContent,
@@ -12,7 +12,7 @@ import {
 	DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileWarning, CheckCircle, Clock } from "lucide-react";
+import { Loader2, FileWarning, CheckCircle, Info } from "lucide-react";
 import {
 	Accordion,
 	AccordionContent,
@@ -20,20 +20,30 @@ import {
 	AccordionTrigger,
 } from "@/components/ui/accordion";
 
-// --- Type Definitions ---
-interface VacancyToCreate {
+// Tipe data yang diterima dari API analisis
+interface VacancyAnalysisData {
 	jobRoleId: string;
 	jobRoleName: string;
 	employeeName: string;
+	description: string;
+	isPublished: boolean;
+	requirements: string;
 }
 
-interface SuccessionAnalysis {
-	toCreate: VacancyToCreate[];
+// [!code focus:start]
+interface SkippedVacancyData {
+	jobRoleId: string;
+	jobRoleName: string;
+	employeeName: string;
+	reason: string;
 }
 
-interface SyncError {
-	error: string;
+// Tipe untuk hasil analisis lengkap
+interface AnalysisResult {
+	toCreate: VacancyAnalysisData[];
+	skipped: SkippedVacancyData[];
 }
+// [!code focus:end]
 
 interface SuccessionSyncModalProps {
 	isOpen: boolean;
@@ -41,23 +51,7 @@ interface SuccessionSyncModalProps {
 	onSuccess: () => void;
 }
 
-type SyncStep =
-	| "initial"
-	| "analyzing"
-	| "confirm"
-	| "starting"
-	| "executing"
-	| "error"
-	| "success";
-
-type SyncStatus = "IDLE" | "PROCESSING" | "SUCCESS" | "FAILED";
-
-const statusMessages: Record<SyncStatus, string> = {
-	IDLE: "Menunggu untuk dimulai...",
-	PROCESSING: "Sinkronisasi sedang berjalan di latar belakang...",
-	SUCCESS: "Sinkronisasi berhasil diselesaikan.",
-	FAILED: "Sinkronisasi gagal.",
-};
+type SyncStep = "initial" | "analyzing" | "confirm" | "executing" | "final";
 
 export const SuccessionSyncModal: React.FC<SuccessionSyncModalProps> = ({
 	isOpen,
@@ -65,115 +59,84 @@ export const SuccessionSyncModal: React.FC<SuccessionSyncModalProps> = ({
 	onSuccess,
 }) => {
 	const [step, setStep] = useState<SyncStep>("initial");
-	const [analysis, setAnalysis] = useState<SuccessionAnalysis | null>(null);
-	const [errors, setErrors] = useState<SyncError[]>([]);
-	const [jobId, setJobId] = useState<string | null>(null);
-	const [isPolling, setIsPolling] = useState<boolean>(false);
-	const [statusMessage, setStatusMessage] = useState(statusMessages.IDLE);
+	// [!code focus:start]
+	const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(
+		null
+	);
+	// [!code focus:end]
+	const [finalMessage, setFinalMessage] = useState<{
+		type: "success" | "error";
+		text: string;
+	} | null>(null);
+	const [isLoading, setIsLoading] = useState(false);
 
 	const handleAnalyze = async () => {
-		setStep("analyzing");
-		setErrors([]);
+		setIsLoading(true);
+		setFinalMessage(null);
 		try {
 			const response = await fetch(
-				"/api/admin/job-vacancies/sync-retirements/analyze",
-				{
-					method: "POST", // Menggunakan POST untuk memulai proses
-				}
+				"/api/admin/job-vacancies/sync-retirements",
+				{ method: "POST" }
 			);
-			const result = await response.json();
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.error);
 
-			if (!response.ok) {
-				setErrors([{ error: result.message || "Analisis Gagal" }]);
-				setStep("error");
-				return;
-			}
-			setAnalysis(result.analysis);
-			setJobId(result.jobId);
+			// [!code focus:start]
+			setAnalysisResult(data.analysis);
+			// [!code focus:end]
 			setStep("confirm");
 		} catch (err) {
-			setErrors([{ error: `Gagal terhubung ke server. Error: ${err}` }]);
-			setStep("error");
+			setStep("final");
+			setFinalMessage({
+				type: "error",
+				text: err instanceof Error ? err.message : "Analisis Gagal.",
+			});
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
-	const handleStartSync = async () => {
-		if (!jobId) return;
-		setStep("starting");
+	const handleExecute = async () => {
+		setIsLoading(true);
+		setFinalMessage(null);
 		try {
+			if (!analysisResult)
+				throw new Error("Tidak ada data analisis untuk dieksekusi.");
+
+			const payload = analysisResult.toCreate.map(
+				({ jobRoleName: _jobRoleName, employeeName: _employeeName, ...rest }) =>
+					rest
+			);
+
 			const response = await fetch(
-				"/api/admin/job-vacancies/sync-retirements/execute",
+				"/api/admin/job-vacancies/sync-retirements",
 				{
-					method: "POST",
+					method: "PUT",
 					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ jobId }),
+					body: JSON.stringify(payload),
 				}
 			);
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.message || "Gagal memulai sinkronisasi.");
-			}
-			setStep("executing");
-			setIsPolling(true);
-		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : "Terjadi kesalahan.";
-			setErrors([{ error: errorMessage }]);
-			setStep("error");
+			const data = await response.json();
+			if (!response.ok) throw new Error(data.error);
+
+			setStep("final");
+			setFinalMessage({ type: "success", text: data.message });
+			onSuccess();
+		} catch (err) {
+			setStep("final");
+			setFinalMessage({
+				type: "error",
+				text: err instanceof Error ? err.message : "Eksekusi Gagal.",
+			});
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
-	const checkSyncStatus = useCallback(async () => {
-		if (!jobId) return;
-		try {
-			const response = await fetch(
-				`/api/admin/job-vacancies/sync-retirements/status?jobId=${jobId}`
-			);
-			if (!response.ok) {
-				setIsPolling(false);
-				return;
-			}
-			const result = await response.json();
-			setStatusMessage(
-				statusMessages[result.status as SyncStatus] || result.status
-			);
-
-			if (result.status === "SUCCESS" || result.status === "FAILED") {
-				setIsPolling(false);
-				if (result.status === "SUCCESS") {
-					setTimeout(() => {
-						setStep("success");
-						onSuccess();
-					}, 1000);
-				} else {
-					setErrors([
-						{ error: result.error || "Terjadi kesalahan saat eksekusi." },
-					]);
-					setStep("error");
-				}
-			}
-		} catch (error) {
-			console.error("Polling failed:", error);
-			setIsPolling(false);
-		}
-	}, [jobId, onSuccess]);
-
-	useEffect(() => {
-		if (!isPolling) return;
-		const interval = setInterval(checkSyncStatus, 5000);
-		return () => clearInterval(interval);
-	}, [isPolling, checkSyncStatus]);
-
-	const resetState = () => {
-		setAnalysis(null);
-		setErrors([]);
-		setJobId(null);
-		setIsPolling(false);
+	const resetAndClose = () => {
 		setStep("initial");
-	};
-
-	const handleClose = () => {
-		resetState();
+		setAnalysisResult(null);
+		setFinalMessage(null);
 		onClose();
 	};
 
@@ -183,53 +146,41 @@ export const SuccessionSyncModal: React.FC<SuccessionSyncModalProps> = ({
 				return (
 					<>
 						<DialogDescription>
-							Proses ini akan memindai semua data karyawan untuk mendeteksi
-							siapa saja yang akan mencapai usia pensiun (55 tahun) dalam 5
-							tahun ke depan.
-							<br />
-							<br />
-							Sistem akan secara otomatis membuat lowongan pekerjaan (Job
-							Vacant) untuk posisi mereka jika belum ada dan jika posisi
-							tersebut merupakan bagian dari jenjang karier yang valid.
+							Mulai proses untuk menganalisis karyawan yang akan pensiun dan
+							melihat pratinjau Job Vacant yang akan dibuat.
 						</DialogDescription>
 						<DialogFooter className="mt-6">
-							<Button variant="outline" onClick={handleClose}>
+							<Button variant="outline" onClick={resetAndClose}>
 								Batal
 							</Button>
-							<Button onClick={handleAnalyze}>Mulai Analisis</Button>
+							<Button onClick={handleAnalyze} disabled={isLoading}>
+								{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+								Mulai Analisis
+							</Button>
 						</DialogFooter>
 					</>
 				);
-			case "analyzing":
-				return (
-					<div className="flex flex-col items-center justify-center h-48">
-						<Loader2 className="h-16 w-16 animate-spin text-blue-600" />
-						<p className="mt-4 text-lg font-medium text-gray-700">
-							Menganalisis data karyawan, mohon tunggu...
-						</p>
-					</div>
-				);
+
 			case "confirm":
-				if (!analysis) return null;
+				if (!analysisResult) return null;
 				return (
 					<>
 						<DialogDescription>
-							Analisis selesai. Tinjau lowongan yang akan dibuat sebelum
-							melanjutkan. Proses ini akan berjalan di latar belakang.
+							Analisis selesai. Tinjau Job Vacant yang akan dibuat dan dilewati
+							sebelum melanjutkan.
 						</DialogDescription>
 						<Accordion
-							type="single"
-							collapsible
-							defaultValue="item-1"
+							type="multiple"
 							className="w-full mt-4 max-h-[50vh] overflow-y-auto pr-3"
 						>
+							{/* Accordion untuk yang akan dibuat */}
 							<AccordionItem value="item-1">
 								<AccordionTrigger>
-									Job Vacant yang akan Dibuat: {analysis.toCreate.length} posisi
+									{analysisResult.toCreate.length} Job Vacant akan dibuat
 								</AccordionTrigger>
 								<AccordionContent>
-									{analysis.toCreate.length > 0 ? (
-										analysis.toCreate.map((p) => (
+									{analysisResult.toCreate.length > 0 ? (
+										analysisResult.toCreate.map((p) => (
 											<div
 												key={p.jobRoleId}
 												className="text-sm py-2 px-2 border-b last:border-b-0"
@@ -242,84 +193,83 @@ export const SuccessionSyncModal: React.FC<SuccessionSyncModalProps> = ({
 										))
 									) : (
 										<p className="text-sm text-gray-500 p-2">
-											Tidak ada lowongan baru yang perlu dibuat saat ini.
+											Tidak ada lowongan baru yang perlu dibuat.
 										</p>
 									)}
 								</AccordionContent>
 							</AccordionItem>
+							{/* [!code focus:start] */}
+							{/* Accordion untuk yang dilewati */}
+							<AccordionItem value="item-2">
+								<AccordionTrigger className="text-yellow-700 hover:text-yellow-800">
+									<Info className="mr-2 h-4 w-4" />
+									{analysisResult.skipped.length} Posisi dilewati
+								</AccordionTrigger>
+								<AccordionContent>
+									{analysisResult.skipped.length > 0 ? (
+										analysisResult.skipped.map((p) => (
+											<div
+												key={p.jobRoleId}
+												className="text-sm py-2 px-2 border-b last:border-b-0"
+											>
+												<p className="font-semibold">{p.jobRoleName}</p>
+												<p className="text-xs text-gray-500">
+													(Karyawan: {p.employeeName}) - Alasan: {p.reason}
+												</p>
+											</div>
+										))
+									) : (
+										<p className="text-sm text-gray-500 p-2">
+											Semua posisi yang terdeteksi valid.
+										</p>
+									)}
+								</AccordionContent>
+							</AccordionItem>
+							{/* [!code focus:end] */}
 						</Accordion>
 						<DialogFooter className="mt-6">
-							<Button variant="outline" onClick={handleClose}>
+							<Button
+								variant="outline"
+								onClick={resetAndClose}
+								disabled={isLoading}
+							>
 								Batal
 							</Button>
-							<Button onClick={handleStartSync}>Mulai Sinkronisasi</Button>
+							<Button onClick={handleExecute} disabled={isLoading}>
+								{isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+								Buat Job Vacant
+							</Button>
 						</DialogFooter>
 					</>
 				);
-			case "executing":
+
+			// ... (case "final" tetap sama)
+			case "final":
 				return (
-					<div className="flex flex-col items-center justify-center h-48">
-						<Clock className="h-16 w-16 text-blue-600" />
-						<h3 className="mt-4 text-lg font-medium text-gray-900">
-							Proses Berjalan
+					<div className="flex flex-col items-center justify-center text-center">
+						{finalMessage?.type === "success" ? (
+							<CheckCircle className="h-16 w-16 text-green-500" />
+						) : (
+							<FileWarning className="h-16 w-16 text-red-500" />
+						)}
+						<h3 className="mt-4 text-lg font-medium">
+							{finalMessage?.type === "success"
+								? "Sinkronisasi Selesai!"
+								: "Terjadi Kesalahan"}
 						</h3>
-						<p className="mt-2 text-sm text-gray-500 text-center">
-							{statusMessage}
-						</p>
-						<p className="mt-1 text-xs text-gray-400">
-							Anda dapat menutup jendela ini.
-						</p>
-					</div>
-				);
-			case "error":
-				return (
-					<>
-						<DialogDescription>
-							Proses dibatalkan karena error berikut. Tidak ada perubahan yang
-							disimpan ke database.
-						</DialogDescription>
-						<div className="mt-4 max-h-64 overflow-y-auto p-4 bg-red-50 border border-red-200 rounded-md">
-							<div className="flex items-start">
-								<FileWarning className="h-5 w-5 text-red-500 mr-3 flex-shrink-0" />
-								<div>
-									<h3 className="font-semibold text-red-800">
-										Terjadi Kesalahan
-									</h3>
-									<ul className="list-disc pl-5 mt-2 space-y-1 text-sm text-red-700">
-										{errors.map((err, i) => (
-											<li key={i}>{err.error}</li>
-										))}
-									</ul>
-								</div>
-							</div>
-						</div>
-						<DialogFooter className="mt-6">
-							<Button onClick={handleClose}>Tutup</Button>
-						</DialogFooter>
-					</>
-				);
-			case "success":
-				return (
-					<div className="flex flex-col items-center justify-center h-48 text-center">
-						<CheckCircle className="h-16 w-16 text-green-500" />
-						<h3 className="mt-4 text-lg font-medium text-gray-900">
-							Sinkronisasi Selesai!
-						</h3>
-						<p className="mt-1 text-sm text-gray-500">
-							Lowongan pekerjaan untuk suksesi telah berhasil dibuat.
-						</p>
-						<DialogFooter className="mt-6">
-							<Button onClick={handleClose}>Selesai</Button>
+						<p className="mt-1 text-sm text-gray-600">{finalMessage?.text}</p>
+						<DialogFooter className="mt-6 w-full">
+							<Button onClick={resetAndClose} className="w-full">
+								Tutup
+							</Button>
 						</DialogFooter>
 					</div>
 				);
-			default:
-				return null;
 		}
 	};
 
 	return (
-		<Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
+		<Dialog open={isOpen} onOpenChange={(open) => !open && resetAndClose()}>
 			<DialogContent className="sm:max-w-[525px]">
 				<DialogHeader>
 					<DialogTitle>Sinkronisasi Posisi Pensiun</DialogTitle>

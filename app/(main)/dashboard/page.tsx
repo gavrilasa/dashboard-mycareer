@@ -178,7 +178,7 @@ export default function DashboardEmployeePage() {
 		};
 
 		fetchData();
-	}, []);
+	});
 
 	if (isLoading) {
 		return (
