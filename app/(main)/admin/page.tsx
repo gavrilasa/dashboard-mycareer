@@ -2,11 +2,12 @@
 
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "next-auth/react";
 import { Toaster, toast } from "sonner";
 import { Users, FileText, ClipboardCheck, Briefcase } from "lucide-react";
 import { Role } from "@prisma/client";
+import { PERMISSIONS } from "@/lib/permissions";
 
 import {
 	KpiData,
@@ -22,6 +23,7 @@ import { QuestionnaireTrendChart } from "@/components/admin/dashboard/Questionna
 import { RelocationPieChart } from "@/components/admin/dashboard/RelocationPieChart";
 import { RecentActivityFeed } from "@/components/admin/dashboard/RecentActivityFeed";
 import { CompetencyByDeptChart } from "@/components/admin/dashboard/CompetencyByDeptChart";
+import { RecentJobInterests } from "@/components/admin/dashboard/RecentJobInterests";
 
 export default function DashboardPage() {
 	const { data: session } = useSession();
@@ -45,7 +47,7 @@ export default function DashboardPage() {
 	});
 
 	const fetchData = useCallback(async () => {
-		// ... (Fungsi fetchData tetap sama, tidak perlu diubah)
+		// ... (Fungsi fetchData tetap sama)
 		setLoadingKpis(true);
 		setLoadingDistribution(true);
 		setLoadingTrend(true);
@@ -113,10 +115,17 @@ export default function DashboardPage() {
 	const showAggregateCharts =
 		userRole === Role.ADMIN || userRole === Role.HR_BRANCH;
 
+	const { canViewHdInterests } = useMemo(() => {
+		if (!session?.user?.role) return { canViewHdInterests: false };
+		const permissions = PERMISSIONS[session.user.role]?.dashboard || [];
+		return {
+			canViewHdInterests: permissions.includes("readHdInterests"),
+		};
+	}, [session]);
+
 	return (
 		<>
 			<Toaster position="top-center" richColors />
-			{/* Ubah space-y-6 menjadi space-y-4 */}
 			<div className="container mx-auto py-8 space-y-4">
 				<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 					<div>
@@ -129,7 +138,6 @@ export default function DashboardPage() {
 				</div>
 
 				{/* KPI Cards */}
-				{/* Ubah gap-6 menjadi gap-4 */}
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 					<KpiCard
 						title="Total Karyawan Aktif"
@@ -159,7 +167,8 @@ export default function DashboardPage() {
 
 				{/* Bagian Grid Utama untuk Chart dan Aktivitas */}
 				<div className="space-y-4">
-					{/* Baris 1: Distribusi & Relokasi */}
+					{/* [!code focus:start] */}
+					{/* Baris 1: Distribusi, Relokasi & Minat HD */}
 					<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 						{showAggregateCharts && (
 							<EmployeeDistributionChart
@@ -178,12 +187,29 @@ export default function DashboardPage() {
 								className="lg:col-span-2"
 							/>
 						)}
-						<RelocationPieChart
-							data={relocationData}
-							isLoading={loadingRelocation}
-							className={!showAggregateCharts ? "lg:col-span-3" : ""}
-						/>
+
+						{/* Tampilan default untuk non-HD */}
+						{!canViewHdInterests && (
+							<RelocationPieChart
+								data={relocationData}
+								isLoading={loadingRelocation}
+								className={!showAggregateCharts ? "lg:col-span-3" : ""}
+							/>
+						)}
+
+						{/* Tampilan khusus untuk HD */}
+						{canViewHdInterests && (
+							<>
+								<RelocationPieChart
+									data={relocationData}
+									isLoading={loadingRelocation}
+									className={!showAggregateCharts ? "lg:col-span-2" : ""}
+								/>
+								<RecentJobInterests />
+							</>
+						)}
 					</div>
+					{/* [!code focus:end] */}
 
 					{/* Baris 2: Tren & Aktivitas */}
 					<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">

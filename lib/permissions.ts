@@ -21,7 +21,8 @@ export type Action =
 	| "upload"
 	| "answer"
 	| "apply"
-	| "sync";
+	| "sync"
+	| "readHdInterests";
 
 export const PERMISSIONS: Record<Role, Partial<Record<Resource, Action[]>>> = {
 	ADMIN: {
@@ -47,7 +48,7 @@ export const PERMISSIONS: Record<Role, Partial<Record<Resource, Action[]>>> = {
 		department: ["read"],
 	},
 	HD: {
-		dashboard: ["read"],
+		dashboard: ["read", "readHdInterests"],
 		jobVacant: ["read"],
 		careerPath: ["read"],
 		questionnaire: ["read"],
