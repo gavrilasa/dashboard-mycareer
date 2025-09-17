@@ -24,10 +24,10 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import { Edit, Plus, Eye } from "lucide-react";
+import { Edit, Plus, Eye, RefreshCcw } from "lucide-react";
 import { JobVacancyForm } from "@/components/admin/job-vacant/JobVacancyForm";
+import { SuccessionSyncModal } from "@/components/admin/SuccessionSyncModal";
 
-// --- Type Definitions ---
 interface JobVacancy {
 	id: string;
 	isPublished: boolean;
@@ -60,18 +60,22 @@ export default function JobVacanciesPage() {
 	const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
 	const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+	const [isSuccessionSyncModalOpen, setIsSuccessionSyncModalOpen] =
+		useState(false);
 	const [selectedVacancy, setSelectedVacancy] = useState<JobVacancy | null>(
 		null
 	);
 	const [filters, setFilters] = useState<ActiveFilters>({ status: "" });
 	const [sorting, setSorting] = useState<SortingState>([]);
 
-	const { canCreate, canEdit } = useMemo(() => {
-		if (!session?.user?.role) return { canCreate: false, canEdit: false };
+	const { canCreate, canEdit, canSync } = useMemo(() => {
+		if (!session?.user?.role)
+			return { canCreate: false, canEdit: false, canSync: false };
 		const permissions = PERMISSIONS[session.user.role]?.jobVacant || [];
 		return {
 			canCreate: permissions.includes("create"),
 			canEdit: permissions.includes("update"),
+			canSync: permissions.includes("sync"),
 		};
 	}, [session]);
 
@@ -98,7 +102,6 @@ export default function JobVacanciesPage() {
 			const result = await response.json();
 			setData(result.data || []);
 
-			// PERBAIKAN: Petakan properti dari API ke state dengan benar
 			if (result.pagination) {
 				setPagination({
 					totalRecords: result.pagination.totalItems,
@@ -237,7 +240,12 @@ export default function JobVacanciesPage() {
 					loading={loading}
 					search={searchTerm}
 					onSearchChange={setSearchTerm}
-					pagination={{ ...pagination, onPageChange: setPage }}
+					pagination={{
+						currentPage: pagination.currentPage,
+						totalPages: pagination.totalPages,
+						totalRecords: pagination.totalRecords,
+						onPageChange: setPage,
+					}}
 					limit={limit}
 					onLimitChange={setLimit}
 					sorting={sorting}
@@ -251,11 +259,22 @@ export default function JobVacanciesPage() {
 						/>
 					}
 					createButton={
-						canCreate ? (
-							<Button onClick={() => handleOpenFormModal(null)}>
-								<Plus className="mr-2 h-4 w-4" /> Buat Lowongan
-							</Button>
-						) : null
+						<div className="flex gap-2">
+							{canSync && (
+								<Button
+									variant="outline"
+									onClick={() => setIsSuccessionSyncModalOpen(true)}
+								>
+									<RefreshCcw className="mr-2 h-4 w-4" />
+									Sinkronisasi Posisi Pensiun
+								</Button>
+							)}
+							{canCreate && (
+								<Button onClick={() => handleOpenFormModal(null)}>
+									<Plus className="mr-2 h-4 w-4" /> Buat Lowongan
+								</Button>
+							)}
+						</div>
 					}
 				/>
 			</div>
@@ -278,6 +297,15 @@ export default function JobVacanciesPage() {
 					/>
 				</DialogContent>
 			</Dialog>
+
+			<SuccessionSyncModal
+				isOpen={isSuccessionSyncModalOpen}
+				onClose={() => setIsSuccessionSyncModalOpen(false)}
+				onSuccess={() => {
+					fetchVacancies();
+					setIsSuccessionSyncModalOpen(false);
+				}}
+			/>
 		</>
 	);
 }

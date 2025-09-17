@@ -20,12 +20,13 @@ export type Action =
 	| "publish"
 	| "upload"
 	| "answer"
-	| "apply";
+	| "apply"
+	| "sync";
 
 export const PERMISSIONS: Record<Role, Partial<Record<Resource, Action[]>>> = {
 	ADMIN: {
 		dashboard: ["read"],
-		jobVacant: ["create", "read", "update", "delete", "publish"],
+		jobVacant: ["create", "read", "update", "delete", "publish", "sync"],
 		careerPath: ["create", "read", "update", "delete"],
 		questionnaire: ["read", "update"],
 		form: ["read"],
