@@ -6,19 +6,19 @@ import { withAuthorization } from "@/lib/auth-hof";
 import { JobInterest, JobRole, JobVacancy } from "@prisma/client";
 
 const departmentToQuestionnaireMap: Record<string, string> = {
-	"ADM-FA": "Kuisioner Mapping Kompetensi Accounting",
-	"ADM-GM": "Kuisioner Mapping Kompetensi MFG",
-	"ADM-HR": "Kuisioner Mapping Kompetensi HR",
-	"MFG-MFG": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PPIC": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PROD": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PURC": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-TECH": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-WRH": "Kuisioner Mapping Kompetensi MFG",
-	"MKT-MKT": "Kuisioner Mapping Kompetensi Marketing",
-	"MKT-SD": "Kuisioner Mapping Kompetensi Marketing",
-	"RND-QCA": "Kuisioner Mapping Kompetensi MFG",
-	"RND-RD": "Kuisioner Mapping Kompetensi MFG",
+	"ADM-FA": "Kuesioner Mapping Kompetensi Accounting",
+	"ADM-GM": "Kuesioner Mapping Kompetensi MFG",
+	"ADM-HR": "Kuesioner Mapping Kompetensi HR",
+	"MFG-MFG": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PPIC": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PROD": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PURC": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-TECH": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-WRH": "Kuesioner Mapping Kompetensi MFG",
+	"MKT-MKT": "Kuesioner Mapping Kompetensi Marketing",
+	"MKT-SD": "Kuesioner Mapping Kompetensi Marketing",
+	"RND-QCA": "Kuesioner Mapping Kompetensi MFG",
+	"RND-RD": "Kuesioner Mapping Kompetensi MFG",
 };
 
 type JobInterestWithRelations = JobInterest & {
@@ -39,7 +39,6 @@ export const GET = withAuthorization(
 		}
 
 		try {
-			// Langkah 1: Ambil data utama karyawan beserta relasi-relasinya
 			const employeeData = await prisma.employee.findUnique({
 				where: { employeeId },
 				include: {
@@ -76,7 +75,6 @@ export const GET = withAuthorization(
 				);
 			}
 
-			// Langkah 2: Proses data Riwayat Karir untuk mendapatkan nama
 			const positionIds = [
 				...new Set(employeeData.careerHistories.map((h) => h.positionId)),
 			];
@@ -98,7 +96,6 @@ export const GET = withAuthorization(
 			const positionMap = new Map(positions.map((p) => [p.id, p.name]));
 			const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 
-			// Buat array baru dengan data nama yang sudah digabungkan
 			const careerHistoriesWithNames = employeeData.careerHistories.map(
 				(history) => ({
 					...history,
@@ -109,7 +106,6 @@ export const GET = withAuthorization(
 				})
 			);
 
-			// --- Proses Logika Status ---
 			const isFormComplete = !!employeeData.gkmHistory;
 			const { departmentId } = employeeData;
 			let incompleteQuestionnaireCount = 0;
@@ -124,8 +120,7 @@ export const GET = withAuthorization(
 					departmentToQuestionnaireMap[departmentShortCode];
 
 				const requiredTitles = new Set([
-					"Kuisioner Mapping Kompetensi Managerial OPR STAFF",
-					"Kuisioner Mapping Kompetensi Managerial SPV",
+					"Kuesioner Mapping Kompetensi Manajerial",
 					technicalQuestionnaireTitle,
 				]);
 
@@ -140,7 +135,6 @@ export const GET = withAuthorization(
 				});
 			}
 
-			// --- Finalisasi Struktur Respons ---
 			const response = {
 				profile: {
 					employeeId: employeeData.employeeId,
@@ -164,7 +158,6 @@ export const GET = withAuthorization(
 					})
 				),
 				histories: {
-					// Kirim data riwayat yang sudah berisi nama
 					career: careerHistoriesWithNames,
 					organization: employeeData.organizationHistories,
 					committee: employeeData.committeeHistories,

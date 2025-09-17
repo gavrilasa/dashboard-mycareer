@@ -4,21 +4,20 @@ import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 
-// Peta kuesioner teknis yang sama digunakan di tempat lain untuk konsistensi
 const departmentToQuestionnaireMap: Record<string, string> = {
-	"ADM-FA": "Kuisioner Mapping Kompetensi Accounting",
-	"ADM-GM": "Kuisioner Mapping Kompetensi MFG",
-	"ADM-HR": "Kuisioner Mapping Kompetensi HR",
-	"MFG-MFG": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PPIC": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PROD": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PURC": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-TECH": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-WRH": "Kuisioner Mapping Kompetensi MFG",
-	"MKT-MKT": "Kuisioner Mapping Kompetensi Marketing",
-	"MKT-SD": "Kuisioner Mapping Kompetensi Marketing",
-	"RND-QCA": "Kuisioner Mapping Kompetensi MFG",
-	"RND-RD": "Kuisioner Mapping Kompetensi MFG",
+	"ADM-FA": "Kuesioner Mapping Kompetensi Accounting",
+	"ADM-GM": "Kuesioner Mapping Kompetensi MFG",
+	"ADM-HR": "Kuesioner Mapping Kompetensi HR",
+	"MFG-MFG": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PPIC": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PROD": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PURC": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-TECH": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-WRH": "Kuesioner Mapping Kompetensi MFG",
+	"MKT-MKT": "Kuesioner Mapping Kompetensi Marketing",
+	"MKT-SD": "Kuesioner Mapping Kompetensi Marketing",
+	"RND-QCA": "Kuesioner Mapping Kompetensi MFG",
+	"RND-RD": "Kuesioner Mapping Kompetensi MFG",
 };
 
 export const GET = withAuthorization(
@@ -26,9 +25,8 @@ export const GET = withAuthorization(
 	async (_req: NextRequest) => {
 		try {
 			const today = new Date();
-			today.setHours(0, 0, 0, 0); // Set ke awal hari
+			today.setHours(0, 0, 0, 0);
 
-			// 1. Cek cache di tabel DashboardAnalytics untuk hari ini
 			const cachedAnalytics = await prisma.dashboardAnalytics.findUnique({
 				where: { date: today },
 			});
@@ -37,7 +35,6 @@ export const GET = withAuthorization(
 				return NextResponse.json(cachedAnalytics);
 			}
 
-			// 2. Jika tidak ada cache, hitung KPI baru
 			const [totalEmployees, totalVacancies, allEmployeesForCompletionCheck] =
 				await prisma.$transaction([
 					prisma.employee.count(),
@@ -61,10 +58,8 @@ export const GET = withAuthorization(
 			let totalQuestionnairesCompleted = 0;
 
 			allEmployeesForCompletionCheck.forEach((employee) => {
-				// Cek kelengkapan form
 				const isFormComplete = !!employee.gkmHistory;
 
-				// Cek kelengkapan kuesioner
 				const departmentCodeParts = employee.departmentId.split("-");
 				const departmentShortCode =
 					departmentCodeParts.length > 2
@@ -74,8 +69,7 @@ export const GET = withAuthorization(
 					departmentToQuestionnaireMap[departmentShortCode];
 
 				const requiredTitles = new Set([
-					"Kuisioner Mapping Kompetensi Managerial OPR STAFF",
-					"Kuisioner Mapping Kompetensi Managerial SPV",
+					"Kuesioner Mapping Kompetensi Manajerial",
 					technicalQuestionnaireTitle,
 				]);
 

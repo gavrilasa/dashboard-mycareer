@@ -1,22 +1,24 @@
+// app/api/employee/job-vacant/opportunities/route.ts
+
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 import { PathType, VacancyPeriod } from "@prisma/client";
 
 const departmentToQuestionnaireMap: Record<string, string> = {
-	"ADM-FA": "Kuisioner Mapping Kompetensi Accounting",
-	"ADM-GM": "Kuisioner Mapping Kompetensi MFG",
-	"ADM-HR": "Kuisioner Mapping Kompetensi HR",
-	"MFG-MFG": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PPIC": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PROD": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PURC": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-TECH": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-WRH": "Kuisioner Mapping Kompetensi MFG",
-	"MKT-MKT": "Kuisioner Mapping Kompetensi Marketing",
-	"MKT-SD": "Kuisioner Mapping Kompetensi Marketing",
-	"RND-QCA": "Kuisioner Mapping Kompetensi MFG",
-	"RND-RD": "Kuisioner Mapping Kompetensi MFG",
+	"ADM-FA": "Kuesioner Mapping Kompetensi Accounting",
+	"ADM-GM": "Kuesioner Mapping Kompetensi MFG",
+	"ADM-HR": "Kuesioner Mapping Kompetensi HR",
+	"MFG-MFG": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PPIC": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PROD": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PURC": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-TECH": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-WRH": "Kuesioner Mapping Kompetensi MFG",
+	"MKT-MKT": "Kuesioner Mapping Kompetensi Marketing",
+	"MKT-SD": "Kuesioner Mapping Kompetensi Marketing",
+	"RND-QCA": "Kuesioner Mapping Kompetensi MFG",
+	"RND-RD": "Kuesioner Mapping Kompetensi MFG",
 };
 
 const STAGES_ORDER: { pathType: PathType; period: VacancyPeriod }[] = [
@@ -78,11 +80,12 @@ export const GET = withAuthorization(
 					: employee.departmentId;
 			const technicalQuestionnaireTitle =
 				departmentToQuestionnaireMap[departmentShortCode];
+
 			const requiredTitles = new Set([
-				"Kuisioner Mapping Kompetensi Managerial OPR STAFF",
-				"Kuisioner Mapping Kompetensi Managerial SPV",
+				"Kuesioner Mapping Kompetensi Manajerial",
 				technicalQuestionnaireTitle,
 			]);
+
 			const submittedTitles = new Set(
 				employee.questionnaireResponses.map((r) => r.questionnaire.title)
 			);
@@ -140,7 +143,6 @@ export const GET = withAuthorization(
 				(i) => i.interestType === "CROSS"
 			);
 
-			// FIX: Tambahkan pengecekan `requestedStage` untuk menghindari perulangan
 			if (
 				isEnteringCross &&
 				!hasStartedCross &&

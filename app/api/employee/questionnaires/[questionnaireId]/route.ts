@@ -3,6 +3,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
+import { Prisma } from "@prisma/client";
 
 interface HandlerContext {
 	params: { questionnaireId: string };
@@ -42,6 +43,31 @@ export const GET = withAuthorization(
 				);
 			}
 
+			const questionnaireInfo = await prisma.questionnaire.findUnique({
+				where: { id: questionnaireId },
+				select: { title: true },
+			});
+
+			if (!questionnaireInfo) {
+				return NextResponse.json(
+					{ message: "Kuesioner tidak ditemukan." },
+					{ status: 404 }
+				);
+			}
+
+			let questionsWhereClause: Prisma.QuestionWhereInput = {
+				OR: [
+					{ jobRoles: { none: {} } },
+					{ jobRoles: { some: { id: jobRoleId } } },
+				],
+			};
+
+			if (
+				questionnaireInfo.title === "Kuesioner Mapping Kompetensi Manajerial"
+			) {
+				questionsWhereClause = {};
+			}
+
 			const questionnaire = await prisma.questionnaire.findUnique({
 				where: { id: questionnaireId },
 				select: {
@@ -49,12 +75,7 @@ export const GET = withAuthorization(
 					title: true,
 					description: true,
 					questions: {
-						where: {
-							OR: [
-								{ jobRoles: { none: {} } },
-								{ jobRoles: { some: { id: jobRoleId } } },
-							],
-						},
+						where: questionsWhereClause,
 						select: {
 							id: true,
 							text: true,

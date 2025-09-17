@@ -7,9 +7,7 @@
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
-		"seed": "tsx prisma/seed.ts && tsx prisma/seed-test-users.ts",
-		"seed-questionnaire": "tsx prisma/seed-questionnaires.ts && tsx prisma/seed-standards.ts && tsx prisma/seed-recommendations.ts",
-		"seed-career": "tsx prisma/seed-career-paths.ts"
+		"seed": "tsx prisma/seed.ts && tsx prisma/seed-test-users.ts && tsx prisma/seed-questionnaires.ts && tsx prisma/seed-standards.ts && tsx prisma/seed-recommendations.ts && tsx prisma/seed-career-paths.ts"
 	},
 	"dependencies": {
 		"@hookform/resolvers": "^5.2.0",

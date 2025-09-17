@@ -4,21 +4,20 @@ import { prisma } from "@/lib/prisma";
 import { withAuthorization } from "@/lib/auth-hof";
 import { Prisma } from "@prisma/client";
 
-// Peta ini disalin dari logika penentuan kuesioner untuk konsistensi
 const departmentToQuestionnaireMap: Record<string, string> = {
-	"ADM-FA": "Kuisioner Mapping Kompetensi Accounting",
-	"ADM-GM": "Kuisioner Mapping Kompetensi MFG",
-	"ADM-HR": "Kuisioner Mapping Kompetensi HR",
-	"MFG-MFG": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PPIC": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PROD": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-PURC": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-TECH": "Kuisioner Mapping Kompetensi MFG",
-	"MFG-WRH": "Kuisioner Mapping Kompetensi MFG",
-	"MKT-MKT": "Kuisioner Mapping Kompetensi Marketing",
-	"MKT-SD": "Kuisioner Mapping Kompetensi Marketing",
-	"RND-QCA": "Kuisioner Mapping Kompetensi MFG",
-	"RND-RD": "Kuisioner Mapping Kompetensi MFG",
+	"ADM-FA": "Kuesioner Mapping Kompetensi Accounting",
+	"ADM-GM": "Kuesioner Mapping Kompetensi MFG",
+	"ADM-HR": "Kuesioner Mapping Kompetensi HR",
+	"MFG-MFG": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PPIC": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PROD": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-PURC": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-TECH": "Kuesioner Mapping Kompetensi MFG",
+	"MFG-WRH": "Kuesioner Mapping Kompetensi MFG",
+	"MKT-MKT": "Kuesioner Mapping Kompetensi Marketing",
+	"MKT-SD": "Kuesioner Mapping Kompetensi Marketing",
+	"RND-QCA": "Kuesioner Mapping Kompetensi MFG",
+	"RND-RD": "Kuesioner Mapping Kompetensi MFG",
 };
 
 export const GET = withAuthorization(
@@ -36,7 +35,6 @@ export const GET = withAuthorization(
 			const sortOrder = url.searchParams.get("sortOrder") || "asc";
 			const skip = (page - 1) * limit;
 
-			// **OPTIMASI: Bangun klausa 'where' yang kompleks untuk filtering di database**
 			const finalWhereClause: Prisma.EmployeeWhereInput = {
 				...whereClause,
 				...(branchId && { branchId }),
@@ -49,28 +47,17 @@ export const GET = withAuthorization(
 						{ department: { name: { contains: search, mode: "insensitive" } } },
 					],
 				}),
-				// Filter hanya karyawan yang sudah mengisi semua kuesioner yang relevan
 				AND: [
 					{
 						questionnaireResponses: {
 							some: {
 								questionnaire: {
-									title: "Kuisioner Mapping Kompetensi Managerial OPR STAFF",
+									title: "Kuesioner Mapping Kompetensi Manajerial",
 								},
 							},
 						},
 					},
 					{
-						questionnaireResponses: {
-							some: {
-								questionnaire: {
-									title: "Kuisioner Mapping Kompetensi Managerial SPV",
-								},
-							},
-						},
-					},
-					{
-						// Filter kuesioner teknis berdasarkan departemen
 						OR: Object.entries(departmentToQuestionnaireMap).map(
 							([deptShortCode, questionnaireTitle]) => ({
 								AND: [
@@ -87,14 +74,11 @@ export const GET = withAuthorization(
 				],
 			};
 
-			// Dynamic Sorting Logic
 			const orderBy: Prisma.EmployeeOrderByWithRelationInput = {
 				[sortBy]: sortOrder,
 			};
 
-			// **OPTIMASI: Lakukan dua query terpisah yang jauh lebih ringan**
 			const [employeesForPage, totalEmployees] = await prisma.$transaction([
-				// 1. Ambil hanya data karyawan per halaman yang sudah lolos filter
 				prisma.employee.findMany({
 					where: finalWhereClause,
 					skip,
@@ -105,7 +89,6 @@ export const GET = withAuthorization(
 						position: { select: { name: true } },
 						department: { select: { name: true } },
 						branch: { select: { name: true } },
-						// Ambil skor rata-rata langsung dari database
 						competencyResults: {
 							select: {
 								calculatedScore: true,
@@ -114,13 +97,11 @@ export const GET = withAuthorization(
 					},
 					orderBy,
 				}),
-				// 2. Hitung total karyawan yang memenuhi kriteria (tanpa mengambil datanya)
 				prisma.employee.count({
 					where: finalWhereClause,
 				}),
 			]);
 
-			// **OPTIMASI: Proses data yang sudah terpaginasi di sisi aplikasi**
 			const responseData = employeesForPage.map((employee) => {
 				const totalScore = employee.competencyResults.reduce(
 					(sum, r) => sum + r.calculatedScore,
