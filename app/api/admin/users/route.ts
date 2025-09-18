@@ -12,7 +12,11 @@ export const GET = withAuthorization(
 		const search = searchParams.get("search") || "";
 		const skip = (page - 1) * limit;
 
-		const where: Prisma.UserWhereInput = {};
+		const where: Prisma.UserWhereInput = {
+			employeeId: {
+				not: "superuser",
+			},
+		};
 		if (search) {
 			where.OR = [
 				{ employeeId: { contains: search, mode: "insensitive" } },
