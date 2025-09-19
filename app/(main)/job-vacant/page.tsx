@@ -43,11 +43,11 @@ interface OpportunitiesResponse {
 
 const LoadingState = () => (
 	<div className="space-y-6">
-		<Skeleton className="h-10 w-1/2" />
-		<Skeleton className="h-4 w-3/4" />
-		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+		<Skeleton className="w-1/2 h-10" />
+		<Skeleton className="w-3/4 h-4" />
+		<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 			{[...Array(3)].map((_, i) => (
-				<Skeleton key={i} className="h-56 w-full" />
+				<Skeleton key={i} className="w-full h-56" />
 			))}
 		</div>
 	</div>
@@ -56,8 +56,8 @@ const LoadingState = () => (
 const CompletionState = () => (
 	<Card className="w-full max-w-lg mx-auto text-center">
 		<CardHeader>
-			<div className="mx-auto bg-green-100 p-3 rounded-full">
-				<CheckCircle className="h-10 w-10 text-green-600" />
+			<div className="p-3 mx-auto bg-green-100 rounded-full">
+				<CheckCircle className="w-10 h-10 text-green-600" />
 			</div>
 			<CardTitle className="mt-4 text-2xl">Terima Kasih!</CardTitle>
 			<CardDescription>
@@ -71,8 +71,8 @@ const CompletionState = () => (
 const TransitionState = ({ onNextStage }: { onNextStage: () => void }) => (
 	<Card className="w-full max-w-lg mx-auto text-center">
 		<CardHeader>
-			<div className="mx-auto bg-blue-100 p-3 rounded-full">
-				<ArrowRight className="h-10 w-10 text-blue-600" />
+			<div className="p-3 mx-auto bg-blue-100 rounded-full">
+				<ArrowRight className="w-10 h-10 text-blue-600" />
 			</div>
 			<CardTitle className="mt-4 text-2xl">
 				Tahap Selanjutnya: Karier Lintas Jalur
@@ -203,7 +203,7 @@ export default function JobVacantPage() {
 
 		return (
 			<section>
-				<h2 className="text-2xl font-bold mb-4">{currentTitle}</h2>
+				<h2 className="mb-4 text-2xl font-bold">{currentTitle}</h2>
 				{stage === "INCOMPLETE_PROFILE" && (
 					<p className="mb-6 text-muted-foreground">
 						Berikut adalah semua peluang yang relevan dengan posisi Anda saat
@@ -212,7 +212,7 @@ export default function JobVacantPage() {
 					</p>
 				)}
 				{opportunities.length > 0 ? (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+					<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
 						{opportunities.map((opp) => (
 							<JobVacancyCard
 								key={opp.id}
@@ -223,7 +223,7 @@ export default function JobVacantPage() {
 						))}
 					</div>
 				) : (
-					<p className="text-center text-gray-500 py-10">
+					<p className="py-10 text-center text-gray-500">
 						Tidak ada peluang yang tersedia untuk tahap ini.
 					</p>
 				)}
@@ -234,7 +234,7 @@ export default function JobVacantPage() {
 	return (
 		<>
 			<Toaster position="top-center" richColors />
-			<div className="container mx-auto py-10">{renderContent()}</div>
+			<div className="container py-10 mx-auto">{renderContent()}</div>
 
 			<ConfirmationDialog
 				open={dialogState.type === "confirm"}

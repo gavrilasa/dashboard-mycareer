@@ -74,7 +74,7 @@ const QuestionnaireList = ({
 }: {
 	questionnaires: Questionnaire[];
 }) => (
-	<div className="grid gap-6 mt-6 md:grid-cols-2 lg:grid-cols-3">
+	<div className="grid gap-4 mt-6 md:gap-6 md:grid-cols-2 lg:grid-cols-3">
 		{questionnaires.map((q) => (
 			<Link
 				href={q.isCompleted ? "#" : `/questionnaire/${q.id}`}

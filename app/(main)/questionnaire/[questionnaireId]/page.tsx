@@ -209,8 +209,8 @@ export default function FillQuestionnairePage() {
 	return (
 		<>
 			<Toaster position="top-center" richColors />
-			<div className="container py-10 mx-auto space-y-6">
-				<div className="flex items-center justify-between">
+			<div className="container pt-4 pb-8 mx-auto space-y-6">
+				<div className="flex flex-col items-end justify-between gap-4 md:flex-row md:items-center md:gap-0">
 					<div className="flex-1">
 						<BackButton onClick={handleBackClick} className="mb-4" />
 						<h1 className="text-2xl font-bold">{data.title}</h1>

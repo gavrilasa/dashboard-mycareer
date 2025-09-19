@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Toaster, toast } from "sonner";
 import {
 	AlertCircle,
@@ -75,7 +75,6 @@ interface DashboardData {
 // Career History (Diperbaiki)
 const renderCareerHistoryItemMobile = (item: CareerHistoryWithNames) => (
 	<div className="text-sm">
-		{/* Gunakan positionName dan departmentName */}
 		<p className="font-semibold">{item.positionName}</p>
 		<p className="text-gray-600">{item.departmentName}</p>
 		<p className="text-xs text-gray-400 mt-1">
@@ -96,8 +95,6 @@ const careerColumnsDesktop = [
 			}`,
 	},
 ];
-
-// ... (sisa renderer dan kolom untuk riwayat lain tetap sama)
 
 const renderOrgHistoryItemMobile = (item: OrganizationHistory) => (
 	<div className="text-sm">
@@ -159,26 +156,27 @@ export default function DashboardEmployeePage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 
-	useEffect(() => {
-		const fetchData = async () => {
-			try {
-				const response = await fetch("/api/employee/dashboard");
-				if (!response.ok) {
-					const errorData = await response.json();
-					throw new Error(errorData.message || "Gagal memuat data dasbor.");
-				}
-				const data = await response.json();
-				setDashboardData(data);
-			} catch (err) {
-				setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
-				toast.error("Gagal Memuat Data", { description: error as string });
-			} finally {
-				setIsLoading(false);
+	// Bungkus fetchData dengan useCallback
+	const fetchData = useCallback(async () => {
+		try {
+			const response = await fetch("/api/employee/dashboard");
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(errorData.message || "Gagal memuat data dasbor.");
 			}
-		};
+			const data = await response.json();
+			setDashboardData(data);
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Terjadi kesalahan.");
+			toast.error("Gagal Memuat Data", { description: error as string });
+		} finally {
+			setIsLoading(false);
+		}
+	}, [error]);
 
+	useEffect(() => {
 		fetchData();
-	});
+	}, [fetchData]);
 
 	if (isLoading) {
 		return (
@@ -214,9 +212,9 @@ export default function DashboardEmployeePage() {
 	return (
 		<>
 			<Toaster position="top-center" richColors />
-			<div className="container mx-auto py-6 px-4">
-				<div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-					<div className="lg:col-span-1 space-y-6 lg:sticky lg:top-12">
+			<div className="container mx-auto py-6">
+				<div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+					<div className="lg:col-span-1 space-y-4 lg:sticky lg:top-12">
 						<ProfileCard profile={dashboardData.profile} />
 						<InterestsCard careerInterests={dashboardData.careerInterests} />
 						<AchievementsCard
@@ -225,7 +223,7 @@ export default function DashboardEmployeePage() {
 						/>
 					</div>
 
-					<div className="lg:col-span-2 space-y-6">
+					<div className="lg:col-span-2 space-y-4">
 						{!dashboardData.status.isFormComplete && (
 							<ActionCard
 								title="Lengkapi Profil Anda"

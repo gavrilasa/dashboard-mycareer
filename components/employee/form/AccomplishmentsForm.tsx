@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 
-const Asterisk = () => <span className="text-red-500 -ml-1">*</span>;
+const Asterisk = () => <span className="-ml-1 text-red-500">*</span>;
 
 interface AccomplishmentsFormProps {
 	onSkip: () => void;
@@ -51,7 +51,7 @@ export function AccomplishmentsForm({ onSkip }: AccomplishmentsFormProps) {
 	};
 
 	return (
-		<Card className="border-none shadow-none bg-white gap-3 py-8">
+		<Card className="gap-3 py-8 bg-white border-none shadow-none">
 			<CardHeader className="gap-0">
 				<CardTitle>Prestasi Karyawan Teladan</CardTitle>
 				<CardDescription className="mt-2">
@@ -60,8 +60,8 @@ export function AccomplishmentsForm({ onSkip }: AccomplishmentsFormProps) {
 				</CardDescription>
 			</CardHeader>
 			<CardContent>
-				<div className="space-y-3 mt-2">
-					<FormLabel>
+				<div className="mt-2 space-y-3">
+					<FormLabel className="leading-normal">
 						Apakah Anda pernah menerima penghargaan Karyawan Teladan?
 					</FormLabel>
 					<div className="grid grid-cols-2 gap-2 max-w-[200px]">
@@ -86,8 +86,8 @@ export function AccomplishmentsForm({ onSkip }: AccomplishmentsFormProps) {
 				</div>
 
 				{hasAccomplishments === true && (
-					<div className="mt-6 pt-6 border-t">
-						<div className="p-6 border rounded-lg bg-white space-y-4 shadow-sm">
+					<div className="pt-6 mt-6 border-t">
+						<div className="p-6 space-y-4 bg-white border rounded-lg shadow-sm">
 							<FormField
 								control={control}
 								name="bestEmployeeScore.count"

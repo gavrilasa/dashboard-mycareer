@@ -315,21 +315,21 @@ export default function EmployeeFormPage() {
 
 	if (isLoading || !masterData) {
 		return (
-			<div className="container mx-auto py-10 space-y-8">
-				<Skeleton className="h-12 w-1/3" />
-				<Skeleton className="h-20 w-full" />
-				<Skeleton className="h-64 w-full" />
+			<div className="container py-10 mx-auto space-y-8">
+				<Skeleton className="w-1/3 h-12" />
+				<Skeleton className="w-full h-20" />
+				<Skeleton className="w-full h-64" />
 			</div>
 		);
 	}
 
 	if (isSubmitted) {
 		return (
-			<div className="container mx-auto py-10 flex items-center justify-center">
+			<div className="container flex items-center justify-center py-10 mx-auto">
 				<Card className="w-full max-w-lg text-center">
 					<CardHeader>
-						<div className="mx-auto bg-green-100 p-3 rounded-full">
-							<CheckCircle className="h-10 w-10 text-green-600" />
+						<div className="p-3 mx-auto bg-green-100 rounded-full">
+							<CheckCircle className="w-10 h-10 text-green-600" />
 						</div>
 						<CardTitle className="mt-4 text-2xl">Terima Kasih!</CardTitle>
 						<CardDescription>
@@ -354,7 +354,7 @@ export default function EmployeeFormPage() {
 			<Toaster position="top-center" richColors />
 			<div className="container mx-auto space-y-6">
 				<div>
-					<h1 className="text-3xl font-bold">Formulir Data Diri</h1>
+					<h1 className="text-2xl font-bold">Formulir Data Diri</h1>
 					<p className="text-muted-foreground">
 						Lengkapi data Anda langkah demi langkah.
 					</p>
@@ -372,14 +372,14 @@ export default function EmployeeFormPage() {
 							onSkip={handleNext}
 						/>
 					</div>
-					<div className="mt-6 flex justify-between">
+					<div className="flex justify-between mt-2 md:mt-6">
 						<Button
 							type="button"
 							variant="outline"
 							size="lg"
 							onClick={handlePrevious}
 							disabled={currentStep === 1}
-							className="cursor-pointer gap-2"
+							className="gap-2 cursor-pointer"
 						>
 							<ChevronLeft /> Sebelumnya
 						</Button>
@@ -387,7 +387,7 @@ export default function EmployeeFormPage() {
 							<Button
 								type="button"
 								onClick={handleNext}
-								className="cursor-pointer gap-2"
+								className="gap-2 cursor-pointer"
 							>
 								Selanjutnya <ChevronRight />
 							</Button>

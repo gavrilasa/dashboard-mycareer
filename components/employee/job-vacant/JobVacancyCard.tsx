@@ -27,7 +27,7 @@ export function JobVacancyCard({
 	isSubmitting,
 }: JobVacancyCardProps) {
 	return (
-		<Card className="flex flex-col gap-4">
+		<Card className="flex flex-col gap-2">
 			<CardHeader>
 				<CardTitle>{opportunity.jobRole?.name || "Tanpa Judul"}</CardTitle>
 			</CardHeader>
